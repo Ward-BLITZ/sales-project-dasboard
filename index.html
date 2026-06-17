@@ -303,9 +303,10 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600;margin-bottom:.5rem;margin-top:1.5rem">Verantwoordelijken</div>
   <p style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Teamleden die als verantwoordelijke kunnen worden aangeduid.</p>
   <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
-    <input id="input-resp" type="text" placeholder="Naam..." style="max-width:180px" onkeydown="if(event.key==='Enter')addResp()">
-    <input id="input-rol" type="text" placeholder="Rol (bv. Sales Manager)..." style="max-width:200px" onkeydown="if(event.key==='Enter')addResp()">
-    <input id="input-contact" type="text" placeholder="Tel / e-mail..." style="max-width:200px" onkeydown="if(event.key==='Enter')addResp()">
+    <input id="input-resp" type="text" placeholder="Naam..." style="max-width:160px" onkeydown="if(event.key==='Enter')addResp()">
+    <input id="input-rol" type="text" placeholder="Rol..." style="max-width:160px" onkeydown="if(event.key==='Enter')addResp()">
+    <input id="input-gsm" type="tel" placeholder="GSM..." style="max-width:140px" onkeydown="if(event.key==='Enter')addResp()">
+    <input id="input-email" type="email" placeholder="E-mail..." style="max-width:180px" onkeydown="if(event.key==='Enter')addResp()">
     <button class="btn primary" onclick="addResp()"><i class="ti ti-plus"></i> Toevoegen</button>
   </div>
   <div id="resp-list"></div>
@@ -319,7 +320,8 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       </div>
       <div class="field"><label>Naam *</label><input id="re-naam" placeholder="Voornaam Achternaam"></div>
       <div class="field"><label>Rol</label><input id="re-rol" placeholder="bv. Sales Manager, Account Executive..."></div>
-      <div class="field"><label>Contactgegevens</label><input id="re-contact" placeholder="bv. 0499 123 456 / jan@blitzpower.be"></div>
+      <div class="field"><label>GSM</label><input id="re-gsm" placeholder="0499 123 456" type="tel"></div>
+      <div class="field"><label>E-mail</label><input id="re-email" placeholder="jan@blitzpower.be" type="email"></div>
       <div class="modal-footer">
         <button class="btn" onclick="closeRespModal()">Annuleren</button>
         <button class="btn primary" onclick="saveRespEdit()"><i class="ti ti-check"></i> Opslaan</button>
@@ -342,8 +344,9 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     </div>
     <div class="grid2">
       <div class="field"><label>Contactpersoon</label><input id="m-contact" placeholder="Jan Janssen"></div>
-      <div class="field"><label>Contactgegevens</label><input id="m-contactinfo" placeholder="jan@bedrijf.be / 0499..."></div>
+      <div class="field"><label>GSM contactpersoon</label><input id="m-contactgsm" placeholder="0499 123 456" type="tel"></div>
     </div>
+    <div class="field"><label>E-mail contactpersoon</label><input id="m-contactemail" placeholder="jan@bedrijf.be" type="email"></div>
     <div class="field"><label>Productomschrijving</label><input id="m-product" placeholder="bv. 12 laadpunten — 22 kW AC"></div>
     <div class="field">
       <label>Projectinfo <span class="ai-badge"><i class="ti ti-sparkles"></i> AI</span></label>
@@ -859,7 +862,8 @@ function openModal(idx){
     document.getElementById('m-klant').value=p.klant||'';
     document.getElementById('m-btw').value=p.btw||'';
     document.getElementById('m-contact').value=p.contact||'';
-    document.getElementById('m-contactinfo').value=p.contactinfo||'';
+    document.getElementById('m-contactgsm').value=p.contactgsm||p.contactinfo||'';
+    document.getElementById('m-contactemail').value=p.contactemail||'';
     document.getElementById('m-product').value=p.product||'';
     document.getElementById('m-info').value=p.info||'';
     document.getElementById('m-status').value=p.status||'0';
@@ -876,7 +880,7 @@ function openModal(idx){
     renderAttachList();
   } else {
     document.getElementById('modal-title').textContent='Nieuw project';
-    ['m-naam','m-klant','m-btw','m-contact','m-contactinfo','m-product','m-info','m-omzet','m-lp','m-datum','m-notitie'].forEach(id=>document.getElementById(id).value='');
+    ['m-naam','m-klant','m-btw','m-contact','m-contactgsm','m-contactemail','m-product','m-info','m-omzet','m-lp','m-datum','m-notitie'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('m-status').value='0';
     document.getElementById('m-pct').value=5;document.getElementById('m-pct-label').textContent='5%';
     document.getElementById('m-resp').value='';
@@ -912,7 +916,8 @@ async function saveProject(){
     klant:document.getElementById('m-klant').value.trim(),
     btw:document.getElementById('m-btw').value.trim(),
     contact:document.getElementById('m-contact').value.trim(),
-    contactinfo:document.getElementById('m-contactinfo').value.trim(),
+    contactgsm:document.getElementById('m-contactgsm').value.trim(),
+    contactemail:document.getElementById('m-contactemail').value.trim(),
     product:document.getElementById('m-product').value.trim(),
     info:document.getElementById('m-info').value.trim(),
     status:String(si),pct,
@@ -956,12 +961,14 @@ let editingRespIdx = null;
 function addResp(){
   const naam=document.getElementById('input-resp').value.trim();
   const rol=document.getElementById('input-rol').value.trim();
-  const contact=document.getElementById('input-contact').value.trim();
+  const gsm=document.getElementById('input-gsm').value.trim();
+  const email=document.getElementById('input-email').value.trim();
   if(!naam)return;
-  resps.push({naam,rol,contact});
+  resps.push({naam,rol,gsm,email});
   document.getElementById('input-resp').value='';
   document.getElementById('input-rol').value='';
-  document.getElementById('input-contact').value='';
+  document.getElementById('input-gsm').value='';
+  document.getElementById('input-email').value='';
   sbSaveResps();renderResps();renderPills();
 }
 
@@ -973,12 +980,10 @@ function deleteResp(i){
 function openRespEdit(i){
   editingRespIdx=i;
   const r=resps[i];
-  const naam=typeof r==='string'?r:r.naam||'';
-  const rol=typeof r==='string'?'':r.rol||'';
-  const contact=typeof r==='string'?'':r.contact||'';
-  document.getElementById('re-naam').value=naam;
-  document.getElementById('re-rol').value=rol;
-  document.getElementById('re-contact').value=contact;
+  document.getElementById('re-naam').value=typeof r==='string'?r:r.naam||'';
+  document.getElementById('re-rol').value=typeof r==='string'?'':r.rol||'';
+  document.getElementById('re-gsm').value=typeof r==='string'?'':r.gsm||r.contact||'';
+  document.getElementById('re-email').value=typeof r==='string'?'':r.email||'';
   document.getElementById('resp-modal').classList.add('open');
 }
 
@@ -994,7 +999,8 @@ function saveRespEdit(){
   resps[editingRespIdx]={
     naam,
     rol:document.getElementById('re-rol').value.trim(),
-    contact:document.getElementById('re-contact').value.trim()
+    gsm:document.getElementById('re-gsm').value.trim(),
+    email:document.getElementById('re-email').value.trim()
   };
   closeRespModal();
   sbSaveResps();renderResps();renderPills();
@@ -1007,14 +1013,16 @@ function renderResps(){
   el.innerHTML=resps.map((r,i)=>{
     const naam=typeof r==='string'?r:r.naam||'';
     const rol=typeof r==='string'?'':r.rol||'';
-    const contact=typeof r==='string'?'':r.contact||'';
+    const gsm=typeof r==='string'?'':r.gsm||r.contact||'';
+    const email=typeof r==='string'?'':r.email||'';
     return`<div class="resp-item">
       <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
         <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,223,163,.15);display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;color:#00805e;flex-shrink:0">${naam.charAt(0).toUpperCase()}</div>
         <div style="min-width:0">
           <div style="font-size:13px;font-weight:600">${naam}</div>
           ${rol?`<div style="font-size:11px;color:var(--tx3)">${rol}</div>`:''}
-          ${contact?`<div style="font-size:11px;color:var(--tx2)"><i class="ti ti-phone" style="font-size:10px;margin-right:3px"></i>${contact}</div>`:''}
+          ${gsm?`<div style="font-size:11px;color:var(--tx2)"><i class="ti ti-device-mobile" style="font-size:10px;margin-right:3px"></i>${gsm}</div>`:''}
+          ${email?`<div style="font-size:11px;color:var(--tx2)"><i class="ti ti-mail" style="font-size:10px;margin-right:3px"></i>${email}</div>`:''}
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
@@ -1030,6 +1038,8 @@ async function aiGenerate(){
   const naam=document.getElementById('m-naam').value.trim();
   const klant=document.getElementById('m-klant').value.trim();
   const contact=document.getElementById('m-contact').value.trim();
+  const contactgsm=document.getElementById('m-contactgsm').value.trim();
+  const contactemail=document.getElementById('m-contactemail').value.trim();
   const product=document.getElementById('m-product').value.trim();
   const lp=document.getElementById('m-lp').value.trim();
   const sp=document.getElementById('ai-spin');sp.style.display='inline-flex';
@@ -1039,6 +1049,8 @@ async function aiGenerate(){
 Projectnaam: ${naam||'niet opgegeven'}
 Bedrijf/klant: ${klant||'niet opgegeven'}
 Contactpersoon: ${contact||'niet opgegeven'}
+GSM contactpersoon: ${contactgsm||'niet opgegeven'}
+E-mail contactpersoon: ${contactemail||'niet opgegeven'}
 Productomschrijving: ${product||'niet opgegeven'}
 Aantal laadpunten: ${lp?lp+' laadpunten':'niet opgegeven'}
 
@@ -1153,7 +1165,8 @@ function exportExcel(type){
     'Klant':p.klant||'',
     'BTW':p.btw||'',
     'Contactpersoon':p.contact||'',
-    'Contactgegevens':p.contactinfo||'',
+    'GSM':p.contactgsm||p.contactinfo||'',
+    'E-mail':p.contactemail||'',
     'Product':p.product||'',
     'Verantwoordelijke':p.resp||'',
     'Laadpunten':p.lp||'',
