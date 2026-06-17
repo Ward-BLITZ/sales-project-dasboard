@@ -628,6 +628,13 @@ async function loadAll(){
   setDbStatus('ok','verbonden');
   document.getElementById('db-setup-card').style.display='none';
   renderAll();renderResps();pushToTV();
+
+  // Koppel ingelogde gebruiker aan verantwoordelijke na data laden
+  if(window._pendingUserLink){
+    const {naam,email}=window._pendingUserLink;
+    window._pendingUserLink=null;
+    linkUserToResp(naam,email);
+  }
 }
 
 async function sbSaveProject(p){
@@ -1438,7 +1445,6 @@ async function doSetPass(){
 
 async function onLoggedIn(user){
   currentUser=user;
-  // haal rol op uit user_metadata of profiles tabel
   currentRole=user.user_metadata?.role||'user';
   if(user.email===ADMIN_EMAIL)currentRole='admin';
 
@@ -1450,12 +1456,12 @@ async function onLoggedIn(user){
   // toon gebruikers-tab alleen voor admin
   document.getElementById('tab-gebruikers').style.display=currentRole==='admin'?'inline-flex':'none';
 
-  // toon naam in header
-  const naam=user.user_metadata?.naam||user.email;
-  document.getElementById('current-user-name').textContent=naam;
+  // naam van ingelogde gebruiker
+  const userNaam=user.user_metadata?.naam||'';
+  document.getElementById('current-user-name').textContent=userNaam||user.email;
 
-  // start app
-  startAppAfterLogin();
+  // start app — koppeling met verantwoordelijke gebeurt in startAppAfterLogin
+  startAppAfterLogin(userNaam, user.email);
 }
 
 // ── GEBRUIKERSBEHEER (admin) ───────────────────────────
@@ -1500,7 +1506,6 @@ async function doInvite(){
 
 async function loadGebruikers(){
   const el=document.getElementById('gebruikers-list');if(!el)return;
-  // Haal gebruikers op via admin API of toon placeholder
   try{
     const {data,error}=await supabaseClient.auth.admin.listUsers();
     if(error||!data)throw error||new Error('geen data');
@@ -1508,7 +1513,8 @@ async function loadGebruikers(){
     if(!users.length){el.innerHTML='<div class="empty-state"><i class="ti ti-users"></i>Geen gebruikers.</div>';return;}
     el.innerHTML=users.map(u=>{
       const naam=u.user_metadata?.naam||u.email;
-      const role=u.email===ADMIN_EMAIL?'admin':(u.user_metadata?.role||'user');
+      const isMainAdmin=u.email===ADMIN_EMAIL;
+      const role=isMainAdmin?'admin':(u.user_metadata?.role||'user');
       const confirmed=!!u.email_confirmed_at;
       return`<div class="user-item">
         <div class="user-avatar">${naam.charAt(0).toUpperCase()}</div>
@@ -1516,17 +1522,34 @@ async function loadGebruikers(){
           <div style="font-size:13px;font-weight:600">${naam}</div>
           <div style="font-size:11px;color:var(--tx3)">${u.email}</div>
         </div>
-        <span class="user-badge ${role==='admin'?'admin':'active'}">${role==='admin'?'Admin':'Gebruiker'}</span>
-        <span class="user-badge ${confirmed?'active':'pending'}">${confirmed?'Actief':'Uitgenodigd'}</span>
-        ${u.email!==ADMIN_EMAIL?`<button class="btn sm danger" onclick="removeUser('${u.id}','${u.email}')"><i class="ti ti-trash"></i></button>`:''}
+        <span class="user-badge ${confirmed?'active':'pending'}" style="margin-right:6px">${confirmed?'Actief':'Uitgenodigd'}</span>
+        ${isMainAdmin
+          ? `<span class="user-badge admin">Hoofdadmin</span>`
+          : `<select style="font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);cursor:pointer;width:110px"
+               onchange="changeUserRole('${u.id}','${naam}',this.value)">
+               <option value="user"${role==='user'?' selected':''}>Gebruiker</option>
+               <option value="admin"${role==='admin'?' selected':''}>Admin</option>
+             </select>
+             <button class="btn sm danger" onclick="removeUser('${u.id}','${u.email}')"><i class="ti ti-trash"></i></button>`
+        }
       </div>`;
     }).join('');
   }catch{
     el.innerHTML=`<div class="empty-state" style="padding:2rem">
       <i class="ti ti-info-circle" style="font-size:28px;display:block;margin-bottom:8px;color:var(--tx3)"></i>
       <div style="font-size:13px;color:var(--tx2);margin-bottom:12px">Gebruikersbeheer vereist een <strong>service_role key</strong> in Supabase.</div>
-      <p style="font-size:12px;color:var(--tx3)">Ga naar Supabase → Settings → API Keys → kopieer de <strong>service_role</strong> key en vul die in als "Supabase Key" in Instellingen.<br>Of beheer gebruikers rechtstreeks via <a href="https://supabase.com" target="_blank" style="color:var(--green)">supabase.com</a> → Authentication → Users.</p>
+      <p style="font-size:12px;color:var(--tx3)">Ga naar Supabase → Settings → API Keys → kopieer de <strong>service_role</strong> key en vul die in als "Supabase Key" in Instellingen.</p>
     </div>`;
+  }
+}
+
+async function changeUserRole(userId, naam, newRole){
+  try{
+    await supabaseClient.auth.admin.updateUserById(userId,{user_metadata:{role:newRole}});
+    showToast(`${naam} is nu ${newRole==='admin'?'Admin':'Gebruiker'}.`);
+    loadGebruikers();
+  }catch(e){
+    showToast('Rol wijzigen mislukt: '+e.message);
   }
 }
 
@@ -1570,13 +1593,14 @@ async function removeUser(id,email){
   }
 })();
 
-function startAppAfterLogin(){
+function startAppAfterLogin(userNaam='', userEmail=''){
   try{
     const saved=JSON.parse(localStorage.getItem('blitz_sb')||'null');
     if(saved&&saved.url&&saved.key){
       document.getElementById('sb-url').value=saved.url;
       document.getElementById('sb-key').value=saved.key;
-      startSupabase(saved.url,saved.key);
+      // Na laden van data: koppel gebruiker aan verantwoordelijke
+      startSupabase(saved.url,saved.key).then?.(()=>{})||setTimeout(()=>linkUserToResp(userNaam,userEmail),2000);
     }
   }catch{}
   try{const f=localStorage.getItem('blitz_filter');if(f)activeFilter=f;}catch{}
@@ -1586,9 +1610,44 @@ function startAppAfterLogin(){
     try{const d=localStorage.getItem('blitz_resps');if(d){const r=JSON.parse(d);resps=r.map(x=>typeof x==='string'?{naam:x,rol:''}:x);}}catch{}
   }
   prevSoldSet=new Set(projects.filter(p=>p.pct===100).map(p=>p.naam));
+
+  // Sla userNaam op voor gebruik na data laden
+  window._pendingUserLink={naam:userNaam,email:userEmail};
+
   renderAll();renderResps();
   checkAutoMove();
-  showTab('dashboard');
+
+  // Admin start op dashboard, gebruiker op lopende projecten gefilterd op zichzelf
+  if(currentRole==='admin'){
+    showTab('dashboard');
+  } else {
+    showTab('lopend');
+  }
+}
+
+function linkUserToResp(userNaam, userEmail){
+  if(!userNaam&&!userEmail)return;
+  // Zoek match in resps op naam of email
+  const match=resps.find(r=>{
+    const rNaam=typeof r==='string'?r:r.naam||'';
+    const rEmail=typeof r==='string'?'':r.email||'';
+    const naamMatch=userNaam&&rNaam.toLowerCase()===userNaam.toLowerCase();
+    const emailMatch=userEmail&&rEmail.toLowerCase()===userEmail.toLowerCase();
+    return naamMatch||emailMatch;
+  });
+  if(match){
+    const respNaam=typeof match==='string'?match:match.naam;
+    // Stel filter in op deze persoon
+    activeFilter=respNaam;
+    try{localStorage.setItem('blitz_filter',respNaam);}catch{}
+    renderAll();
+    // Toon welkom toast
+    showToast('Welkom '+respNaam+' — je ziet jouw projecten.');
+  } else if(currentRole!=='admin'){
+    // Geen match gevonden — toon alles maar geef melding
+    activeFilter='all';
+    renderAll();
+  }
 }
 </script>
 </body>
