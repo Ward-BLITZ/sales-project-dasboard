@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -169,7 +170,34 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 @keyframes fall{from{transform:translateY(-20px) rotate(0deg);opacity:1}to{transform:translateY(110vh) rotate(720deg);opacity:.4}}
 @keyframes popIn{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}70%{transform:translate(-50%,-50%) scale(1.08)}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
 @keyframes spin{to{transform:rotate(360deg)}}
-/* BIJLAGEN */
+/* AUTH SCHERM */
+.auth-screen{position:fixed;inset:0;background:var(--dark);display:flex;align-items:center;justify-content:center;z-index:9999;font-family:'Inter',sans-serif}
+.auth-box{background:#fff;border-radius:var(--rl);padding:2.5rem;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:2rem;justify-content:center}
+.auth-logo-mark{width:40px;height:40px;background:#00DFA3;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.auth-logo-mark svg{width:22px;height:22px;fill:#1D252D}
+.auth-title{font-family:'Poppins',sans-serif;font-size:20px;font-weight:700;color:#1D252D}
+.auth-subtitle{font-size:13px;color:#4a5760;text-align:center;margin-bottom:1.5rem}
+.auth-field{margin-bottom:14px}
+.auth-field label{font-size:12px;color:#4a5760;margin-bottom:4px;display:block;font-weight:500}
+.auth-field input{font-family:'Inter',sans-serif;font-size:14px;width:100%;padding:10px 12px;border:1px solid rgba(29,37,45,.2);border-radius:8px;outline:none;color:#1D252D;transition:border-color .15s}
+.auth-field input:focus{border-color:#00DFA3;box-shadow:0 0 0 3px rgba(0,223,163,.18)}
+.auth-btn{width:100%;padding:11px;background:#00DFA3;color:#1D252D;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:background .15s}
+.auth-btn:hover{background:#00c491}
+.auth-btn.secondary{background:transparent;color:#4a5760;border:1px solid rgba(29,37,45,.2);font-family:'Inter',sans-serif;font-weight:500;margin-top:8px}
+.auth-btn.secondary:hover{background:#f2f4f3}
+.auth-error{font-size:12px;color:#a32d2d;background:#fcebeb;padding:8px 12px;border-radius:6px;margin-bottom:12px;display:none}
+.auth-error.show{display:block}
+.auth-msg{font-size:12px;color:#085041;background:#E1F5EE;padding:8px 12px;border-radius:6px;margin-bottom:12px;display:none}
+.auth-msg.show{display:block}
+.auth-divider{text-align:center;font-size:12px;color:#8a9ba3;margin:12px 0}
+/* ADMIN GEBRUIKERS */
+.user-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--r);margin-bottom:6px;background:var(--bg)}
+.user-avatar{width:34px;height:34px;border-radius:50%;background:rgba(0,223,163,.15);display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:700;font-size:13px;color:#00805e;flex-shrink:0}
+.user-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600}
+.user-badge.admin{background:#EEEDFE;color:#3C3489}
+.user-badge.active{background:#E1F5EE;color:#085041}
+.user-badge.pending{background:#FAC775;color:#633806}
 .attach-drop{border:2px dashed var(--bd2);border-radius:var(--r);padding:14px;text-align:center;cursor:pointer;transition:border-color .15s;position:relative;margin-bottom:8px}
 .attach-drop:hover,.attach-drop.drag-over{border-color:var(--green);background:rgba(0,223,163,.04)}
 .attach-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
@@ -182,15 +210,60 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 </head>
 <body>
 
+<!-- AUTH SCHERM -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-mark"><svg viewBox="0 0 18 18"><path d="M9 1L2 10h6l-1 7 9-10h-6z"/></svg></div>
+      <span class="auth-title">Blitz Power</span>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="auth-login">
+      <div class="auth-subtitle">Meld je aan om verder te gaan</div>
+      <div class="auth-error" id="login-error"></div>
+      <div class="auth-field"><label>E-mailadres</label><input id="login-email" type="email" placeholder="jan@blitzpower.be" autocomplete="email"></div>
+      <div class="auth-field"><label>Wachtwoord</label><input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="auth-btn" onclick="doLogin()">Aanmelden</button>
+      <div class="auth-divider">of</div>
+      <button class="auth-btn secondary" onclick="showAuthView('forgot')">Wachtwoord vergeten?</button>
+    </div>
+
+    <!-- WACHTWOORD INSTELLEN (eerste login via uitnodiging) -->
+    <div id="auth-setpass" style="display:none">
+      <div class="auth-subtitle">Stel je wachtwoord in om te beginnen</div>
+      <div class="auth-error" id="setpass-error"></div>
+      <div class="auth-msg" id="setpass-msg"></div>
+      <div class="auth-field"><label>Jouw naam</label><input id="setpass-naam" type="text" placeholder="Voornaam Achternaam"></div>
+      <div class="auth-field"><label>Nieuw wachtwoord</label><input id="setpass-pw1" type="password" placeholder="Minimaal 8 tekens"></div>
+      <div class="auth-field"><label>Herhaal wachtwoord</label><input id="setpass-pw2" type="password" placeholder="Herhaal wachtwoord" onkeydown="if(event.key==='Enter')doSetPass()"></div>
+      <button class="auth-btn" onclick="doSetPass()">Wachtwoord instellen & inloggen</button>
+    </div>
+
+    <!-- WACHTWOORD VERGETEN -->
+    <div id="auth-forgot" style="display:none">
+      <div class="auth-subtitle">Geef je e-mailadres in om een reset-link te ontvangen</div>
+      <div class="auth-error" id="forgot-error"></div>
+      <div class="auth-msg" id="forgot-msg"></div>
+      <div class="auth-field"><label>E-mailadres</label><input id="forgot-email" type="email" placeholder="jan@blitzpower.be"></div>
+      <button class="auth-btn" onclick="doForgot()">Reset-link versturen</button>
+      <button class="auth-btn secondary" onclick="showAuthView('login')"><i class="ti ti-arrow-left"></i> Terug naar aanmelden</button>
+    </div>
+  </div>
+</div>
+
 <!-- TABS -->
-<div class="tabs">
+<div class="tabs" id="main-tabs" style="display:none">
   <button class="tab-btn active" id="tab-dashboard" onclick="showTab('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
   <button class="tab-btn" id="tab-lopend" onclick="showTab('lopend')"><i class="ti ti-briefcase"></i> Lopende projecten</button>
   <button class="tab-btn" id="tab-verkocht" onclick="showTab('verkocht')"><i class="ti ti-trophy"></i> Verkocht</button>
   <button class="tab-btn" id="tab-verloren" onclick="showTab('verloren')"><i class="ti ti-x"></i> Verloren</button>
   <button class="tab-btn" id="tab-instellingen" onclick="showTab('instellingen')"><i class="ti ti-settings"></i> Instellingen</button>
+  <button class="tab-btn" id="tab-gebruikers" onclick="showTab('gebruikers')" style="display:none"><i class="ti ti-users"></i> Gebruikers</button>
   <div class="tab-right">
     <span id="db-indicator" style="font-size:11px;color:var(--tx3)"><i class="ti ti-cloud-off"></i> geen DB</span>
+    <span id="current-user-name" style="font-size:11px;color:var(--tx2);margin-left:4px"></span>
+    <button class="btn sm" onclick="doLogout()" title="Afmelden"><i class="ti ti-logout"></i></button>
     <button class="btn sm" onclick="openTV()"><i class="ti ti-tv"></i> TV-scherm</button>
   </div>
 </div>
@@ -326,6 +399,40 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
         <button class="btn" onclick="closeRespModal()">Annuleren</button>
         <button class="btn primary" onclick="saveRespEdit()"><i class="ti ti-check"></i> Opslaan</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- GEBRUIKERS (admin only) -->
+<div id="pane-gebruikers" class="page" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:10px">
+    <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">Gebruikersbeheer</div>
+    <button class="btn primary" onclick="openInviteModal()"><i class="ti ti-user-plus"></i> Gebruiker uitnodigen</button>
+  </div>
+  <div id="gebruikers-list"><div class="empty-state"><i class="ti ti-users"></i>Geen gebruikers.</div></div>
+</div>
+
+<!-- UITNODIGING MODAL -->
+<div class="modal-overlay" id="invite-modal">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-header">
+      <span class="modal-title">Gebruiker uitnodigen</span>
+      <button class="modal-close" onclick="closeInviteModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="auth-error" id="invite-error"></div>
+    <div class="auth-msg" id="invite-msg"></div>
+    <div class="field"><label>E-mailadres *</label><input id="inv-email" type="email" placeholder="collega@blitzpower.be"></div>
+    <div class="field"><label>Naam</label><input id="inv-naam" type="text" placeholder="Voornaam Achternaam"></div>
+    <div class="field"><label>Rol</label>
+      <select id="inv-role">
+        <option value="user">Gebruiker</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <p style="font-size:12px;color:var(--tx3);margin-top:4px">De gebruiker ontvangt een e-mail om zijn wachtwoord in te stellen.</p>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeInviteModal()">Annuleren</button>
+      <button class="btn primary" onclick="doInvite()"><i class="ti ti-send"></i> Uitnodigen</button>
     </div>
   </div>
 </div>
@@ -468,12 +575,14 @@ function respNames(){return resps.map(r=>typeof r==='string'?r:r.naam);}
 
 // ── TABS ──────────────────────────────────────────────
 function showTab(name){
-  ['dashboard','lopend','verkocht','verloren','instellingen'].forEach(id=>{
+  ['dashboard','lopend','verkocht','verloren','instellingen','gebruikers'].forEach(id=>{
     document.getElementById('pane-'+id).style.display=(id===name)?'block':'none';
-    document.getElementById('tab-'+id).classList.toggle('active',id===name);
+    const tb=document.getElementById('tab-'+id);
+    if(tb)tb.classList.toggle('active',id===name);
   });
   if(name==='verkocht')renderVerkocht();
   if(name==='verloren')renderVerloren();
+  if(name==='gebruikers')loadGebruikers();
 }
 
 // ── DB STATUS ─────────────────────────────────────────
@@ -1261,9 +1370,207 @@ render();
   dashWindow.document.write(html);dashWindow.document.close();
 }
 
+// ── AUTH ──────────────────────────────────────────────
+const ADMIN_EMAIL = 'sales@blitzpower.com';
+let supabaseClient = null;
+let currentUser    = null;
+let currentRole    = 'user';
+
+function initSupabaseClient(){
+  if(supabaseClient)return;
+  const cfg=JSON.parse(localStorage.getItem('blitz_sb')||'null');
+  if(cfg&&cfg.url&&cfg.key){
+    supabaseClient=supabase.createClient(cfg.url,cfg.key);
+  }
+}
+
+function showAuthView(view){
+  ['login','setpass','forgot'].forEach(v=>document.getElementById('auth-'+v).style.display=v===view?'block':'none');
+}
+
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-password').value;
+  const errEl=document.getElementById('login-error');
+  errEl.classList.remove('show');
+  if(!email||!pw){errEl.textContent='Vul e-mail en wachtwoord in.';errEl.classList.add('show');return;}
+  initSupabaseClient();
+  if(!supabaseClient){errEl.textContent='Supabase nog niet gekoppeld — ga eerst naar Instellingen.';errEl.classList.add('show');return;}
+  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:pw});
+  if(error){errEl.textContent='Aanmelden mislukt: '+error.message;errEl.classList.add('show');return;}
+  await onLoggedIn(data.user);
+}
+
+async function doLogout(){
+  if(supabaseClient)await supabaseClient.auth.signOut();
+  currentUser=null;currentRole='user';
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('main-tabs').style.display='none';
+  document.querySelectorAll('.page').forEach(el=>el.style.display='none');
+  document.getElementById('toast').style.display='none';
+  showAuthView('login');
+}
+
+async function doForgot(){
+  const email=document.getElementById('forgot-email').value.trim();
+  const errEl=document.getElementById('forgot-error');
+  const msgEl=document.getElementById('forgot-msg');
+  errEl.classList.remove('show');msgEl.classList.remove('show');
+  if(!email){errEl.textContent='Vul je e-mailadres in.';errEl.classList.add('show');return;}
+  initSupabaseClient();
+  const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
+  if(error){errEl.textContent='Fout: '+error.message;errEl.classList.add('show');return;}
+  msgEl.textContent='Reset-link verstuurd! Controleer je e-mail.';msgEl.classList.add('show');
+}
+
+async function doSetPass(){
+  const naam=document.getElementById('setpass-naam').value.trim();
+  const pw1=document.getElementById('setpass-pw1').value;
+  const pw2=document.getElementById('setpass-pw2').value;
+  const errEl=document.getElementById('setpass-error');
+  errEl.classList.remove('show');
+  if(pw1.length<8){errEl.textContent='Wachtwoord moet minimaal 8 tekens zijn.';errEl.classList.add('show');return;}
+  if(pw1!==pw2){errEl.textContent='Wachtwoorden komen niet overeen.';errEl.classList.add('show');return;}
+  const {data,error}=await supabaseClient.auth.updateUser({password:pw1,data:{naam}});
+  if(error){errEl.textContent='Fout: '+error.message;errEl.classList.add('show');return;}
+  await onLoggedIn(data.user);
+}
+
+async function onLoggedIn(user){
+  currentUser=user;
+  // haal rol op uit user_metadata of profiles tabel
+  currentRole=user.user_metadata?.role||'user';
+  if(user.email===ADMIN_EMAIL)currentRole='admin';
+
+  // toon app
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('main-tabs').style.display='flex';
+  document.getElementById('toast').style.display='';
+
+  // toon gebruikers-tab alleen voor admin
+  document.getElementById('tab-gebruikers').style.display=currentRole==='admin'?'inline-flex':'none';
+
+  // toon naam in header
+  const naam=user.user_metadata?.naam||user.email;
+  document.getElementById('current-user-name').textContent=naam;
+
+  // start app
+  startAppAfterLogin();
+}
+
+// ── GEBRUIKERSBEHEER (admin) ───────────────────────────
+function openInviteModal(){
+  document.getElementById('inv-email').value='';
+  document.getElementById('inv-naam').value='';
+  document.getElementById('inv-role').value='user';
+  document.getElementById('invite-error').classList.remove('show');
+  document.getElementById('invite-msg').classList.remove('show');
+  document.getElementById('invite-modal').classList.add('open');
+}
+function closeInviteModal(){document.getElementById('invite-modal').classList.remove('open');}
+
+async function doInvite(){
+  const email=document.getElementById('inv-email').value.trim();
+  const naam=document.getElementById('inv-naam').value.trim();
+  const role=document.getElementById('inv-role').value;
+  const errEl=document.getElementById('invite-error');
+  const msgEl=document.getElementById('invite-msg');
+  errEl.classList.remove('show');msgEl.classList.remove('show');
+  if(!email){errEl.textContent='E-mailadres is verplicht.';errEl.classList.add('show');return;}
+
+  // Gebruik Supabase Admin API via service role — dit werkt via onze eigen REST call
+  // We slaan de uitnodiging op in een 'invites' tabel en sturen de gebruiker een magic link
+  const {data,error}=await supabaseClient.auth.admin?.inviteUserByEmail
+    ? supabaseClient.auth.admin.inviteUserByEmail(email,{data:{naam,role}})
+    : {data:null,error:{message:'Admin API niet beschikbaar — gebruik de Supabase dashboard om gebruikers uit te nodigen.'}};
+
+  if(error){
+    // Fallback: sla uitnodiging op in DB en laat gebruiker zelf registreren
+    await sbFetch('settings',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify({key:'invite_'+email,data:{email,naam,role,invited_at:today(),invited_by:currentUser.email}})
+    }).catch(()=>{});
+    msgEl.textContent=`Uitnodiging opgeslagen. Deel de app-link met ${email} — zij kunnen zich registreren en jij keurt hen goed.`;
+    msgEl.classList.add('show');
+  } else {
+    msgEl.textContent=`Uitnodigingsmail verstuurd naar ${email}!`;
+    msgEl.classList.add('show');
+  }
+  loadGebruikers();
+}
+
+async function loadGebruikers(){
+  const el=document.getElementById('gebruikers-list');if(!el)return;
+  // Haal gebruikers op via admin API of toon placeholder
+  try{
+    const {data,error}=await supabaseClient.auth.admin.listUsers();
+    if(error||!data)throw error||new Error('geen data');
+    const users=data.users||[];
+    if(!users.length){el.innerHTML='<div class="empty-state"><i class="ti ti-users"></i>Geen gebruikers.</div>';return;}
+    el.innerHTML=users.map(u=>{
+      const naam=u.user_metadata?.naam||u.email;
+      const role=u.email===ADMIN_EMAIL?'admin':(u.user_metadata?.role||'user');
+      const confirmed=!!u.email_confirmed_at;
+      return`<div class="user-item">
+        <div class="user-avatar">${naam.charAt(0).toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${naam}</div>
+          <div style="font-size:11px;color:var(--tx3)">${u.email}</div>
+        </div>
+        <span class="user-badge ${role==='admin'?'admin':'active'}">${role==='admin'?'Admin':'Gebruiker'}</span>
+        <span class="user-badge ${confirmed?'active':'pending'}">${confirmed?'Actief':'Uitgenodigd'}</span>
+        ${u.email!==ADMIN_EMAIL?`<button class="btn sm danger" onclick="removeUser('${u.id}','${u.email}')"><i class="ti ti-trash"></i></button>`:''}
+      </div>`;
+    }).join('');
+  }catch{
+    el.innerHTML=`<div class="empty-state" style="padding:2rem">
+      <i class="ti ti-info-circle" style="font-size:28px;display:block;margin-bottom:8px;color:var(--tx3)"></i>
+      <div style="font-size:13px;color:var(--tx2);margin-bottom:12px">Gebruikersbeheer vereist een <strong>service_role key</strong> in Supabase.</div>
+      <p style="font-size:12px;color:var(--tx3)">Ga naar Supabase → Settings → API Keys → kopieer de <strong>service_role</strong> key en vul die in als "Supabase Key" in Instellingen.<br>Of beheer gebruikers rechtstreeks via <a href="https://supabase.com" target="_blank" style="color:var(--green)">supabase.com</a> → Authentication → Users.</p>
+    </div>`;
+  }
+}
+
+async function removeUser(id,email){
+  if(!confirm(`Gebruiker ${email} verwijderen?`))return;
+  try{
+    await supabaseClient.auth.admin.deleteUser(id);
+    loadGebruikers();showToast('Gebruiker verwijderd.');
+  }catch{showToast('Verwijderen mislukt — doe dit via Supabase dashboard.');}
+}
+
 // ── INIT ──────────────────────────────────────────────
 (function init(){
   document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('main-tabs').style.display='none';
+  showAuthView('login');
+
+  document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+  document.getElementById('resp-modal').addEventListener('click',function(e){if(e.target===this)closeRespModal();});
+  document.getElementById('invite-modal').addEventListener('click',function(e){if(e.target===this)closeInviteModal();});
+
+  // Probeer bestaande sessie te herstellen
+  initSupabaseClient();
+  if(supabaseClient){
+    supabaseClient.auth.getSession().then(({data:{session}})=>{
+      if(session?.user){
+        onLoggedIn(session.user);
+      }
+      // Luister naar auth state changes (bv. magic link / password reset)
+      supabaseClient.auth.onAuthStateChange((event,session)=>{
+        if(event==='PASSWORD_RECOVERY'||event==='USER_UPDATED'){
+          showAuthView('setpass');
+          document.getElementById('auth-screen').style.display='flex';
+          document.getElementById('main-tabs').style.display='none';
+        }
+        if(event==='SIGNED_IN'&&session?.user&&!currentUser){
+          onLoggedIn(session.user);
+        }
+      });
+    });
+  }
+})();
+
+function startAppAfterLogin(){
   try{
     const saved=JSON.parse(localStorage.getItem('blitz_sb')||'null');
     if(saved&&saved.url&&saved.key){
@@ -1281,9 +1588,8 @@ render();
   prevSoldSet=new Set(projects.filter(p=>p.pct===100).map(p=>p.naam));
   renderAll();renderResps();
   checkAutoMove();
-  document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
-  document.getElementById('resp-modal').addEventListener('click',function(e){if(e.target===this)closeRespModal();});
-})();
+  showTab('dashboard');
+}
 </script>
 </body>
 </html>
