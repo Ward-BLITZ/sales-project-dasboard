@@ -205,6 +205,11 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .crm-naam{font-weight:600;font-size:13px}
 .crm-sub{font-size:11px;color:var(--tx3);margin-top:1px}
 .crm-cell{font-size:12px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crm-complete-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;align-items:center;justify-content:center;padding:1rem}
+.crm-complete-overlay.open{display:flex}
+.crm-complete-box{background:var(--bg);border-radius:var(--rl);width:100%;max-width:540px;padding:1.75rem;border-left:4px solid var(--green)}
+.crm-complete-title{font-family:'Poppins',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px}
+.crm-complete-sub{font-size:13px;color:var(--tx2);margin-bottom:1.25rem}
 .ac-wrap{position:relative}
 .ac-list{position:absolute;top:100%;left:0;right:0;background:var(--bg);border:1px solid var(--bd2);border-top:none;border-radius:0 0 var(--r) var(--r);z-index:600;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12);display:none}
 .ac-list.open{display:block}
@@ -1669,21 +1674,95 @@ function selectKlant(idx){
   document.getElementById('m-klant-list').classList.remove('open');
 }
 
+let crmCompleteId = null; // id van de klant die aangevuld wordt
+
 async function autoCreateKlant(naam){
   document.getElementById('m-klant-list').classList.remove('open');
   document.getElementById('m-klant').value=naam;
+
+  // Neem alle al ingevulde projectvelden mee naar de klant
   const btw=document.getElementById('m-btw').value.trim();
-  // Maak klant aan met naam (en btw als al ingevuld)
-  const k={naam,btw};
+  const contact=document.getElementById('m-contact').value.trim();
+  const contactgsm=document.getElementById('m-contactgsm').value.trim();
+  const contactemail=document.getElementById('m-contactemail').value.trim();
+  const adres=document.getElementById('m-adres').value.trim();
+
+  const k={naam,btw,contact,contactgsm,contactemail,adres};
   try{
     const newId=await sbSaveKlant(k);
     if(newId)k.id=newId;
     klanten.push(k);
-    showToast(`"${naam}" toegevoegd aan CRM — vul later aan via het CRM-tabblad.`);
+    crmCompleteId=k.id||null;
+    showToast(`"${naam}" toegevoegd aan CRM.`);
   }catch{
     klanten.push(k);
-    showToast(`"${naam}" lokaal opgeslagen in CRM.`);
+    crmCompleteId=null;
+    showToast(`"${naam}" lokaal opgeslagen.`);
   }
+
+  // Controleer of de klant compleet is — zo niet, toon popup
+  const isComplete = naam && adres && contact && (contactgsm||contactemail);
+  if(!isComplete){
+    openCrmComplete(k);
+  }
+}
+
+function openCrmComplete(k){
+  // Vul popup in met wat al gekend is
+  document.getElementById('cc-naam').value=k.naam||'';
+  document.getElementById('cc-btw').value=k.btw||'';
+  document.getElementById('cc-adres').value=k.adres||'';
+  document.getElementById('cc-contact').value=k.contact||'';
+  document.getElementById('cc-functie').value=k.functie||'';
+  document.getElementById('cc-gsm').value=k.contactgsm||'';
+  document.getElementById('cc-email').value=k.contactemail||'';
+
+  // Toon welke velden ontbreken
+  const missing=[];
+  if(!k.adres)missing.push('adres');
+  if(!k.contact)missing.push('contactpersoon');
+  if(!k.contactgsm&&!k.contactemail)missing.push('GSM of e-mail contactpersoon');
+  const subEl=document.getElementById('crm-complete-sub');
+  subEl.textContent=missing.length
+    ?`"${k.naam}" aangemaakt. Ontbrekend: ${missing.join(', ')}. Vul aan om het dossier te vervolledigen.`
+    :`"${k.naam}" aangemaakt in CRM. Controleer en vul eventueel aan.`;
+
+  document.getElementById('crm-complete-overlay').classList.add('open');
+}
+
+function closeCrmComplete(){
+  document.getElementById('crm-complete-overlay').classList.remove('open');
+  crmCompleteId=null;
+}
+
+async function saveCrmComplete(){
+  const naam=document.getElementById('cc-naam').value.trim();
+  if(!naam){showToast('Bedrijfsnaam is verplicht.');return;}
+
+  const updated={
+    naam,
+    btw:document.getElementById('cc-btw').value.trim(),
+    adres:document.getElementById('cc-adres').value.trim(),
+    contact:document.getElementById('cc-contact').value.trim(),
+    functie:document.getElementById('cc-functie').value.trim(),
+    contactgsm:document.getElementById('cc-gsm').value.trim(),
+    contactemail:document.getElementById('cc-email').value.trim()
+  };
+  if(crmCompleteId)updated.id=crmCompleteId;
+
+  // Update in klanten array
+  const idx=klanten.findIndex(k=>k.id===crmCompleteId||(k.naam===naam&&!k.id));
+  if(idx>-1)klanten[idx]={...klanten[idx],...updated};
+  else klanten.push(updated);
+
+  try{
+    await sbSaveKlant(updated);
+    showToast('Klant aangevuld in CRM.');
+  }catch{
+    lsSave();
+    showToast('Lokaal opgeslagen.');
+  }
+  closeCrmComplete();
 }
 
 // Sluit autocomplete bij klik buiten
@@ -1909,6 +1988,7 @@ async function removeUser(id,email){
   document.getElementById('resp-modal').addEventListener('click',function(e){if(e.target===this)closeRespModal();});
   document.getElementById('invite-modal').addEventListener('click',function(e){if(e.target===this)closeInviteModal();});
   document.getElementById('crm-modal').addEventListener('click',function(e){if(e.target===this)closeCrmModal();});
+  document.getElementById('crm-complete-overlay').addEventListener('click',function(e){if(e.target===this)closeCrmComplete();});
 
   // Herstel lokale klanten backup
   try{const d=localStorage.getItem('blitz_klanten');if(d)klanten=JSON.parse(d);}catch{}
@@ -1991,5 +2071,31 @@ function linkUserToResp(userNaam, userEmail){
   }
 }
 </script>
+
+<!-- CRM AANVUL POPUP -->
+<div class="crm-complete-overlay" id="crm-complete-overlay">
+  <div class="crm-complete-box">
+    <div class="crm-complete-title"><i class="ti ti-building" style="color:var(--green);margin-right:8px"></i>Klant aanvullen in CRM</div>
+    <div class="crm-complete-sub" id="crm-complete-sub">Nieuwe klant aangemaakt. Vul de ontbrekende gegevens in om het dossier te vervolledigen:</div>
+    <div class="grid2">
+      <div class="field"><label>Bedrijfsnaam *</label><input id="cc-naam" placeholder="Delhaize NV"></div>
+      <div class="field"><label>BTW-nummer</label><input id="cc-btw" placeholder="BE 0123.456.789"></div>
+    </div>
+    <div class="field"><label>Adres *</label><input id="cc-adres" placeholder="Straat, nr, gemeente..."></div>
+    <div class="grid2">
+      <div class="field"><label>Contactpersoon *</label><input id="cc-contact" placeholder="Jan Janssen"></div>
+      <div class="field"><label>Functie</label><input id="cc-functie" placeholder="Facility Manager"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>GSM contactpersoon</label><input id="cc-gsm" type="tel" placeholder="0499 123 456"></div>
+      <div class="field"><label>E-mail contactpersoon</label><input id="cc-email" type="email" placeholder="jan@bedrijf.be"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1rem;border-top:1px solid var(--bd);padding-top:1rem">
+      <button class="btn" onclick="closeCrmComplete()">Later aanvullen</button>
+      <button class="btn primary" onclick="saveCrmComplete()"><i class="ti ti-check"></i> Opslaan in CRM</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
