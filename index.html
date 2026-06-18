@@ -1916,8 +1916,6 @@ async function removeUser(id,email){
   // Probeer bestaande sessie te herstellen
   initSupabaseClient();
   if(supabaseClient){
-    // Key gevonden — verberg het API key veld
-    document.getElementById('auth-key-section').style.display='none';
     supabaseClient.auth.getSession().then(({data:{session}})=>{
       if(session?.user){
         onLoggedIn(session.user);
@@ -1933,9 +1931,6 @@ async function removeUser(id,email){
         }
       });
     });
-  } else {
-    // Geen key bekend — toon het API key veld zodat gebruiker het kan invullen
-    document.getElementById('auth-key-section').style.display='block';
   }
 })();
 
