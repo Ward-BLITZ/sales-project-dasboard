@@ -198,20 +198,6 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .user-badge.admin{background:#EEEDFE;color:#3C3489}
 .user-badge.active{background:#E1F5EE;color:#085041}
 .user-badge.pending{background:#FAC775;color:#633806}
-/* CRM */
-.crm-row{display:grid;grid-template-columns:2fr 1.4fr 1.4fr 1.4fr 80px;gap:12px;align-items:center;padding:12px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:8px;cursor:pointer;transition:border-color .15s}
-.crm-row:hover{border-color:var(--green)}
-.crm-hdr{display:grid;grid-template-columns:2fr 1.4fr 1.4fr 1.4fr 80px;gap:12px;padding:6px 16px;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.crm-naam{font-weight:600;font-size:13px}
-.crm-sub{font-size:11px;color:var(--tx3);margin-top:1px}
-.crm-cell{font-size:12px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ac-wrap{position:relative}
-.ac-list{position:absolute;top:100%;left:0;right:0;background:var(--bg);border:1px solid var(--bd2);border-top:none;border-radius:0 0 var(--r) var(--r);z-index:600;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12);display:none}
-.ac-list.open{display:block}
-.ac-item{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--bd)}
-.ac-item:last-child{border-bottom:none}
-.ac-item:hover,.ac-item.sel{background:rgba(0,223,163,.08)}
-.ac-new{color:var(--tx3);font-style:italic}
 .attach-drop{border:2px dashed var(--bd2);border-radius:var(--r);padding:14px;text-align:center;cursor:pointer;transition:border-color .15s;position:relative;margin-bottom:8px}
 .attach-drop:hover,.attach-drop.drag-over{border-color:var(--green);background:rgba(0,223,163,.04)}
 .attach-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
@@ -273,7 +259,6 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
   <button class="tab-btn" id="tab-verkocht" onclick="showTab('verkocht')"><i class="ti ti-trophy"></i> Verkocht</button>
   <button class="tab-btn" id="tab-verloren" onclick="showTab('verloren')"><i class="ti ti-x"></i> Verloren</button>
   <button class="tab-btn" id="tab-instellingen" onclick="showTab('instellingen')"><i class="ti ti-settings"></i> Instellingen</button>
-  <button class="tab-btn" id="tab-crm" onclick="showTab('crm')"><i class="ti ti-building"></i> CRM</button>
   <button class="tab-btn" id="tab-gebruikers" onclick="showTab('gebruikers')" style="display:none"><i class="ti ti-users"></i> Gebruikers</button>
   <div class="tab-right">
     <span id="db-indicator" style="font-size:11px;color:var(--tx3)"><i class="ti ti-cloud-off"></i> geen DB</span>
@@ -374,15 +359,12 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
     <strong>Stap 1:</strong> Ga naar <a href="https://supabase.com" target="_blank" style="color:var(--green)">supabase.com</a> → nieuw project → SQL Editor:<br>
     <pre style="background:rgba(0,0,0,.08);padding:10px;border-radius:6px;font-size:11px;margin:8px 0;overflow-x:auto">CREATE TABLE IF NOT EXISTS projects (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, data jsonb NOT NULL, created_at timestamptz DEFAULT now());
 CREATE TABLE IF NOT EXISTS closed_projects (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, data jsonb NOT NULL, closed_at timestamptz DEFAULT now());
-CREATE TABLE IF NOT EXISTS klanten (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, data jsonb NOT NULL, created_at timestamptz DEFAULT now());
 CREATE TABLE IF NOT EXISTS settings (key text PRIMARY KEY, data jsonb NOT NULL);
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE closed_projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE klanten ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "open" ON projects FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "open" ON closed_projects FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "open" ON klanten FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <strong>Stap 2:</strong> Settings → API → kopieer Project URL en Publishable key<br><br>
     <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px">
@@ -390,15 +372,6 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div><label>Publishable Key (of anon key)</label><input id="sb-key" placeholder="sb_publishable_... of eyJhbGci..."></div>
     </div>
     <button class="btn primary" style="margin-top:12px" onclick="connectSupabase()"><i class="ti ti-plug"></i> Verbinden</button>
-  </div>
-  <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600;margin-bottom:.5rem;margin-top:1.5rem">Google Maps (adresautocomplete)</div>
-  <div class="setup-card" style="margin-bottom:1rem">
-    <h3><i class="ti ti-map" style="margin-right:6px"></i>Google Maps API key</h3>
-    Maak een gratis API key aan op <a href="https://console.cloud.google.com" target="_blank" style="color:var(--green)">console.cloud.google.com</a> → activeer <strong>Places API</strong>.<br>
-    <div style="margin-top:8px">
-      <label>API Key</label>
-      <input id="maps-key" placeholder="AIza..." oninput="saveMapsKey(this.value)">
-    </div>
   </div>
   <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600;margin-bottom:.5rem;margin-top:1.5rem">Verantwoordelijken</div>
   <p style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Teamleden die als verantwoordelijke kunnen worden aangeduid.</p>
@@ -426,61 +399,6 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
         <button class="btn" onclick="closeRespModal()">Annuleren</button>
         <button class="btn primary" onclick="saveRespEdit()"><i class="ti ti-check"></i> Opslaan</button>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- CRM -->
-<div id="pane-crm" class="page" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
-    <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">CRM — Klanten</div>
-    <button class="btn primary" onclick="openCrmModal(null)"><i class="ti ti-plus"></i> Nieuwe klant</button>
-  </div>
-  <div class="crm-search">
-    <input id="crm-search" type="text" placeholder="Zoek op naam, BTW, contactpersoon..." oninput="renderCrm()" style="max-width:400px">
-  </div>
-  <div class="crm-hdr">
-    <span>Bedrijf</span><span>BTW-nummer</span><span>Contactpersoon</span><span>Tel / E-mail</span><span></span>
-  </div>
-  <div id="crm-list"></div>
-</div>
-
-<!-- CRM MODAL -->
-<div class="modal-overlay" id="crm-modal">
-  <div class="modal-box" style="max-width:660px">
-    <div class="modal-header">
-      <span class="modal-title" id="crm-modal-title">Nieuwe klant</span>
-      <button class="modal-close" onclick="closeCrmModal()"><i class="ti ti-x"></i></button>
-    </div>
-    <div class="grid2">
-      <div class="field"><label>Bedrijfsnaam *</label><input id="crm-naam" placeholder="Delhaize NV"></div>
-      <div class="field"><label>BTW-nummer</label><input id="crm-btw" placeholder="BE 0123.456.789"></div>
-    </div>
-    <div class="grid2">
-      <div class="field"><label>Algemeen telefoonnummer</label><input id="crm-tel" type="tel" placeholder="02 123 45 67"></div>
-      <div class="field"><label>Algemeen e-mailadres</label><input id="crm-email" type="email" placeholder="info@bedrijf.be"></div>
-    </div>
-    <div class="field">
-      <label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Adres</label>
-      <div class="ac-wrap">
-        <input id="crm-adres" placeholder="Straat, gemeente..." autocomplete="off" oninput="onAdresInput('crm-adres','crm-adres-list')">
-        <div class="ac-list" id="crm-adres-list"></div>
-      </div>
-    </div>
-    <div style="border-top:1px solid var(--bd);margin:14px 0 14px;padding-top:14px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:var(--tx2)"><i class="ti ti-user" style="margin-right:6px"></i>Vaste contactpersoon</div>
-    <div class="grid2">
-      <div class="field"><label>Naam contactpersoon</label><input id="crm-contact" placeholder="Jan Janssen"></div>
-      <div class="field"><label>Functie</label><input id="crm-functie" placeholder="Facility Manager"></div>
-    </div>
-    <div class="grid2">
-      <div class="field"><label>GSM contactpersoon</label><input id="crm-contactgsm" type="tel" placeholder="0499 123 456"></div>
-      <div class="field"><label>E-mail contactpersoon</label><input id="crm-contactemail" type="email" placeholder="jan@bedrijf.be"></div>
-    </div>
-    <div class="field"><label>Notities</label><textarea id="crm-notities" rows="2" placeholder="Extra informatie over deze klant..."></textarea></div>
-    <div class="modal-footer">
-      <button class="btn danger" id="crm-del-btn" style="display:none;margin-right:auto" onclick="deleteCrmKlant()"><i class="ti ti-trash"></i> Verwijderen</button>
-      <button class="btn" onclick="closeCrmModal()">Annuleren</button>
-      <button class="btn primary" onclick="saveCrmKlant()"><i class="ti ti-check"></i> Opslaan</button>
     </div>
   </div>
 </div>
@@ -528,29 +446,14 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     </div>
     <div class="field"><label>Projectnaam *</label><input id="m-naam" placeholder="bv. Parking Delhaize Gent"></div>
     <div class="grid2">
-      <div class="field">
-        <label>Bedrijfs- / klantnaam</label>
-        <div class="ac-wrap">
-          <input id="m-klant" placeholder="Typ bedrijfsnaam..." autocomplete="off" oninput="onKlantInput(this.value)">
-          <div class="ac-list" id="m-klant-list"></div>
-        </div>
-      </div>
-      <div class="field"><label>BTW-nummer</label><input id="m-btw" placeholder="Wordt automatisch ingevuld" readonly style="background:var(--bg2)"></div>
+      <div class="field"><label>Bedrijfs- / klantnaam</label><input id="m-klant" placeholder="Delhaize NV"></div>
+      <div class="field"><label>BTW-nummer</label><input id="m-btw" placeholder="BE 0123.456.789"></div>
     </div>
     <div class="grid2">
       <div class="field"><label>Contactpersoon</label><input id="m-contact" placeholder="Jan Janssen"></div>
       <div class="field"><label>GSM contactpersoon</label><input id="m-contactgsm" placeholder="0499 123 456" type="tel"></div>
     </div>
-    <div class="grid2">
-      <div class="field"><label>E-mail contactpersoon</label><input id="m-contactemail" placeholder="jan@bedrijf.be" type="email"></div>
-      <div class="field">
-        <label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Installatieadres</label>
-        <div class="ac-wrap">
-          <input id="m-adres" placeholder="Straat, gemeente..." autocomplete="off" oninput="onAdresInput('m-adres','m-adres-list')">
-          <div class="ac-list" id="m-adres-list"></div>
-        </div>
-      </div>
-    </div>
+    <div class="field"><label>E-mail contactpersoon</label><input id="m-contactemail" placeholder="jan@bedrijf.be" type="email"></div>
     <div class="field"><label>Productomschrijving</label><input id="m-product" placeholder="bv. 12 laadpunten — 22 kW AC"></div>
     <div class="field">
       <label>Projectinfo <span class="ai-badge"><i class="ti ti-sparkles"></i> AI</span></label>
@@ -672,14 +575,13 @@ function respNames(){return resps.map(r=>typeof r==='string'?r:r.naam);}
 
 // ── TABS ──────────────────────────────────────────────
 function showTab(name){
-  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers'].forEach(id=>{
+  ['dashboard','lopend','verkocht','verloren','instellingen','gebruikers'].forEach(id=>{
     document.getElementById('pane-'+id).style.display=(id===name)?'block':'none';
     const tb=document.getElementById('tab-'+id);
     if(tb)tb.classList.toggle('active',id===name);
   });
   if(name==='verkocht')renderVerkocht();
   if(name==='verloren')renderVerloren();
-  if(name==='crm'){loadKlanten().then(renderCrm);}
   if(name==='gebruikers')loadGebruikers();
 }
 
@@ -725,7 +627,6 @@ async function loadAll(){
 
   setDbStatus('ok','verbonden');
   document.getElementById('db-setup-card').style.display='none';
-  await loadKlanten();
   renderAll();renderResps();pushToTV();
 
   // Koppel ingelogde gebruiker aan verantwoordelijke na data laden
@@ -843,8 +744,7 @@ function renderDashboard(){
     const d=new Date(p.closed_at);d.setHours(0,0,0,0);
     return(now-d)/(86400000)<=7;
   });
-  const allDash=[...lopend,...recentVerkocht]
-    .sort((a,b)=>(b.pct!=null?b.pct:DEFAULT_PCT[parseInt(b.status)]||5)-(a.pct!=null?a.pct:DEFAULT_PCT[parseInt(a.status)]||5));
+  const allDash=[...lopend,...recentVerkocht];
 
   const sold=recentVerkocht.length;
   const omzet=lopend.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0);
@@ -1080,7 +980,6 @@ function openModal(idx){
     document.getElementById('m-contact').value=p.contact||'';
     document.getElementById('m-contactgsm').value=p.contactgsm||p.contactinfo||'';
     document.getElementById('m-contactemail').value=p.contactemail||'';
-    document.getElementById('m-adres').value=p.adres||'';
     document.getElementById('m-product').value=p.product||'';
     document.getElementById('m-info').value=p.info||'';
     document.getElementById('m-status').value=p.status||'0';
@@ -1097,7 +996,7 @@ function openModal(idx){
     renderAttachList();
   } else {
     document.getElementById('modal-title').textContent='Nieuw project';
-    ['m-naam','m-klant','m-btw','m-contact','m-contactgsm','m-contactemail','m-adres','m-product','m-info','m-omzet','m-lp','m-datum','m-notitie'].forEach(id=>document.getElementById(id).value='');
+    ['m-naam','m-klant','m-btw','m-contact','m-contactgsm','m-contactemail','m-product','m-info','m-omzet','m-lp','m-datum','m-notitie'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('m-status').value='0';
     document.getElementById('m-pct').value=5;document.getElementById('m-pct-label').textContent='5%';
     document.getElementById('m-resp').value='';
@@ -1135,7 +1034,6 @@ async function saveProject(){
     contact:document.getElementById('m-contact').value.trim(),
     contactgsm:document.getElementById('m-contactgsm').value.trim(),
     contactemail:document.getElementById('m-contactemail').value.trim(),
-    adres:document.getElementById('m-adres').value.trim(),
     product:document.getElementById('m-product').value.trim(),
     info:document.getElementById('m-info').value.trim(),
     status:String(si),pct,
@@ -1429,7 +1327,6 @@ function openTV(){
 <div class="hdr"><div class="logo"><div class="lm"><svg viewBox="0 0 18 18"><path d="M9 1L2 10h6l-1 7 9-10h-6z"/></svg></div><h1><span class="dot"></span>Blitz Power — Dashboard</h1></div><div class="clk" id="clk"></div></div>
 <div class="sts"><div class="st"><div class="stl">Lopend</div><div class="stv" id="dt">0</div></div><div class="st"><div class="stl">Verkocht (7d)</div><div class="stv g" id="dv">0</div></div><div class="st"><div class="stl">Pipeline omzet</div><div class="stv" id="do">€0</div></div><div class="st"><div class="stl">Laadpunten</div><div class="stv g" id="dl">0 LP</div></div></div>
 <div class="rows" id="rows"></div>
-<div id="pg-ind" style="text-align:center;padding:8px 0;flex-shrink:0;display:none"></div>
 <script>
 const STATS=${sData};const SPCT=${spData};
 const SBG=['rgba(29,158,117,.12)','rgba(239,159,39,.12)','rgba(55,138,221,.12)','rgba(127,119,221,.12)','rgba(212,83,126,.12)','rgba(226,75,74,.12)','rgba(99,153,34,.12)'];
@@ -1438,37 +1335,18 @@ let projects=${pData};let closed=${cData};
 let prevSold=new Set(projects.filter(p=>p.pct===100).map(p=>p.naam));
 function pc(p){const t=Math.max(0,Math.min(1,p/100));return'hsl('+Math.round(30+t*100)+','+Math.round(90-t*25)+'%,'+Math.round(48-t*10)+'%)';}
 function today(){return new Date().toISOString().split('T')[0];}
-const PAGE_SIZE=7;
-let tvPage=0;
-let tvPageTimer=null;
-
 function render(){
   const now=new Date();now.setHours(0,0,0,0);
   const recentVk=closed.filter(p=>{if(p.type!=='verkocht'||!p.closed_at)return false;const d=new Date(p.closed_at);d.setHours(0,0,0,0);return(now-d)/86400000<=7;});
-  // Sorteer aflopend op pct
-  const all=[...projects,...recentVk].sort((a,b)=>(b.pct!=null?b.pct:SPCT[parseInt(b.status||0)]||5)-(a.pct!=null?a.pct:SPCT[parseInt(a.status||0)]||5));
+  const all=[...projects,...recentVk];
   document.getElementById('dt').textContent=projects.length;
   document.getElementById('dv').textContent=recentVk.length;
   document.getElementById('do').textContent='€'+projects.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
   document.getElementById('dl').textContent=projects.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
-
-  const totalPages=Math.max(1,Math.ceil(all.length/PAGE_SIZE));
-  if(tvPage>=totalPages)tvPage=0;
-  const page=all.slice(tvPage*PAGE_SIZE,(tvPage+1)*PAGE_SIZE);
-
-  // Paginatie indicator
-  const pgEl=document.getElementById('pg-ind');
-  if(pgEl){
-    if(totalPages>1){
-      pgEl.innerHTML=Array.from({length:totalPages},(_,i)=>`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${i===tvPage?'#00DFA3':'rgba(255,255,255,.3)'};margin:0 3px"></span>`).join('');
-      pgEl.style.display='block';
-    }else{pgEl.style.display='none';}
-  }
-
   const el=document.getElementById('rows');
   if(!all.length){el.innerHTML='<div style="text-align:center;padding:80px;color:#D9D9D6;font-size:16px">Geen projecten</div>';return;}
-  const n=page.length,bh=Math.max(28,Math.min(72,Math.floor(window.innerHeight*.65/n)-10)),fs=Math.max(12,Math.min(19,bh-11));
-  el.innerHTML=page.map(p=>{
+  const n=all.length,bh=Math.max(28,Math.min(72,Math.floor(window.innerHeight*.72/n)-10)),fs=Math.max(12,Math.min(19,bh-11));
+  el.innerHTML=all.map(p=>{
     const isVk=p.type==='verkocht';
     const si=parseInt(p.status||6),pct=p.pct!=null?p.pct:SPCT[si]||5,col=pc(pct);
     const lp=p.lp?'<div class="rlp" style="font-size:'+(fs-2)+'px">⚡'+p.lp+' LP</div>':'';
@@ -1476,8 +1354,6 @@ function render(){
     return'<div class="row" style="height:'+(bh+16)+'px"><div class="rn" style="font-size:'+fs+'px">'+p.naam+vkB+(p.resp?'<div class="rs">'+p.resp+'</div>':'')+'</div><div class="rst"><span class="rb" style="background:'+SBG[si]+';color:'+STC[si]+'">'+STATS[isVk?6:si]+'</span></div><div class="bw" style="height:'+bh+'px"><div class="bf" style="width:'+pct+'%;background:'+col+';font-size:'+(fs-2)+'px">'+pct+'%</div></div><div class="rp" style="font-size:'+fs+'px;color:'+col+'">'+pct+'%</div>'+lp+'</div>';
   }).join('');
 }
-
-function nextPage(){tvPage=(tvPage+1)%Math.max(1,Math.ceil(([...projects,...closed.filter(p=>p.type==='verkocht')].length)/PAGE_SIZE));render();}
 function triggerSale(vn,pn){
   const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:hidden';document.body.appendChild(o);
   const bg=document.createElement('div');bg.style.cssText='position:absolute;inset:0;background:#00DFA3';o.appendChild(bg);
@@ -1495,208 +1371,10 @@ window.updateProjects=function(p,c){
   prevSold=ns;projects=p;closed=c||[];render();
 };
 setInterval(()=>{const now=new Date();document.getElementById('clk').textContent=now.toLocaleDateString('nl-BE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' \u2014 '+now.toLocaleTimeString('nl-BE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});},1000);
-setInterval(()=>nextPage(),60000);
 render();
 <\/script></body></html>`;
   dashWindow=window.open('','BlitzPowerTV','width=1280,height=720,menubar=no,toolbar=no');
   dashWindow.document.write(html);dashWindow.document.close();
-}
-
-// ── CRM ───────────────────────────────────────────────
-let klanten = [];
-let editingCrmId = null;
-let editingCrmIdx = null;
-let mapsKey = '';
-
-function saveMapsKey(v){
-  mapsKey=v.trim();
-  try{localStorage.setItem('blitz_maps',mapsKey);}catch{}
-}
-
-async function loadKlanten(){
-  if(!sbUrl)return;
-  try{
-    const rows=await sbFetch('klanten?order=created_at.asc');
-    klanten=(rows||[]).map(r=>({id:r.id,...r.data}));
-    try{localStorage.setItem('blitz_klanten',JSON.stringify(klanten));}catch{}
-  }catch{}
-}
-
-async function sbSaveKlant(k){
-  if(!sbUrl){try{localStorage.setItem('blitz_klanten',JSON.stringify(klanten));}catch{}return null;}
-  const data={...k};const id=data.id;delete data.id;
-  if(id){
-    await sbFetch('klanten?id=eq.'+id,{method:'PATCH',body:JSON.stringify({data})});
-    return id;
-  }else{
-    const r=await sbFetch('klanten',{method:'POST',body:JSON.stringify({data})});
-    return r&&r[0]?r[0].id:null;
-  }
-}
-
-async function sbDeleteKlant(id){
-  if(sbUrl)await sbFetch('klanten?id=eq.'+id,{method:'DELETE'});
-}
-
-function renderCrm(){
-  const el=document.getElementById('crm-list');if(!el)return;
-  const q=(document.getElementById('crm-search')?.value||'').toLowerCase();
-  const list=klanten.filter(k=>{
-    if(!q)return true;
-    return(k.naam||'').toLowerCase().includes(q)||(k.btw||'').toLowerCase().includes(q)||(k.contact||'').toLowerCase().includes(q);
-  });
-  if(!list.length){
-    el.innerHTML='<div class="empty-state"><i class="ti ti-building"></i>Geen klanten gevonden.</div>';return;
-  }
-  el.innerHTML=list.map((k,i)=>{
-    const idx=klanten.indexOf(k);
-    return`<div class="crm-row" onclick="openCrmModal(${idx})">
-      <div><div class="crm-naam">${k.naam||''}</div><div class="crm-sub">${k.btw||''}</div></div>
-      <div class="crm-cell">${k.adres||''}</div>
-      <div><div class="crm-cell" style="font-weight:500">${k.contact||''}</div><div class="crm-sub">${k.functie||''}</div></div>
-      <div><div class="crm-cell">${k.contactgsm||k.tel||''}</div><div class="crm-sub">${k.contactemail||k.email||''}</div></div>
-      <div style="display:flex;justify-content:flex-end"><button class="btn sm" onclick="event.stopPropagation();openCrmModal(${idx})"><i class="ti ti-edit"></i></button></div>
-    </div>`;
-  }).join('');
-}
-
-function openCrmModal(idx){
-  editingCrmIdx=idx;editingCrmId=null;
-  if(idx!==null&&klanten[idx]){
-    const k=klanten[idx];editingCrmId=k.id||null;
-    document.getElementById('crm-modal-title').textContent='Klant bewerken';
-    document.getElementById('crm-naam').value=k.naam||'';
-    document.getElementById('crm-btw').value=k.btw||'';
-    document.getElementById('crm-tel').value=k.tel||'';
-    document.getElementById('crm-email').value=k.email||'';
-    document.getElementById('crm-adres').value=k.adres||'';
-    document.getElementById('crm-contact').value=k.contact||'';
-    document.getElementById('crm-functie').value=k.functie||'';
-    document.getElementById('crm-contactgsm').value=k.contactgsm||'';
-    document.getElementById('crm-contactemail').value=k.contactemail||'';
-    document.getElementById('crm-notities').value=k.notities||'';
-    document.getElementById('crm-del-btn').style.display='inline-flex';
-  }else{
-    document.getElementById('crm-modal-title').textContent='Nieuwe klant';
-    ['crm-naam','crm-btw','crm-tel','crm-email','crm-adres','crm-contact','crm-functie','crm-contactgsm','crm-contactemail','crm-notities'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('crm-del-btn').style.display='none';
-  }
-  document.getElementById('crm-modal').classList.add('open');
-}
-
-function closeCrmModal(){
-  document.getElementById('crm-modal').classList.remove('open');
-  editingCrmIdx=null;editingCrmId=null;
-}
-
-async function saveCrmKlant(){
-  const naam=document.getElementById('crm-naam').value.trim();
-  if(!naam){showToast('Bedrijfsnaam is verplicht.');return;}
-  const k={
-    naam,
-    btw:document.getElementById('crm-btw').value.trim(),
-    tel:document.getElementById('crm-tel').value.trim(),
-    email:document.getElementById('crm-email').value.trim(),
-    adres:document.getElementById('crm-adres').value.trim(),
-    contact:document.getElementById('crm-contact').value.trim(),
-    functie:document.getElementById('crm-functie').value.trim(),
-    contactgsm:document.getElementById('crm-contactgsm').value.trim(),
-    contactemail:document.getElementById('crm-contactemail').value.trim(),
-    notities:document.getElementById('crm-notities').value.trim()
-  };
-  if(editingCrmId)k.id=editingCrmId;
-  closeCrmModal();
-  try{
-    const newId=await sbSaveKlant(k);
-    if(newId&&!k.id){k.id=newId;klanten.push(k);}
-    else if(editingCrmIdx!==null)klanten[editingCrmIdx]=k;
-    renderCrm();
-    showToast('Klant opgeslagen.');
-  }catch{
-    if(editingCrmIdx!==null)klanten[editingCrmIdx]=k;else klanten.push(k);
-    renderCrm();showToast('Lokaal opgeslagen.');
-  }
-}
-
-async function deleteCrmKlant(){
-  if(!confirm('Klant verwijderen?'))return;
-  const id=editingCrmId;const idx=editingCrmIdx;
-  closeCrmModal();
-  if(sbUrl&&id)sbDeleteKlant(id).catch(()=>{});
-  if(idx!==null)klanten.splice(idx,1);
-  renderCrm();
-}
-
-// ── KLANT AUTOCOMPLETE IN PROJECT MODAL ───────────────
-function onKlantInput(val){
-  const list=document.getElementById('m-klant-list');
-  if(!val||val.length<2){list.classList.remove('open');return;}
-  const q=val.toLowerCase();
-  const matches=klanten.filter(k=>(k.naam||'').toLowerCase().includes(q)).slice(0,6);
-  const btwNieuw=document.getElementById('m-btw').value.trim();
-  let html=matches.map((k,i)=>`<div class="ac-item" onclick="selectKlant(${klanten.indexOf(k)})">
-    <strong>${k.naam}</strong>${k.btw?` <span style="color:var(--tx3);font-size:11px">— ${k.btw}</span>`:''}
-    ${k.contact?`<div style="font-size:11px;color:var(--tx3)">${k.contact}</div>`:''}
-  </div>`).join('');
-  // Optie om nieuwe klant aan te maken
-  html+=`<div class="ac-item ac-new" onclick="autoCreateKlant('${val.replace(/'/g,"\\'")}')"><i class="ti ti-plus" style="margin-right:6px"></i>"${val}" toevoegen als nieuwe klant</div>`;
-  list.innerHTML=html;
-  list.classList.add('open');
-}
-
-function selectKlant(idx){
-  const k=klanten[idx];
-  document.getElementById('m-klant').value=k.naam||'';
-  document.getElementById('m-btw').value=k.btw||'';
-  document.getElementById('m-contact').value=k.contact||'';
-  document.getElementById('m-contactgsm').value=k.contactgsm||'';
-  document.getElementById('m-contactemail').value=k.contactemail||'';
-  document.getElementById('m-klant-list').classList.remove('open');
-}
-
-async function autoCreateKlant(naam){
-  document.getElementById('m-klant-list').classList.remove('open');
-  document.getElementById('m-klant').value=naam;
-  const btw=document.getElementById('m-btw').value.trim();
-  // Maak klant aan met naam (en btw als al ingevuld)
-  const k={naam,btw};
-  try{
-    const newId=await sbSaveKlant(k);
-    if(newId)k.id=newId;
-    klanten.push(k);
-    showToast(`"${naam}" toegevoegd aan CRM — vul later aan via het CRM-tabblad.`);
-  }catch{
-    klanten.push(k);
-    showToast(`"${naam}" lokaal opgeslagen in CRM.`);
-  }
-}
-
-// Sluit autocomplete bij klik buiten
-document.addEventListener('click',e=>{
-  if(!e.target.closest('.ac-wrap'))document.querySelectorAll('.ac-list').forEach(l=>l.classList.remove('open'));
-});
-
-// ── ADRES AUTOCOMPLETE (Google Places) ────────────────
-async function onAdresInput(inputId, listId){
-  const val=document.getElementById(inputId).value.trim();
-  const list=document.getElementById(listId);
-  if(!val||val.length<3){list.classList.remove('open');return;}
-  if(!mapsKey){
-    // Geen Google key — toon vrij tekstveld, geen autocomplete
-    list.classList.remove('open');return;
-  }
-  try{
-    const res=await fetch(`https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(val)}&types=address&components=country:be&language=nl&key=${mapsKey}`);
-    const data=await res.json();
-    if(!data.predictions?.length){list.classList.remove('open');return;}
-    list.innerHTML=data.predictions.slice(0,5).map(p=>`<div class="ac-item" onclick="selectAdres('${inputId}','${listId}','${p.description.replace(/'/g,"\\'")}')">${p.description}</div>`).join('');
-    list.classList.add('open');
-  }catch{list.classList.remove('open');}
-}
-
-function selectAdres(inputId,listId,adres){
-  document.getElementById(inputId).value=adres;
-  document.getElementById(listId).classList.remove('open');
 }
 
 // ── AUTH ──────────────────────────────────────────────
@@ -1892,12 +1570,6 @@ async function removeUser(id,email){
   document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
   document.getElementById('resp-modal').addEventListener('click',function(e){if(e.target===this)closeRespModal();});
   document.getElementById('invite-modal').addEventListener('click',function(e){if(e.target===this)closeInviteModal();});
-  document.getElementById('crm-modal').addEventListener('click',function(e){if(e.target===this)closeCrmModal();});
-
-  // Herstel Google Maps key
-  try{const k=localStorage.getItem('blitz_maps');if(k){mapsKey=k;const el=document.getElementById('maps-key');if(el)el.value=k;}}catch{}
-  // Herstel lokale klanten backup
-  try{const d=localStorage.getItem('blitz_klanten');if(d)klanten=JSON.parse(d);}catch{}
 
   // Probeer bestaande sessie te herstellen
   initSupabaseClient();
