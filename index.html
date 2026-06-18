@@ -236,6 +236,12 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
     <div id="auth-login">
       <div class="auth-subtitle">Meld je aan om verder te gaan</div>
       <div class="auth-error" id="login-error"></div>
+      <div id="auth-key-section" style="display:none;margin-bottom:14px;padding:12px;background:#f2f4f3;border-radius:8px;border:1px solid rgba(0,223,163,.3)">
+        <div style="font-size:12px;font-weight:600;color:#1D252D;margin-bottom:6px"><i class="ti ti-plug" style="margin-right:4px;color:#00DFA3"></i>Eerste keer op dit toestel</div>
+        <div style="font-size:11px;color:#4a5760;margin-bottom:8px">Vul éénmalig de Supabase API key in. Vraag deze aan je admin.</div>
+        <label style="font-size:11px;color:#4a5760;margin-bottom:3px;display:block">API Key (anon of publishable)</label>
+        <input id="login-apikey" type="text" placeholder="eyJ... of sb_publishable_..." style="font-size:12px;padding:7px 10px;border:1px solid rgba(29,37,45,.2);border-radius:6px;width:100%;outline:none">
+      </div>
       <div class="auth-field"><label>E-mailadres</label><input id="login-email" type="email" placeholder="jan@blitzpower.be" autocomplete="email"></div>
       <div class="auth-field"><label>Wachtwoord</label><input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <button class="auth-btn" onclick="doLogin()">Aanmelden</button>
@@ -1687,28 +1693,25 @@ document.addEventListener('click',e=>{
 
 // ── AUTH ──────────────────────────────────────────────
 const ADMIN_EMAIL = 'sales@blitzpower.com';
-
-// ── SUPABASE CONFIG ───────────────────────────────────
-// Vul hier eenmalig jouw Supabase URL en anon key in.
-// Dit zorgt dat collega's op elke computer automatisch verbinden.
 const SUPABASE_URL = 'https://rhztaqutznafsgprnkvn.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoenRhcXV0em5hZnNncHJua3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTI2MjYsImV4cCI6MjA5NzI2ODYyNn0.n-ojVvnlm8x-g-O6WNoN8un67oR-yHMSlaJVuh_8caI'; // ← vervang dit
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoenRhcXV0em5hZnNncHJua3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTI2MjYsImV4cCI6MjA5NzI2ODYyNn0.n-ojVvnlm8x-g-O6WNoN8un67oR-yHMSlaJVuh_8caI';
 
 let supabaseClient = null;
 let currentUser    = null;
 let currentRole    = 'user';
 
 function initSupabaseClient(){
-  if(supabaseClient)return;
-  // Gebruik opgeslagen key (bv. service_role van admin) of val terug op anon key
+  if(supabaseClient)return true;
+  // Gebruik opgeslagen key (bv. service_role van admin) of anon key
   const saved=JSON.parse(localStorage.getItem('blitz_sb')||'null');
-  const url=saved?.url||SUPABASE_URL;
-  const key=saved?.key||(SUPABASE_ANON_KEY!=='JOUW_ANON_KEY_HIER'?SUPABASE_ANON_KEY:'');
-  if(url&&key){
-    supabaseClient=supabase.createClient(url,key);
-    sbUrl=url;
-    sbKey=key;
-  }
+  const key=saved?.key||(SUPABASE_ANON_KEY!=='JOUW_ANON_KEY_HIER'?SUPABASE_ANON_KEY:null);
+  if(!key){return false;}
+  try{
+    supabaseClient=supabase.createClient(SUPABASE_URL,key);
+    sbUrl=SUPABASE_URL;sbKey=key;
+    localStorage.setItem('blitz_sb',JSON.stringify({url:SUPABASE_URL,key}));
+    return true;
+  }catch(e){console.error('Supabase init fout:',e);return false;}
 }
 
 function showAuthView(view){
@@ -1721,11 +1724,26 @@ async function doLogin(){
   const errEl=document.getElementById('login-error');
   errEl.classList.remove('show');
   if(!email||!pw){errEl.textContent='Vul e-mail en wachtwoord in.';errEl.classList.add('show');return;}
-  initSupabaseClient();
-  if(!supabaseClient){errEl.textContent='Supabase nog niet gekoppeld — ga eerst naar Instellingen.';errEl.classList.add('show');return;}
-  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:pw});
-  if(error){errEl.textContent='Aanmelden mislukt: '+error.message;errEl.classList.add('show');return;}
-  await onLoggedIn(data.user);
+  if(!supabaseClient){
+    const ok=initSupabaseClient();
+    if(!ok){
+      errEl.textContent='Database niet geconfigureerd. Contacteer de beheerder.';
+      errEl.classList.add('show');
+      return;
+    }
+  }
+  try{
+    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:pw});
+    if(error){
+      errEl.textContent=error.message==='Invalid login credentials'?'Verkeerd e-mail of wachtwoord.':error.message;
+      errEl.classList.add('show');
+      return;
+    }
+    await onLoggedIn(data.user);
+  }catch(e){
+    errEl.textContent='Verbindingsfout: '+e.message;
+    errEl.classList.add('show');
+  }
 }
 
 async function doLogout(){
@@ -1898,11 +1916,12 @@ async function removeUser(id,email){
   // Probeer bestaande sessie te herstellen
   initSupabaseClient();
   if(supabaseClient){
+    // Key gevonden — verberg het API key veld
+    document.getElementById('auth-key-section').style.display='none';
     supabaseClient.auth.getSession().then(({data:{session}})=>{
       if(session?.user){
         onLoggedIn(session.user);
       }
-      // Luister naar auth state changes (bv. magic link / password reset)
       supabaseClient.auth.onAuthStateChange((event,session)=>{
         if(event==='PASSWORD_RECOVERY'||event==='USER_UPDATED'){
           showAuthView('setpass');
@@ -1914,6 +1933,9 @@ async function removeUser(id,email){
         }
       });
     });
+  } else {
+    // Geen key bekend — toon het API key veld zodat gebruiker het kan invullen
+    document.getElementById('auth-key-section').style.display='block';
   }
 })();
 
