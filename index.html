@@ -534,7 +534,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
           <div class="ac-list" id="m-klant-list"></div>
         </div>
       </div>
-      <div class="field"><label>BTW-nummer</label><input id="m-btw" placeholder="Wordt automatisch ingevuld" readonly style="background:var(--bg2)"></div>
+      <div class="field"><label>BTW-nummer</label><input id="m-btw" placeholder="BE 0123.456.789"></div>
     </div>
     <div class="grid2">
       <div class="field"><label>Contactpersoon</label><input id="m-contact" placeholder="Jan Janssen"></div>
@@ -1755,9 +1755,21 @@ async function saveCrmComplete(){
   if(idx>-1)klanten[idx]={...klanten[idx],...updated};
   else klanten.push(updated);
 
+  // Vul ook de projectvelden bij met de aangevulde gegevens
+  const mBtw=document.getElementById('m-btw');
+  const mContact=document.getElementById('m-contact');
+  const mGsm=document.getElementById('m-contactgsm');
+  const mEmail=document.getElementById('m-contactemail');
+  const mAdres=document.getElementById('m-adres');
+  if(mBtw&&updated.btw)mBtw.value=updated.btw;
+  if(mContact&&updated.contact)mContact.value=updated.contact;
+  if(mGsm&&updated.contactgsm)mGsm.value=updated.contactgsm;
+  if(mEmail&&updated.contactemail)mEmail.value=updated.contactemail;
+  if(mAdres&&updated.adres)mAdres.value=updated.adres;
+
   try{
     await sbSaveKlant(updated);
-    showToast('Klant aangevuld in CRM.');
+    showToast('Klant aangevuld — projectvelden bijgewerkt.');
   }catch{
     lsSave();
     showToast('Lokaal opgeslagen.');
