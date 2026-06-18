@@ -1481,7 +1481,7 @@ function render(){
   const pgEl=document.getElementById('pg-ind');
   if(pgEl){
     if(totalPages>1){
-      pgEl.innerHTML=Array.from({length:totalPages},(_,i)=>`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${i===tvPage?'#00DFA3':'rgba(255,255,255,.3)'};margin:0 3px"></span>`).join('');
+      pgEl.innerHTML=Array.from({length:totalPages},(_,i)=>'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+(i===tvPage?'#00DFA3':'rgba(255,255,255,.3)')+';margin:0 3px"></span>').join('');
       pgEl.style.display='block';
     }else{pgEl.style.display='none';}
   }
