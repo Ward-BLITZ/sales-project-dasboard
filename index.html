@@ -1687,15 +1687,27 @@ document.addEventListener('click',e=>{
 
 // ── AUTH ──────────────────────────────────────────────
 const ADMIN_EMAIL = 'sales@blitzpower.com';
+
+// ── SUPABASE CONFIG ───────────────────────────────────
+// Vul hier eenmalig jouw Supabase URL en anon key in.
+// Dit zorgt dat collega's op elke computer automatisch verbinden.
+const SUPABASE_URL = 'https://rhztaqutznafsgprnkvn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoenRhcXV0em5hZnNncHJua3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTI2MjYsImV4cCI6MjA5NzI2ODYyNn0.n-ojVvnlm8x-g-O6WNoN8un67oR-yHMSlaJVuh_8caI'; // ← vervang dit
+
 let supabaseClient = null;
 let currentUser    = null;
 let currentRole    = 'user';
 
 function initSupabaseClient(){
   if(supabaseClient)return;
-  const cfg=JSON.parse(localStorage.getItem('blitz_sb')||'null');
-  if(cfg&&cfg.url&&cfg.key){
-    supabaseClient=supabase.createClient(cfg.url,cfg.key);
+  // Gebruik opgeslagen key (bv. service_role van admin) of val terug op anon key
+  const saved=JSON.parse(localStorage.getItem('blitz_sb')||'null');
+  const url=saved?.url||SUPABASE_URL;
+  const key=saved?.key||(SUPABASE_ANON_KEY!=='JOUW_ANON_KEY_HIER'?SUPABASE_ANON_KEY:'');
+  if(url&&key){
+    supabaseClient=supabase.createClient(url,key);
+    sbUrl=url;
+    sbKey=key;
   }
 }
 
