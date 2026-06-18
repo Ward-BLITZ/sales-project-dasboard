@@ -1889,8 +1889,22 @@ async function onLoggedIn(user){
   const userNaam=user.user_metadata?.naam||'';
   document.getElementById('current-user-name').textContent=userNaam||user.email;
 
+  // Automatisch uitloggen om middernacht
+  scheduleMidnightLogout();
+
   // start app — koppeling met verantwoordelijke gebeurt in startAppAfterLogin
   startAppAfterLogin(userNaam, user.email);
+}
+
+function scheduleMidnightLogout(){
+  const now=new Date();
+  const midnight=new Date(now);
+  midnight.setHours(24,0,0,0); // volgende middernacht
+  const ms=midnight.getTime()-now.getTime();
+  setTimeout(async()=>{
+    showToast('Sessie verlopen — je wordt afgemeld.');
+    setTimeout(async()=>{await doLogout();},2000);
+  },ms);
 }
 
 // ── GEBRUIKERSBEHEER (admin) ───────────────────────────
@@ -2008,20 +2022,29 @@ async function removeUser(id,email){
   // Probeer bestaande sessie te herstellen
   initSupabaseClient();
   if(supabaseClient){
-    supabaseClient.auth.getSession().then(({data:{session}})=>{
-      if(session?.user){
-        onLoggedIn(session.user);
-      }
-      supabaseClient.auth.onAuthStateChange((event,session)=>{
-        if(event==='PASSWORD_RECOVERY'||event==='USER_UPDATED'){
-          showAuthView('setpass');
-          document.getElementById('auth-screen').style.display='flex';
-          document.getElementById('main-tabs').style.display='none';
-        }
-        if(event==='SIGNED_IN'&&session?.user&&!currentUser){
+    // onAuthStateChange is betrouwbaarder dan getSession bij page refresh
+    supabaseClient.auth.onAuthStateChange((event, session)=>{
+      if(event==='INITIAL_SESSION'){
+        // Eerste sessie check bij laden pagina
+        if(session?.user && !currentUser){
           onLoggedIn(session.user);
         }
-      });
+        // Geen sessie — loginscherm blijft zichtbaar
+      }
+      else if(event==='SIGNED_IN' && session?.user && !currentUser){
+        onLoggedIn(session.user);
+      }
+      else if(event==='SIGNED_OUT'){
+        currentUser=null; currentRole='user';
+        document.getElementById('auth-screen').style.display='flex';
+        document.getElementById('main-tabs').style.display='none';
+        showAuthView('login');
+      }
+      else if(event==='PASSWORD_RECOVERY' || event==='USER_UPDATED'){
+        showAuthView('setpass');
+        document.getElementById('auth-screen').style.display='flex';
+        document.getElementById('main-tabs').style.display='none';
+      }
     });
   }
 })();
