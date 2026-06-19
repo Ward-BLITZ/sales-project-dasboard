@@ -1042,11 +1042,31 @@ let editingIdx       = null;
 let dragSourceIdx    = null;
 let didDrag          = false;
 let currentAttachments = [];
-let currentTijdlijn = []; // [{naam, type, data}]
+let currentTijdlijn = [];
 let dashWindow       = null;
 let prevSoldSet      = new Set();
 let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth();
+
+// ── B2C STATE (hier bovenaan zodat geen temporal dead zone) ──
+const B2C_STATUSSEN = ['Nieuw','Gecontacteerd','Visit gepland','Visit gedaan','Offerte','Gewonnen','Verloren','Afkoeling'];
+const B2C_WARMTES   = ['Koud','Lauw','Warm','Hot'];
+let b2cLeads             = [];
+let b2cNextId            = 1;
+let b2cStatusFilter      = 'alle';
+let b2cWarmteFilter      = 'alle';
+let b2cRespFilter        = 'alle';
+let b2cCalYear           = new Date().getFullYear();
+let b2cCalMonth          = new Date().getMonth();
+let b2cCalSelDag         = null;
+let b2cOpenLeadId        = null;
+let b2cIsVisitMode       = false;
+let b2cVisitLeadId       = null;
+let b2cDoorstuurLeadId   = null;
+let b2cScreeningLeadId   = null;
+let b2cScreeningFotos    = [];
+let b2cScreeningSelects  = {gevelbekleding:'',aansluiting:''};
+let b2cContractTekst     = '';
 
 // ── HELPERS ────────────────────────────────────────────
 function pctColor(p){const t=Math.max(0,Math.min(1,p/100));return`hsl(${Math.round(30+t*100)},${Math.round(90-t*25)}%,${Math.round(48-t*10)}%)`;}
@@ -2801,25 +2821,6 @@ function linkUserToResp(userNaam, userEmail){
 // ════════════════════════════════════════════════════════
 // B2C LEADS MODULE
 // ════════════════════════════════════════════════════════
-const B2C_STATUSSEN=['Nieuw','Gecontacteerd','Visit gepland','Visit gedaan','Offerte','Gewonnen','Verloren','Afkoeling'];
-const B2C_WARMTES=['Koud','Lauw','Warm','Hot'];
-
-let b2cLeads=[];
-let b2cNextId=1;
-let b2cStatusFilter='alle';
-let b2cWarmteFilter='alle';
-let b2cRespFilter='alle';
-let b2cCalYear=new Date().getFullYear();
-let b2cCalMonth=new Date().getMonth();
-let b2cCalSelDag=null;
-let b2cOpenLeadId=null;
-let b2cIsVisitMode=false;
-let b2cVisitLeadId=null;
-let b2cDoorstuurLeadId=null;
-let b2cScreeningLeadId=null;
-let b2cScreeningFotos=[];
-let b2cScreeningSelects={gevelbekleding:'',aansluiting:''};
-let b2cContractTekst='';
 
 // Demo data - wordt aangeroepen vanuit init()
 function b2cInitDemo(){
