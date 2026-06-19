@@ -554,10 +554,12 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     </div>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
-    <div class="filter-bar" style="margin:0;flex:1">
-      <span class="filter-label"><i class="ti ti-filter" style="margin-right:4px"></i>Status:</span>
+    <div class="filter-bar" style="margin:0;flex:1;flex-wrap:wrap;gap:8px">
+      <span class="filter-label"><i class="ti ti-user-circle" style="margin-right:4px"></i>Verantwoordelijke:</span>
+      <div class="pills" id="b2c-pills-resp"></div>
+      <span class="filter-label" style="margin-left:6px"><i class="ti ti-filter" style="margin-right:4px"></i>Status:</span>
       <div class="pills" id="b2c-pills-status"></div>
-      <span class="filter-label" style="margin-left:10px">Warmte:</span>
+      <span class="filter-label" style="margin-left:6px">Warmte:</span>
       <div class="pills" id="b2c-pills-warmte"></div>
     </div>
     <div style="display:flex;gap:8px;flex-shrink:0">
@@ -573,30 +575,85 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   </div>
 </div>
 
-<!-- AGENDA B2C -->
-<div id="pane-agenda" class="page" style="display:none">
+<!-- AGENDA -->
+<div id="pane-agenda" class="page" style="display:none;max-width:1200px">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
-    <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700">Agenda — Visits</div>
-    <button class="btn primary" onclick="b2cOpenNieuw(true)"><i class="ti ti-plus"></i> Visit inplannen</button>
+    <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700">Agenda</div>
+    <button class="btn primary" onclick="agOpenNieuw()"><i class="ti ti-plus"></i> Afspraak toevoegen</button>
   </div>
-  <div class="agenda-b2c-layout">
-    <div class="agenda-cal-block">
+  <!-- Filters -->
+  <div class="filter-bar" style="margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+    <span class="filter-label"><i class="ti ti-user-circle" style="margin-right:4px"></i>Verantwoordelijke:</span>
+    <div class="pills" id="ag-pills-resp"></div>
+    <span class="filter-label" style="margin-left:8px"><i class="ti ti-filter" style="margin-right:4px"></i>Type:</span>
+    <div class="pills" id="ag-pills-type"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
+    <!-- Kalender -->
+    <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <button class="cal-nav-btn" onclick="b2cCalPrev()"><i class="ti ti-chevron-left"></i></button>
-        <span style="font-family:'Poppins',sans-serif;font-size:16px;font-weight:700" id="b2c-cal-lbl"></span>
-        <button class="cal-nav-btn" onclick="b2cCalNext()"><i class="ti ti-chevron-right"></i></button>
+        <button class="cal-nav-btn" onclick="agCalPrev()"><i class="ti ti-chevron-left"></i></button>
+        <span style="font-family:'Poppins',sans-serif;font-size:16px;font-weight:700" id="ag-cal-lbl"></span>
+        <button class="cal-nav-btn" onclick="agCalNext()"><i class="ti ti-chevron-right"></i></button>
       </div>
-      <div class="b2c-cal-grid" id="b2c-cal-grid"></div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">
+        <!-- Dag headers -->
+        <div style="text-align:center;font-size:11px;font-weight:600;color:var(--tx3);padding:2px 0;text-transform:uppercase">Ma</div>
+        <div style="text-align:center;font-size:11px;font-weight:600;color:var(--tx3);padding:2px 0;text-transform:uppercase">Di</div>
+        <div style="text-align:center;font-size:11px;font-weight:600;color:var(--tx3);padding:2px 0;text-transform:uppercase">Wo</div>
+        <div style="text-align:center;font-size:11px;font-weight:600;color:var(--tx3);padding:2px 0;text-transform:uppercase">Do</div>
+        <div style="text-align:center;font-size:11px;font-weight:600;color:var(--tx3);padding:2px 0;text-transform:uppercase">Vr</div>
+        <div style="text-align:center;font-size:11px;font-weight:600;color:var(--tx3);padding:2px 0;text-transform:uppercase">Za</div>
+        <div style="text-align:center;font-size:11px;font-weight:600;color:var(--tx3);padding:2px 0;text-transform:uppercase">Zo</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px" id="ag-cal-grid"></div>
     </div>
-    <div class="agenda-b2c-sidebar">
-      <div class="agenda-cal-block">
-        <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;margin-bottom:10px" id="b2c-dag-titel">Selecteer een dag</div>
-        <div id="b2c-dag-visits"><div style="font-size:12px;color:var(--tx3)">Klik op een dag</div></div>
+    <!-- Sidebar -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:14px">
+        <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;margin-bottom:10px" id="ag-dag-titel">Selecteer een dag</div>
+        <div id="ag-dag-items"><div style="font-size:12px;color:var(--tx3)">Klik op een dag in de kalender</div></div>
       </div>
-      <div class="agenda-cal-block">
-        <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;margin-bottom:10px">Aankomende visits</div>
-        <div id="b2c-aankomende"></div>
+      <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:14px">
+        <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;margin-bottom:10px">Aankomende afspraken</div>
+        <div id="ag-aankomende"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- AGENDA NIEUW MODAL -->
+<div class="modal-overlay" id="ag-nieuw-overlay">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title" id="ag-nieuw-titel">Afspraak toevoegen</span>
+      <button class="modal-close" onclick="agCloseNieuw()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="field"><label>Titel *</label><input id="ag-titel" placeholder="bv. Visit Jan Vermeersch"></div>
+    <div class="grid2">
+      <div class="field"><label>Datum *</label><input type="date" id="ag-datum"></div>
+      <div class="field"><label>Uur</label><input type="time" id="ag-uur" value="09:00"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Type</label>
+        <select id="ag-type">
+          <option value="B2C">B2C</option>
+          <option value="B2B">B2B</option>
+          <option value="Andere">Andere</option>
+        </select>
+      </div>
+      <div class="field"><label>Verantwoordelijke</label>
+        <select id="ag-resp"><option value="">— kies —</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Gelinkt project / lead (optioneel)</label>
+      <input id="ag-link" placeholder="Naam project of lead...">
+    </div>
+    <div class="field"><label>Notitie</label><textarea id="ag-notitie" rows="2" placeholder="Extra info..."></textarea></div>
+    <div class="modal-footer">
+      <button class="btn danger" id="ag-del-btn" style="display:none;margin-right:auto" onclick="agDelete()"><i class="ti ti-trash"></i> Verwijderen</button>
+      <button class="btn" onclick="agCloseNieuw()">Annuleren</button>
+      <button class="btn primary" onclick="agSave()"><i class="ti ti-check"></i> Opslaan</button>
     </div>
   </div>
 </div>
@@ -765,7 +822,9 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)"><i class="ti ti-notes" style="margin-right:5px"></i>Opmerkingen & info</div>
         <div class="field">
           <label>Projectinfo <span class="ai-badge"><i class="ti ti-sparkles"></i> AI</span></label>
-          <textarea id="m-info" rows="5" placeholder="Beschrijving, bijzonderheden..."></textarea>
+          <textarea id="m-info" rows="4" placeholder="Beschrijving, bijzonderheden..."
+            style="min-height:80px;max-height:200px;overflow-y:auto;resize:none;transition:height .15s"
+            oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,200)+'px'"></textarea>
           <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
             <button class="btn sm" onclick="aiGenerate()"><i class="ti ti-sparkles"></i> AI genereren</button>
             <span id="ai-spin" style="display:none;font-size:12px;color:var(--tx2)"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Even nadenken...</span>
@@ -840,7 +899,9 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       </div>
     </div>
     <div class="grid2">
-      <div class="field"><label>Verantwoordelijke</label><input id="bn-resp" placeholder="bv. Sofie"></div>
+      <div class="field"><label>Verantwoordelijke</label>
+        <select id="bn-resp"><option value="">— kies —</option></select>
+      </div>
       <div class="field"><label>Volgende actie</label><input id="bn-actie" value="Eerste contact opnemen"></div>
     </div>
     <div class="field"><label>Notities</label><textarea id="bn-notities" rows="2" placeholder="Eerste indruk, wensen..."></textarea></div>
@@ -992,7 +1053,7 @@ function showTab(name){
   if(name==='prospects')renderProspects();
   if(name==='gebruikers')loadGebruikers();
   if(name==='b2c'){b2cRenderLeads();}
-  if(name==='agenda'){b2cRenderCalendar();b2cRenderAankomende();}
+  if(name==='agenda'){agRenderCalendar();agRenderAankomende();}
 }
 
 // ── DB STATUS ─────────────────────────────────────────
@@ -2174,7 +2235,7 @@ function initSupabaseClient(){
   if(supabaseClient)return true;
   // Gebruik opgeslagen key (bv. service_role van admin) of anon key
   const saved=JSON.parse(localStorage.getItem('blitz_sb')||'null');
-  const key=saved?.key||(SUPABASE_ANON_KEY!=='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoenRhcXV0em5hZnNncHJua3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTI2MjYsImV4cCI6MjA5NzI2ODYyNn0.n-ojVvnlm8x-g-O6WNoN8un67oR-yHMSlaJVuh_8caI'?SUPABASE_ANON_KEY:null);
+  const key=saved?.key||(SUPABASE_ANON_KEY!=='JOUW_ANON_KEY_HIER'?SUPABASE_ANON_KEY:null);
   if(!key){return false;}
   try{
     supabaseClient=supabase.createClient(SUPABASE_URL,key);
@@ -2383,6 +2444,201 @@ async function removeUser(id,email){
   }catch{showToast('Verwijderen mislukt — doe dit via Supabase dashboard.');}
 }
 
+// ── AGENDA ────────────────────────────────────────────
+let agAfspraken = [];
+let agNextId = 1;
+let agCalYear = new Date().getFullYear();
+let agCalMonth = new Date().getMonth();
+let agCalSelDag = null;
+let agTypeFilter = 'alle';
+let agRespFilter = 'alle';
+let agEditId = null;
+
+const AG_TYPES = ['B2C','B2B','Andere'];
+const AG_KLEUREN = {B2C:'#00DFA3',B2B:'#534AB7',Andere:'#EF9F27'};
+
+function agCalPrev(){agCalMonth--;if(agCalMonth<0){agCalMonth=11;agCalYear--;}agRenderCalendar();}
+function agCalNext(){agCalMonth++;if(agCalMonth>11){agCalMonth=0;agCalYear++;}agRenderCalendar();}
+
+function agGetFiltered(){
+  return agAfspraken.filter(a=>{
+    if(agTypeFilter!=='alle'&&a.type!==agTypeFilter)return false;
+    if(agRespFilter!=='alle'&&a.resp!==agRespFilter)return false;
+    return true;
+  });
+}
+
+function agRenderPills(){
+  const rEl=document.getElementById('ag-pills-resp');
+  if(rEl){
+    const rNames=['alle',...new Set(agAfspraken.map(a=>a.resp).filter(Boolean))];
+    rEl.innerHTML=rNames.map(r=>`<button class="pill${r==='alle'?' all':''}${agRespFilter===r?' active':''}" onclick="agSetRespFilter('${r}')">${r==='alle'?'<i class="ti ti-users" style="font-size:12px;margin-right:3px"></i>Iedereen':r}</button>`).join('');
+  }
+  const tEl=document.getElementById('ag-pills-type');
+  if(tEl){
+    const types=['alle',...AG_TYPES];
+    tEl.innerHTML=types.map(t=>{
+      const col=AG_KLEUREN[t]||'var(--tx2)';
+      return`<button class="pill${agTypeFilter===t?' active':''}" style="${agTypeFilter===t?'':''}${t!=='alle'?'border-left:3px solid '+col+';':''}" onclick="agSetTypeFilter('${t}')">${t==='alle'?'Alles':t}</button>`;
+    }).join('');
+  }
+}
+
+function agSetRespFilter(r){agRespFilter=r;agRenderCalendar();agRenderAankomende();}
+function agSetTypeFilter(t){agTypeFilter=t;agRenderCalendar();agRenderAankomende();}
+
+function agRenderCalendar(){
+  const MAANDEN=['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+  const lbl=document.getElementById('ag-cal-lbl');
+  const grid=document.getElementById('ag-cal-grid');
+  if(!lbl||!grid)return;
+  lbl.textContent=MAANDEN[agCalMonth]+' '+agCalYear;
+
+  const list=agGetFiltered();
+  const evMap={};
+  list.forEach(a=>{if(a.datum)(evMap[a.datum]=evMap[a.datum]||[]).push(a);});
+
+  const t=new Date();t.setHours(0,0,0,0);
+  const startDow=(new Date(agCalYear,agCalMonth,1).getDay()+6)%7;
+  const dim=new Date(agCalYear,agCalMonth+1,0).getDate();
+
+  let html='';
+  for(let i=0;i<startDow;i++)html+='<div style="min-height:52px"></div>';
+  for(let d=1;d<=dim;d++){
+    const ds=`${agCalYear}-${String(agCalMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isTd=new Date(agCalYear,agCalMonth,d).getTime()===t.getTime();
+    const isSel=agCalSelDag===ds;
+    const evs=evMap[ds]||[];
+    const dots=evs.map(a=>`<div style="width:6px;height:6px;border-radius:50%;background:${AG_KLEUREN[a.type]||'var(--green)'};flex-shrink:0"></div>`).join('');
+    html+=`<div onclick="agSelectDag('${ds}')" style="text-align:center;font-size:13px;padding:5px 2px;border-radius:8px;min-height:52px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:background .12s;${isSel?'background:var(--green);color:var(--dark);font-weight:700':isTd?'background:rgba(0,223,163,.12);font-weight:700':''}">
+      <span>${d}</span>
+      ${evs.length?`<div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center">${dots}</div>`:''}
+    </div>`;
+  }
+  grid.innerHTML=html;
+
+  if(agCalSelDag)agRenderDag(agCalSelDag);
+  agRenderAankomende();
+  agRenderPills();
+}
+
+function agSelectDag(ds){
+  agCalSelDag=agCalSelDag===ds?null:ds;
+  agRenderCalendar();
+  if(agCalSelDag)agRenderDag(agCalSelDag);
+}
+
+function agRenderDag(ds){
+  const titelEl=document.getElementById('ag-dag-titel');
+  const listEl=document.getElementById('ag-dag-items');
+  if(!titelEl||!listEl)return;
+  const d=new Date(ds);
+  titelEl.textContent=d.toLocaleDateString('nl-BE',{weekday:'long',day:'numeric',month:'long'});
+  const list=agGetFiltered().filter(a=>a.datum===ds).sort((a,b)=>(a.uur||'').localeCompare(b.uur||''));
+  if(!list.length){listEl.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen afspraken</div>';return;}
+  listEl.innerHTML=list.map(a=>`<div onclick="agOpenEdit(${a.id})" style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);cursor:pointer">
+    <div style="width:8px;height:8px;border-radius:50%;background:${AG_KLEUREN[a.type]||'var(--green)'};flex-shrink:0;margin-top:4px"></div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:600">${a.titel}</div>
+      <div style="font-size:11px;color:var(--tx3)">${a.uur||''}${a.resp?' · '+a.resp:''}${a.link?' · '+a.link:''}</div>
+      <div style="display:inline-block;margin-top:3px;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:${AG_KLEUREN[a.type]||'var(--green)'}22;color:${AG_KLEUREN[a.type]||'var(--green)'}">${a.type}</div>
+    </div>
+  </div>`).join('');
+}
+
+function agRenderAankomende(){
+  const el=document.getElementById('ag-aankomende');if(!el)return;
+  const t=today();
+  const list=agGetFiltered().filter(a=>a.datum>=t).sort((a,b)=>a.datum.localeCompare(b.datum)||(a.uur||'').localeCompare(b.uur||'')).slice(0,8);
+  if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen aankomende afspraken</div>';return;}
+  const MAANDEN_K=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  el.innerHTML=list.map(a=>{
+    const d=new Date(a.datum);
+    const diff=Math.round((new Date(a.datum)-new Date(t))/86400000);
+    const lbl=diff===0?'Vandaag':diff===1?'Morgen':d.getDate()+' '+MAANDEN_K[d.getMonth()];
+    return`<div onclick="agOpenEdit(${a.id})" style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--bd);cursor:pointer">
+      <div style="width:8px;height:8px;border-radius:50%;background:${AG_KLEUREN[a.type]||'var(--green)'};flex-shrink:0;margin-top:4px"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600">${a.titel}</div>
+        <div style="font-size:11px;color:var(--tx3)">${diff<=1?`<span style="color:#854f0b;font-weight:600">${lbl}</span>`:lbl}${a.uur?' '+a.uur:''}${a.resp?' · '+a.resp:''}</div>
+      </div>
+      <div style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:${AG_KLEUREN[a.type]||'var(--green)'}22;color:${AG_KLEUREN[a.type]||'var(--green)'};white-space:nowrap">${a.type}</div>
+    </div>`;
+  }).join('');
+}
+
+function agOpenNieuw(datum=null){
+  agEditId=null;
+  document.getElementById('ag-nieuw-titel').textContent='Afspraak toevoegen';
+  document.getElementById('ag-titel').value='';
+  document.getElementById('ag-datum').value=datum||agCalSelDag||today();
+  document.getElementById('ag-uur').value='09:00';
+  document.getElementById('ag-type').value='B2C';
+  document.getElementById('ag-link').value='';
+  document.getElementById('ag-notitie').value='';
+  document.getElementById('ag-del-btn').style.display='none';
+  // Vul resp dropdown
+  const sel=document.getElementById('ag-resp');
+  sel.innerHTML='<option value="">— kies —</option>'+respNames().map(r=>`<option value="${r}">${r}</option>`).join('');
+  sel.value='';
+  document.getElementById('ag-nieuw-overlay').classList.add('open');
+}
+
+function agOpenEdit(id){
+  const a=agAfspraken.find(x=>x.id===id);if(!a)return;
+  agEditId=id;
+  document.getElementById('ag-nieuw-titel').textContent='Afspraak bewerken';
+  document.getElementById('ag-titel').value=a.titel||'';
+  document.getElementById('ag-datum').value=a.datum||'';
+  document.getElementById('ag-uur').value=a.uur||'09:00';
+  document.getElementById('ag-type').value=a.type||'B2C';
+  document.getElementById('ag-link').value=a.link||'';
+  document.getElementById('ag-notitie').value=a.notitie||'';
+  document.getElementById('ag-del-btn').style.display='inline-flex';
+  const sel=document.getElementById('ag-resp');
+  sel.innerHTML='<option value="">— kies —</option>'+respNames().map(r=>`<option value="${r}">${r}</option>`).join('');
+  sel.value=a.resp||'';
+  document.getElementById('ag-nieuw-overlay').classList.add('open');
+}
+
+function agCloseNieuw(){
+  document.getElementById('ag-nieuw-overlay').classList.remove('open');
+  agEditId=null;
+}
+
+function agSave(){
+  const titel=document.getElementById('ag-titel').value.trim();
+  const datum=document.getElementById('ag-datum').value;
+  if(!titel||!datum){showToast('Titel en datum zijn verplicht.');return;}
+  const a={
+    id:agEditId||agNextId++,
+    titel,datum,
+    uur:document.getElementById('ag-uur').value,
+    type:document.getElementById('ag-type').value,
+    resp:document.getElementById('ag-resp').value,
+    link:document.getElementById('ag-link').value.trim(),
+    notitie:document.getElementById('ag-notitie').value.trim()
+  };
+  if(agEditId){const i=agAfspraken.findIndex(x=>x.id===agEditId);if(i>-1)agAfspraken[i]=a;}
+  else agAfspraken.push(a);
+  agCloseNieuw();
+  agRenderCalendar();
+  agRenderAankomende();
+  showToast(agEditId?'Afspraak bijgewerkt.':'Afspraak toegevoegd.');
+  // Sla op in Supabase/lokaal
+  try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
+}
+
+function agDelete(){
+  if(!agEditId)return;
+  if(!confirm('Afspraak verwijderen?'))return;
+  agAfspraken=agAfspraken.filter(a=>a.id!==agEditId);
+  agCloseNieuw();
+  agRenderCalendar();
+  showToast('Afspraak verwijderd.');
+  try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
+}
+
 // ── INIT ──────────────────────────────────────────────
 (function init(){
   document.getElementById('modal-overlay').classList.remove('open');
@@ -2401,6 +2657,8 @@ async function removeUser(id,email){
 
   // Herstel lokale klanten backup
   try{const d=localStorage.getItem('blitz_klanten');if(d)klanten=JSON.parse(d);}catch{}
+  try{const d=localStorage.getItem('blitz_ag');if(d){agAfspraken=JSON.parse(d);agNextId=Math.max(1,...agAfspraken.map(a=>a.id||0))+1;}}catch{}
+  document.getElementById('ag-nieuw-overlay').addEventListener('click',function(e){if(e.target===this)agCloseNieuw();});
 
   // Probeer bestaande sessie te herstellen
   initSupabaseClient();
@@ -2495,6 +2753,7 @@ let b2cLeads=[];
 let b2cNextId=1;
 let b2cStatusFilter='alle';
 let b2cWarmteFilter='alle';
+let b2cRespFilter='alle';
 let b2cCalYear=new Date().getFullYear();
 let b2cCalMonth=new Date().getMonth();
 let b2cCalSelDag=null;
@@ -2542,17 +2801,25 @@ function b2cRenderStats(){
 }
 
 function b2cRenderPills(){
+  // Resp pills
+  const respEl=document.getElementById('b2c-pills-resp');
+  if(respEl){
+    const rNames=['alle',...new Set(b2cLeads.map(l=>l.resp).filter(Boolean))];
+    respEl.innerHTML=rNames.map(r=>`<button class="pill${r==='alle'?' all':''}${b2cRespFilter===r?' active':''}" onclick="b2cSetRespFilter('${r}')">${r==='alle'?'<i class="ti ti-users" style="font-size:12px;margin-right:3px"></i>Iedereen':r}</button>`).join('');
+  }
   const sp=['alle',...B2C_STATUSSEN];
   document.getElementById('b2c-pills-status').innerHTML=sp.map(s=>`<button class="pill${b2cStatusFilter===s?' active':''}" onclick="b2cSetStatusFilter('${s}')">${s==='alle'?'Alle':s}</button>`).join('');
   const wp=['alle',...B2C_WARMTES];
   document.getElementById('b2c-pills-warmte').innerHTML=wp.map(w=>`<button class="pill${b2cWarmteFilter===w?' active':''}" onclick="b2cSetWarmteFilter('${w}')">${w==='alle'?'Alle':w}</button>`).join('');
 }
 
+function b2cSetRespFilter(r){b2cRespFilter=r;b2cRenderLeads();}
 function b2cSetStatusFilter(s){b2cStatusFilter=s;b2cRenderLeads();}
 function b2cSetWarmteFilter(w){b2cWarmteFilter=w;b2cRenderLeads();}
 
 function b2cGetFiltered(){
   return b2cLeads.filter(l=>{
+    if(b2cRespFilter!=='alle'&&l.resp!==b2cRespFilter)return false;
     if(b2cStatusFilter!=='alle'&&l.status!==b2cStatusFilter)return false;
     if(b2cWarmteFilter!=='alle'&&l.warmte!==b2cWarmteFilter)return false;
     return true;
@@ -2956,7 +3223,18 @@ function b2cOpenNieuw(visitMode){
   document.getElementById('b2c-nieuw-titel').textContent=visitMode?'Nieuwe lead via visit':'Nieuwe lead aanmaken';
   document.getElementById('bn-visit-blok').style.display=visitMode?'block':'none';
   document.getElementById('bn-save-btn').innerHTML=visitMode?'<i class="ti ti-map-pin"></i> Lead + visit aanmaken':'<i class="ti ti-check"></i> Lead aanmaken';
-  if(visitMode)document.getElementById('bn-warmte').value='Warm';
+  // Reset alle velden
+  ['bn-voornaam','bn-achternaam','bn-tel','bn-email','bn-adres','bn-actie','bn-notities','bn-vdatum'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value=id==='bn-actie'?'Eerste contact opnemen':'';
+  });
+  const vuur=document.getElementById('bn-vuur');if(vuur)vuur.value='10:00';
+  const bron=document.getElementById('bn-bron');if(bron)bron.value='Website';
+  const warmte=document.getElementById('bn-warmte');if(warmte)warmte.value=visitMode?'Warm':'Lauw';
+  // Vul resp dropdown
+  const sel=document.getElementById('bn-resp');
+  if(sel){
+    sel.innerHTML='<option value="">— kies —</option>'+respNames().map(r=>`<option value="${r}">${r}</option>`).join('');
+  }
   document.getElementById('b2c-nieuw-overlay').classList.add('open');
 }
 
