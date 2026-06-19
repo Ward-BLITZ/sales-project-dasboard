@@ -2935,22 +2935,39 @@ function b2cRenderInfo(l){
     <div class="b2c-summary-grid">
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Status</div><div><span class="badge ${b2cBadgeSt(l.status)}">${l.status}</span></div></div>
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Warmte</div><div><span class="badge ${b2cBadgeW(l.warmte)}">${l.warmte}</span></div></div>
-      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Verantwoordelijke</div><div class="b2c-summary-val">${l.resp||'—'}</div></div>
+      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Verantwoordelijke</div>
+        <select onchange="b2cLeads.find(x=>x.id==${l.id}).resp=this.value;showToast('Opgeslagen')" style="font-size:12px;padding:3px 6px;width:auto">
+          <option value="">—</option>
+          ${respNames().map(r=>`<option value="${r}"${l.resp===r?' selected':''}>${r}</option>`).join('')}
+        </select>
+      </div>
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Visit</div><div class="b2c-summary-val">${l.visitDatum?(l.visitDatum+(l.visitUur?' om '+l.visitUur:'')):'Niet gepland'}</div></div>
     </div>
-    ${l.notities?`<div class="b2c-notitie"><i class="ti ti-note" style="margin-right:5px"></i>${l.notities}</div>`:''}
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1rem">
       <div>
-        <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Contactgegevens</div>
-        <div class="b2c-info-row"><span class="b2c-info-key"><i class="ti ti-phone" style="margin-right:4px"></i>Telefoon</span><span class="b2c-info-val">${l.tel||'—'}</span></div>
-        <div class="b2c-info-row"><span class="b2c-info-key"><i class="ti ti-mail" style="margin-right:4px"></i>E-mail</span><span class="b2c-info-val">${l.email||'—'}</span></div>
-        <div class="b2c-info-row"><span class="b2c-info-key"><i class="ti ti-map-pin" style="margin-right:4px"></i>Adres</span><span class="b2c-info-val">${l.adres||'—'}</span></div>
-        <div class="b2c-info-row"><span class="b2c-info-key"><i class="ti ti-source" style="margin-right:4px"></i>Bron</span><span class="b2c-info-val">${l.bron||'—'}</span></div>
+        <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Contactgegevens <button class="btn sm" onclick="b2cSaveContactInfo(${l.id})" style="margin-left:8px;font-size:11px"><i class="ti ti-check"></i> Opslaan</button></div>
+        <div class="field" style="margin-bottom:8px"><label>Voornaam</label><input id="bi-vnaam" value="${l.voornaam||''}" style="font-size:12px"></div>
+        <div class="field" style="margin-bottom:8px"><label>Achternaam</label><input id="bi-anaam" value="${l.achternaam||''}" style="font-size:12px"></div>
+        <div class="field" style="margin-bottom:8px"><label><i class="ti ti-phone" style="margin-right:4px"></i>Telefoon</label><input id="bi-tel" value="${l.tel||''}" type="tel" style="font-size:12px"></div>
+        <div class="field" style="margin-bottom:8px"><label><i class="ti ti-mail" style="margin-right:4px"></i>E-mail</label><input id="bi-email" value="${l.email||''}" type="email" style="font-size:12px"></div>
+        <div class="field" style="margin-bottom:8px"><label><i class="ti ti-map-pin" style="margin-right:4px"></i>Adres</label><input id="bi-adres" value="${l.adres||''}" style="font-size:12px"></div>
+        <div class="field" style="margin-bottom:8px"><label><i class="ti ti-source" style="margin-right:4px"></i>Bron</label>
+          <select id="bi-bron" style="font-size:12px">
+            ${['Website','Doorverwijzing','Social media','Beurs/event','Flyer','Google Ads','Telefonisch','Anders'].map(b=>`<option${l.bron===b?' selected':''}>${b}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:8px"><label>Warmte</label>
+          <select id="bi-warmte" style="font-size:12px">
+            ${B2C_WARMTES.map(w=>`<option${l.warmte===w?' selected':''}>${w}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:8px"><label>Notities</label><textarea id="bi-notities" rows="2" style="font-size:12px">${l.notities||''}</textarea></div>
       </div>
       <div>
-        <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Pipeline</div>
+        <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Pipeline</div>
         <div class="b2c-status-steps">${B2C_STATUSSEN.map(s=>`<button class="b2c-status-step${l.status===s?' current':''}" onclick="b2cChangeStatus(${l.id},'${s}')">${s}</button>`).join('')}</div>
-        <div class="field" style="margin-bottom:8px"><label>Volgende actie</label><input type="text" value="${l.actie||''}" onchange="b2cLeads.find(x=>x.id==${l.id}).actie=this.value;showToast('Opgeslagen')"></div>
+        <div class="field" style="margin-bottom:8px"><label>Volgende actie</label><input type="text" value="${l.actie||''}" onchange="b2cLeads.find(x=>x.id==${l.id}).actie=this.value;showToast('Opgeslagen')" style="font-size:12px"></div>
         ${!l.visitDatum
           ?`<button class="btn primary" style="width:100%;justify-content:center" onclick="b2cOpenVisitModal(${l.id})"><i class="ti ti-calendar-plus"></i> Visit inplannen</button>`
           :`<div style="background:rgba(0,223,163,.08);border:1px solid rgba(0,223,163,.3);border-radius:var(--r);padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between"><span><i class="ti ti-calendar-event" style="color:var(--green);margin-right:6px"></i><strong>${l.visitDatum}</strong>${l.visitUur?' om <strong>'+l.visitUur+'</strong>':''}</span><button class="btn sm" onclick="b2cOpenVisitModal(${l.id})"><i class="ti ti-edit"></i></button></div>`}
@@ -2966,6 +2983,24 @@ function b2cRenderInfo(l){
       <button class="btn primary" onclick="b2cLogActie(${l.id})"><i class="ti ti-plus"></i> Log</button>
     </div>
   `;
+}
+
+function b2cSaveContactInfo(id){
+  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  l.voornaam=document.getElementById('bi-vnaam').value.trim();
+  l.achternaam=document.getElementById('bi-anaam').value.trim();
+  l.tel=document.getElementById('bi-tel').value.trim();
+  l.email=document.getElementById('bi-email').value.trim();
+  l.adres=document.getElementById('bi-adres').value.trim();
+  l.bron=document.getElementById('bi-bron').value;
+  l.warmte=document.getElementById('bi-warmte').value;
+  l.notities=document.getElementById('bi-notities').value.trim();
+  l.acties=l.acties||[];
+  l.acties.push({datum:today(),tekst:'Contactgegevens bijgewerkt'});
+  showToast('Contactgegevens opgeslagen!');
+  b2cRenderLeads();
+  // Update modal titel
+  document.getElementById('b2c-detail-titel').textContent=b2cNaam(l);
 }
 
 function b2cChangeStatus(id,s){
@@ -3226,7 +3261,7 @@ function b2cRenderContract(l){
         <div style="font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Voorbeeld contract</div>
         <div class="contract-preview" id="ct-preview">Vul gegevens in en klik "Contract genereren".</div>
         <div id="ct-acties" style="display:none;margin-top:10px;display:flex;gap:8px">
-          <button class="btn primary" onclick="b2cDownloadContract(${l.id})"><i class="ti ti-download"></i> Download</button>
+          <button class="btn primary" onclick="b2cDownloadContract(${l.id})"><i class="ti ti-file-type-pdf"></i> Download PDF</button>
           <button class="btn" onclick="b2cCopyContract()"><i class="ti ti-copy"></i> Kopiëren</button>
         </div>
       </div>
@@ -3256,23 +3291,131 @@ function b2cGenereerContract(id){
   const pcode=document.getElementById('ct-pcode').value||'—';
   const poms=document.getElementById('ct-poms').value||'1x Blitz Power laadpaal';
   const faceplate=document.getElementById('ct-faceplate').value||'—';
-  const prijs=document.getElementById('ct-prijs').value||'—';
-  const btwPct=document.getElementById('ct-btw-pct').value;
+  const prijs=parseFloat(document.getElementById('ct-prijs').value)||0;
+  const btwPct=parseInt(document.getElementById('ct-btw-pct').value)||6;
   const opmerking=document.getElementById('ct-opmerkingen').value||'';
-  const d=new Date();const datumStr=d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
-  b2cContractTekst='AANKOOPCONTRACT - BLITZ POWER\n'+'═'.repeat(52)+'\n\nDATUM OVEREENKOMST: '+datumStr+'\n\n'+'ALGEMENE INFORMATIE\n'+'─'.repeat(52)+'\nVERKOPER                          KOPER\nNaam:    BLITZ POWER BV           Naam:    '+naam+'\nAdres:   Heirbaan 395,            Adres:   '+adres+'\n         9150 Kruibeke\nBTW:     BE 0768.661.454          (BTW):   '+btw+'\nEmail:   sales@blitzpower.com     Email:   '+email+'\nTel:     03/361 64 00             Tel:     '+tel+'\n\n'+'ARTIKEL 1: PRODUCTDETAILS\n'+'─'.repeat(52)+'\n  - 1x Blitz Power laadpaal\n\n    PRODUCTCODE:          '+pcode+'\n    PRODUCTOMSCHRIJVING:  '+poms+'\n    FACEPLATE:            '+faceplate+'\n\n  - 1x load balancing via P1-poort\n  - Installatie op muur (max 10m van kast & modem)\n\n'+'ARTIKEL 2: PRIJS & BETALING\n'+'─'.repeat(52)+'\nBetaling op: BE54 0689 4148 9097\n\n  - Bij ondertekening: 50% voorschot\n  - Dag van installatie: restbedrag\n\n'+(btwPct==='6'?'BTW 6% — privéwoning + 10 jaar, installatie door Blitz Power':btwPct==='0'?'B2B BTW Verlegd (0%)':'BTW 21% standaard')+'\n\nTOTAALPRIJS INCL BTW ('+btwPct+'%): € '+prijs+'\n\n'+'ARTIKEL 3: VOORWAARDEN\n'+'─'.repeat(52)+'\n  - Koper bezorgt screeningformulier inclusief foto\'s\n  - Betaling binnen 7 werkdagen na factuur\n  - Keuringsattest na 100% voldane factuur\n  - Aankoop enkel geldig voor installatieadres in contract\n'+(opmerking?'\n  Opmerkingen: '+opmerking+'\n':'')+'\n'+'ARTIKEL 4: ONDERTEKENINGEN\n'+'─'.repeat(52)+'\n\n  Voor Verkoper                    Voor Koper\n  Naam:  ___________________       Naam:  '+naam+'\n\n  Handtekening:                    Handtekening:\n\n\n  ___________________              ___________________\n';
-  document.getElementById('ct-preview').textContent=b2cContractTekst;
+  const d=new Date();
+  const datumStr=d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
+  const btwBedrag=(prijs*btwPct/100/(1+btwPct/100)).toFixed(2);
+  const exclBtw=(prijs-parseFloat(btwBedrag)).toFixed(2);
+
+  // Sla op voor preview
+  b2cContractTekst={naam,adres,btw,email,tel,pcode,poms,faceplate,prijs,btwPct,btwBedrag,exclBtw,opmerking,datumStr,leadId:id};
+
+  const prev=document.getElementById('ct-preview');
+  prev.innerHTML=`
+    <div style="font-family:'Inter',sans-serif;font-size:12px;line-height:1.6;color:#1D252D">
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:16px;font-weight:700;color:#00DFA3;letter-spacing:1px">BLITZ POWER BV</div>
+        <div style="font-size:11px;color:#666">Heirbaan 395 · 9150 Kruibeke · BE 0768.661.454</div>
+        <div style="font-size:11px;color:#666">sales@blitzpower.com · 03/361 64 00</div>
+        <div style="font-size:14px;font-weight:700;margin-top:8px;border-top:2px solid #00DFA3;border-bottom:2px solid #00DFA3;padding:4px 0">AANKOOPOVEREENKOMST</div>
+        <div style="font-size:11px;color:#666">Datum: ${datumStr}</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px">
+        <tr><td style="width:50%;vertical-align:top;padding-right:8px">
+          <strong style="font-size:11px;text-transform:uppercase;letter-spacing:.5px">VERKOPER</strong><br>
+          Blitz Power BV<br>Heirbaan 395, 9150 Kruibeke<br>BTW: BE 0768.661.454<br>sales@blitzpower.com<br>03/361 64 00
+        </td><td style="width:50%;vertical-align:top;border-left:1px solid #eee;padding-left:8px">
+          <strong style="font-size:11px;text-transform:uppercase;letter-spacing:.5px">KOPER</strong><br>
+          ${naam}<br>${adres}<br>BTW: ${btw}<br>${email}<br>${tel}
+        </td></tr>
+      </table>
+      <div style="background:#f8f8f8;padding:8px;border-radius:4px;margin-bottom:8px">
+        <strong style="font-size:11px;text-transform:uppercase">Artikel 1 — Product</strong>
+        <table style="width:100%;margin-top:4px;font-size:11px;border-collapse:collapse">
+          <tr style="background:#1D252D;color:#fff"><td style="padding:3px 6px">Code</td><td style="padding:3px 6px">Omschrijving</td><td style="padding:3px 6px">Faceplate</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:3px 6px">${pcode}</td><td style="padding:3px 6px">${poms}</td><td style="padding:3px 6px">${faceplate}</td></tr>
+        </table>
+        <div style="font-size:11px;margin-top:4px">Inclusief: 1x load balancing via P1-poort · Installatie op muur (max 10m van kast & modem)</div>
+      </div>
+      <div style="background:#f8f8f8;padding:8px;border-radius:4px;margin-bottom:8px">
+        <strong style="font-size:11px;text-transform:uppercase">Artikel 2 — Prijs & Betaling</strong>
+        <table style="width:100%;margin-top:4px;font-size:11px;border-collapse:collapse">
+          <tr><td>Excl. BTW (${btwPct}%)</td><td style="text-align:right">€ ${exclBtw}</td></tr>
+          <tr><td>BTW ${btwPct}%</td><td style="text-align:right">€ ${btwBedrag}</td></tr>
+          <tr style="font-weight:700;border-top:2px solid #1D252D"><td>TOTAAL incl. BTW</td><td style="text-align:right">€ ${prijs.toFixed(2)}</td></tr>
+        </table>
+        <div style="font-size:11px;margin-top:6px">Overschrijving op: <strong>BE54 0689 4148 9097</strong><br>• 50% voorschot bij ondertekening<br>• Restbedrag op dag van installatie</div>
+        <div style="font-size:10px;color:#666;margin-top:4px">${btwPct===6?'BTW 6% — privéwoning ouder dan 10 jaar, installatie door Blitz Power':btwPct===0?'B2B — BTW verlegd (0%)':'BTW 21% standaard'}</div>
+      </div>
+      <div style="background:#f8f8f8;padding:8px;border-radius:4px;margin-bottom:8px">
+        <strong style="font-size:11px;text-transform:uppercase">Artikel 3 — Voorwaarden</strong>
+        <ul style="font-size:11px;margin:4px 0 0 14px;line-height:1.7">
+          <li>Koper bezorgt ingevuld screeningformulier incl. foto's</li>
+          <li>Betaling binnen 7 werkdagen na ontvangst factuur</li>
+          <li>Keuringsattest wordt bezorgd na 100% voldane factuur</li>
+          <li>Aankoop is enkel geldig voor het installatieadres vermeld in dit contract</li>
+          ${opmerking?`<li>${opmerking}</li>`:''}
+        </ul>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;font-size:11px">
+        <div><strong>Voor Verkoper</strong><div style="margin-top:24px;border-top:1px solid #ccc">Naam &amp; handtekening Blitz Power BV</div></div>
+        <div><strong>Voor Koper</strong><div style="margin-top:4px;color:#666">${naam}</div><div style="margin-top:20px;border-top:1px solid #ccc">Datum &amp; handtekening</div></div>
+      </div>
+    </div>`;
   document.getElementById('ct-acties').style.display='flex';
   l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Contract gegenereerd'});
   showToast('Contract gegenereerd!');
 }
 
 function b2cDownloadContract(id){
-  const l=b2cLeads.find(x=>x.id===id);
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([b2cContractTekst],{type:'text/plain;charset=utf-8'}));
-  a.download='Contract_'+b2cNaam(l).replace(' ','_')+'_'+today()+'.txt';a.click();
+  const l=b2cLeads.find(x=>x.id===id);if(!l||!b2cContractTekst)return;
+  const c=b2cContractTekst;
+  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Contract '+c.naam+'</title><style>'+
+    'body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#1D252D;font-size:12px}'+
+    'h1{color:#00DFA3;font-size:18px;margin:0}'+
+    '.hdr{text-align:center;margin-bottom:16px;border-bottom:2px solid #00DFA3;padding-bottom:8px}'+
+    '.sub{font-size:11px;color:#666}'+
+    'table{width:100%;border-collapse:collapse}td{padding:4px 8px;vertical-align:top}'+
+    '.section{background:#f8f8f8;padding:10px;border-radius:4px;margin-bottom:10px}'+
+    '.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}'+
+    '.total-row{font-weight:700;border-top:2px solid #1D252D}'+
+    '.sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:16px}'+
+    '.sig-line{border-top:1px solid #ccc;margin-top:24px;font-size:11px;color:#666}'+
+    '@media print{body{padding:0;margin:0}button{display:none}}'+
+    '</style></head><body>'+
+    '<div class="hdr"><h1>BLITZ POWER BV</h1>'+
+    '<div class="sub">Heirbaan 395 · 9150 Kruibeke · BE 0768.661.454 · sales@blitzpower.com · 03/361 64 00</div>'+
+    '<div style="font-size:14px;font-weight:700;margin-top:6px">AANKOOPOVEREENKOMST</div>'+
+    '<div class="sub">Datum: '+c.datumStr+'</div></div>'+
+    '<table style="margin-bottom:12px"><tr>'+
+    '<td style="width:50%;border-right:1px solid #eee;padding-right:12px"><div style="font-weight:700;font-size:11px;text-transform:uppercase;margin-bottom:4px">VERKOPER</div>Blitz Power BV<br>Heirbaan 395, 9150 Kruibeke<br>BTW: BE 0768.661.454<br>sales@blitzpower.com<br>03/361 64 00</td>'+
+    '<td style="padding-left:12px"><div style="font-weight:700;font-size:11px;text-transform:uppercase;margin-bottom:4px">KOPER</div>'+c.naam+'<br>'+c.adres+'<br>BTW: '+c.btw+'<br>'+c.email+'<br>'+c.tel+'</td>'+
+    '</tr></table>'+
+    '<div class="section"><div class="section-title">Artikel 1 — Product</div>'+
+    '<table><tr style="background:#1D252D;color:#fff"><td>Code</td><td>Omschrijving</td><td>Faceplate</td></tr>'+
+    '<tr><td>'+c.pcode+'</td><td>'+c.poms+'</td><td>'+c.faceplate+'</td></tr></table>'+
+    '<div style="margin-top:6px;font-size:11px">Inclusief: 1x load balancing via P1-poort · Installatie op muur (max 10m van kast &amp; modem)</div></div>'+
+    '<div class="section"><div class="section-title">Artikel 2 — Prijs &amp; Betaling</div>'+
+    '<table><tr><td>Excl. BTW</td><td style="text-align:right">€ '+c.exclBtw+'</td></tr>'+
+    '<tr><td>BTW '+c.btwPct+'%</td><td style="text-align:right">€ '+c.btwBedrag+'</td></tr>'+
+    '<tr class="total-row"><td>TOTAAL incl. BTW</td><td style="text-align:right">€ '+c.prijs.toFixed(2)+'</td></tr></table>'+
+    '<div style="margin-top:8px;font-size:11px">Overschrijving op: <strong>BE54 0689 4148 9097</strong><br>• 50% voorschot bij ondertekening &nbsp;&nbsp;• Restbedrag op dag van installatie</div>'+
+    '<div style="font-size:10px;color:#666;margin-top:4px">'+(c.btwPct===6?'BTW 6% — privéwoning ouder dan 10 jaar, installatie door Blitz Power':c.btwPct===0?'B2B — BTW verlegd (0%)':'BTW 21% standaard')+'</div></div>'+
+    '<div class="section"><div class="section-title">Artikel 3 — Voorwaarden</div>'+
+    '<ul style="margin:0 0 0 14px;line-height:1.8;font-size:11px">'+
+    '<li>Koper bezorgt ingevuld screeningformulier inclusief foto\'s</li>'+
+    '<li>Betaling binnen 7 werkdagen na ontvangst factuur</li>'+
+    '<li>Keuringsattest wordt bezorgd na 100% voldane factuur</li>'+
+    '<li>Aankoop is enkel geldig voor het installatieadres vermeld in dit contract</li>'+
+    (c.opmerking?'<li>'+c.opmerking+'</li>':'')+
+    '</ul></div>'+
+    '<div class="sig-grid">'+
+    '<div><strong>Voor Verkoper</strong><div class="sig-line">Naam &amp; handtekening Blitz Power BV</div></div>'+
+    '<div><strong>Voor Koper</strong><div style="font-size:11px;color:#666;margin-top:2px">'+c.naam+'</div><div class="sig-line">Datum &amp; handtekening</div></div>'+
+    '</div>'+
+    '<script>window.onload=function(){window.print();}<\/script>'+
+    '</body></html>';
+
+  const w=window.open('','_blank','width=900,height=700');
+  w.document.write(html);
+  w.document.close();
 }
-function b2cCopyContract(){navigator.clipboard.writeText(b2cContractTekst).then(()=>showToast('Gekopieerd naar klembord!'));}
+function b2cCopyContract(){
+  const prev=document.getElementById('ct-preview');
+  if(prev)navigator.clipboard.writeText(prev.innerText).then(()=>showToast('Gekopieerd naar klembord!'));
+}
 
 // ─── NIEUW LEAD MODAL ───────────────────────────────
 function b2cOpenNieuw(visitMode){
