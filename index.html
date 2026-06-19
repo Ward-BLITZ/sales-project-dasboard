@@ -509,6 +509,21 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     </div>
     <button class="btn primary" style="margin-top:12px" onclick="connectSupabase()"><i class="ti ti-plug"></i> Verbinden</button>
   </div>
+
+  <!-- Service role key — altijd zichtbaar voor admin -->
+  <div style="background:rgba(163,45,45,.06);border:1px solid rgba(163,45,45,.25);border-radius:var(--rl);padding:1.25rem;margin-bottom:1.5rem" id="service-role-section">
+    <div style="font-family:'Poppins',sans-serif;font-size:14px;font-weight:600;margin-bottom:6px;color:#a32d2d"><i class="ti ti-key" style="margin-right:6px"></i>Service Role Key <span style="font-size:11px;font-weight:400;color:var(--tx3)">(enkel voor admin — nodig voor gebruikersbeheer)</span></div>
+    <p style="font-size:12px;color:var(--tx2);margin-bottom:10px">Vind je service_role key in Supabase → Settings → API Keys → tabblad "Legacy anon, service_role API keys".</p>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1">
+        <label>Service Role Key</label>
+        <input id="service-role-input" type="password" placeholder="eyJhbGci... (service_role)" autocomplete="off">
+      </div>
+      <button class="btn" style="flex-shrink:0;height:36px" onclick="toggleServiceKeyVisibility()"><i class="ti ti-eye" id="service-key-eye"></i></button>
+      <button class="btn primary" style="flex-shrink:0;height:36px" onclick="saveServiceRoleKey()"><i class="ti ti-check"></i> Opslaan</button>
+    </div>
+    <div id="service-role-status" style="font-size:12px;margin-top:8px;color:var(--tx3)"></div>
+  </div>
   <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600;margin-bottom:.5rem;margin-top:1.5rem">Verantwoordelijken</div>
   <p style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Teamleden die als verantwoordelijke kunnen worden aangeduid.</p>
   <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
@@ -1051,6 +1066,7 @@ function showTab(name){
   if(name==='verloren')renderVerloren();
   if(name==='crm'){loadKlanten().then(renderCrm);}
   if(name==='prospects')renderProspects();
+  if(name==='instellingen'){loadServiceRoleKeyField();}
   if(name==='gebruikers')loadGebruikers();
   if(name==='b2c'){b2cRenderLeads();}
   if(name==='agenda'){agRenderCalendar();agRenderAankomende();}
@@ -1153,6 +1169,44 @@ function connectSupabase(){
   if(!url||!key){showToast('Vul de Supabase URL en Key in.');return;}
   localStorage.setItem('blitz_sb',JSON.stringify({url,key}));
   startSupabase(url,key);
+}
+
+function saveServiceRoleKey(){
+  const key=document.getElementById('service-role-input').value.trim();
+  if(!key){showToast('Vul de service role key in.');return;}
+  // Sla op en herstart Supabase client met nieuwe key
+  const url=SUPABASE_URL;
+  localStorage.setItem('blitz_sb',JSON.stringify({url,key}));
+  // Reset client zodat hij herstart met nieuwe key
+  supabaseClient=null;
+  const ok=initSupabaseClient();
+  if(ok){
+    document.getElementById('service-role-status').innerHTML='<span style="color:#00805e"><i class="ti ti-check" style="margin-right:4px"></i>Service role key opgeslagen — gebruikersbeheer actief.</span>';
+    showToast('Service role key opgeslagen!');
+    // Herlaad gebruikerstab als die open is
+    if(document.getElementById('pane-gebruikers').style.display!=='none'){loadGebruikers();}
+  }else{
+    document.getElementById('service-role-status').innerHTML='<span style="color:#a32d2d">Kon niet verbinden — controleer de key.</span>';
+  }
+}
+
+function toggleServiceKeyVisibility(){
+  const inp=document.getElementById('service-role-input');
+  const eye=document.getElementById('service-key-eye');
+  if(inp.type==='password'){inp.type='text';eye.className='ti ti-eye-off';}
+  else{inp.type='password';eye.className='ti ti-eye';}
+}
+
+function loadServiceRoleKeyField(){
+  // Toon huidige key (gemaskeerd) als die al ingesteld is
+  const saved=JSON.parse(localStorage.getItem('blitz_sb')||'null');
+  const statusEl=document.getElementById('service-role-status');
+  if(!statusEl)return;
+  if(saved?.key&&saved.key!==SUPABASE_ANON_KEY){
+    statusEl.innerHTML='<span style="color:#00805e"><i class="ti ti-check" style="margin-right:4px"></i>Service role key actief.</span>';
+  }else{
+    statusEl.innerHTML='<span style="color:var(--tx3)">Nog geen service role key ingesteld.</span>';
+  }
 }
 
 function startSupabase(url,key){
@@ -2712,6 +2766,7 @@ function startAppAfterLogin(userNaam='', userEmail=''){
   window._pendingUserLink={naam:userNaam,email:userEmail};
 
   renderAll();renderResps();
+  b2cInitDemo(); // laad demo data als er nog geen b2c leads zijn
   checkAutoMove();
 
   // Admin start op dashboard, gebruiker op lopende projecten gefilterd op zichzelf
@@ -2766,8 +2821,9 @@ let b2cScreeningFotos=[];
 let b2cScreeningSelects={gevelbekleding:'',aansluiting:''};
 let b2cContractTekst='';
 
-// Demo data
-(function b2cInitDemo(){
+// Demo data - wordt aangeroepen vanuit init()
+function b2cInitDemo(){
+  if(b2cLeads.length>0)return; // al geladen
   b2cLeads=[
     {id:b2cNextId++,voornaam:'Jan',achternaam:'Vermeersch',tel:'0477 12 34 56',email:'jan.v@mail.be',adres:'Kapelstraat 12, 9000 Gent',bron:'Website',warmte:'Warm',status:'Visit gedaan',resp:'Sofie',actie:'Offerte opmaken',notities:'Geïnteresseerd in EV-lader, garage op zuiden.',visitDatum:'2026-06-12',visitUur:'10:00',
       screening:{digitale_meter:'JA',p1_bezet:'NEE',eigendom:'JA',vrije_route:'JA',gevelbekleding:'STEEN',afstand:'Ca. 8m',hoofdzekering:'40',aansluiting:'3-fase',vrije_ruimte:'JA',lan:'JA',vierg:'NEE',extra_werken:'NEE',opmerkingen:'Nette woning, geen obstakels.',fotos:[],datum:'2026-06-12'},
@@ -2781,7 +2837,7 @@ let b2cContractTekst='';
       screening:{digitale_meter:'JA',p1_bezet:'JA',eigendom:'JA',vrije_route:'JA',gevelbekleding:'STEEN',afstand:'Ca. 3m',hoofdzekering:'40',aansluiting:'1-fase',vrije_ruimte:'JA',lan:'JA',vierg:'JA',extra_werken:'JA',opmerkingen:'P1-splitter nodig.',fotos:[],datum:'2026-06-25'},
       acties:[{datum:'2026-05-10',tekst:'DM via Facebook'},{datum:'2026-06-25',tekst:'Visit gedaan'},{datum:'2026-06-28',tekst:'Contract getekend — Gewonnen!'}]},
   ];
-})();
+}
 
 // ─── HELPERS ────────────────────────────────────────
 function b2cNaam(l){return(l.voornaam+' '+l.achternaam).trim();}
