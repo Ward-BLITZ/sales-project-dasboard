@@ -2174,7 +2174,7 @@ function initSupabaseClient(){
   if(supabaseClient)return true;
   // Gebruik opgeslagen key (bv. service_role van admin) of anon key
   const saved=JSON.parse(localStorage.getItem('blitz_sb')||'null');
-  const key=saved?.key||(SUPABASE_ANON_KEY!=='JOUW_ANON_KEY_HIER'?SUPABASE_ANON_KEY:null);
+  const key=saved?.key||(SUPABASE_ANON_KEY!=='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoenRhcXV0em5hZnNncHJua3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTI2MjYsImV4cCI6MjA5NzI2ODYyNn0.n-ojVvnlm8x-g-O6WNoN8un67oR-yHMSlaJVuh_8caI'?SUPABASE_ANON_KEY:null);
   if(!key){return false;}
   try{
     supabaseClient=supabase.createClient(SUPABASE_URL,key);
