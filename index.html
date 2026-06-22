@@ -1994,10 +1994,22 @@ render();
     </div>
   </div>
   <div class="stats-bar" id="prospect-stats"></div>
-  <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
-    <input id="prospect-search" type="text" placeholder="Zoek op naam, project, contact..." oninput="renderProspects()" style="max-width:300px">
+  <div style="display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+    <input id="prospect-search" type="text" placeholder="Zoek op naam, project, postcode..." oninput="renderProspects()" style="max-width:260px">
+    <select id="prospect-sort" onchange="renderProspects()" style="font-size:13px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)">
+      <option value="">Sortering</option>
+      <option value="kans-hoog">Kans: hoog naar laag</option>
+      <option value="kans-laag">Kans: laag naar hoog</option>
+      <option value="postcode">Postcode</option>
+      <option value="naam">Naam A-Z</option>
+    </select>
+    <select id="prospect-filter-resp" onchange="renderProspects()" style="font-size:13px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)">
+      <option value="">Alle verantwoordelijken</option>
+    </select>
   </div>
-  <div class="prospect-hdr"><span>Naam / Bedrijf</span><span>Project</span><span>Kans</span><span>Contact</span><span>Contactgegevens</span><span></span></div>
+  <div style="display:grid;grid-template-columns:2fr 2fr 80px 80px 1.6fr 140px 50px;gap:10px;padding:6px 16px;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">
+    <span>Naam / Bedrijf</span><span>Project</span><span>Postcode</span><span>Kans</span><span>Contactpersoon</span><span>Verantwoordelijke</span><span></span>
+  </div>
   <div id="prospect-list"></div>
 </div>
 
@@ -2009,28 +2021,30 @@ render();
       <button class="modal-close" onclick="closeProspectModal()"><i class="ti ti-x"></i></button>
     </div>
     <div class="grid2">
-      <div class="field"><label>Naam prospect / bedrijf *</label><input id="pr-naam" placeholder="Colifac / Krea"></div>
-      <div class="field"><label>Project omschrijving</label><input id="pr-project" placeholder="bv. laadpalen op de parking"></div>
+      <div class="field"><label>Naam prospect / bedrijf *</label><input id="pr-naam" placeholder="Colifac NV"></div>
+      <div class="field"><label>Bedrijf achter bedrijf</label><input id="pr-bedrijf" placeholder="bv. Monikids NV / BE0424.707.471"></div>
     </div>
+    <div class="field"><label>Project / omschrijving</label><input id="pr-project" placeholder="bv. 8 laadpunten op de parking"></div>
     <div class="grid2">
-      <div class="field"><label>Postcode</label><input id="pr-postcode" placeholder="9000" type="text"></div>
-      <div class="field">
-        <label>Kans op succes</label>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
-          <input type="range" id="pr-kans" min="0" max="1" step="0.1" value="0.5" oninput="document.getElementById('pr-kans-lbl').textContent=Math.round(this.value*100)+'%'">
-          <span id="pr-kans-lbl" style="font-weight:700;min-width:36px">50%</span>
-        </div>
+      <div class="field"><label>Postcode</label><input id="pr-postcode" placeholder="9000" type="text" style="max-width:120px"></div>
+      <div class="field"><label>Verantwoordelijke</label><select id="pr-resp"><option value="">-- kies --</option></select></div>
+    </div>
+    <div class="field">
+      <label>Slagingskans</label>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+        <input type="range" id="pr-kans" min="0" max="100" step="10" value="50" oninput="document.getElementById('pr-kans-lbl').textContent=this.value+'%';document.getElementById('pr-kans-bar').style.width=this.value+'%';document.getElementById('pr-kans-bar').style.background=prKansColor(this.value)" style="flex:1;accent-color:var(--green)">
+        <span id="pr-kans-lbl" style="font-family:'Poppins',sans-serif;font-weight:700;font-size:16px;min-width:48px">50%</span>
       </div>
+      <div style="background:var(--bg3);border-radius:20px;height:6px;overflow:hidden;margin-top:4px"><div id="pr-kans-bar" style="height:100%;width:50%;background:#f59e0b;border-radius:20px;transition:all .2s"></div></div>
     </div>
-    <div class="field"><label>Contactpersoon(en)</label><textarea id="pr-contact" rows="2" placeholder="Pieter Van Den Poel&#10;Carl Van Den Poel"></textarea></div>
-    <div class="grid2">
-      <div class="field"><label>Rol contact</label><textarea id="pr-rol" rows="2" placeholder="Zaakvoerder&#10;CEO"></textarea></div>
-      <div class="field"><label>Contactgegevens</label><textarea id="pr-contactinfo" rows="2" placeholder="03 760 18 53&#10;0476 38 74 74"></textarea></div>
+    <div style="font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px;display:flex;align-items:center;justify-content:space-between">
+      <span><i class="ti ti-users" style="margin-right:6px"></i>Contactpersonen</span>
+      <button class="btn sm" onclick="prAddContactRow()"><i class="ti ti-plus"></i> Toevoegen</button>
     </div>
-    <div class="field"><label>Bedrijf achter bedrijf (moedermaatschappij, BTW...)</label><input id="pr-bedrijf" placeholder="bv. Monikids NV / BE0424.707.471"></div>
-    <div class="field"><label>Notities</label><textarea id="pr-notities" rows="2" placeholder="Extra info..."></textarea></div>
+    <div id="pr-contacts-list"></div>
+    <div class="field" style="margin-top:12px"><label>Notities</label><textarea id="pr-notities" rows="2" placeholder="Extra info..."></textarea></div>
     <div class="modal-footer">
-      <button class="btn danger" id="pr-del-btn" style="display:none;margin-right:auto" onclick="deleteProspect()"><i class="ti ti-trash"></i></button>
+      <button class="btn danger" id="pr-del-btn" style="display:none;margin-right:auto" onclick="deleteProspect()"><i class="ti ti-trash"></i> Verwijderen</button>
       <button class="btn" onclick="closeProspectModal()">Annuleren</button>
       <button class="btn primary" onclick="saveProspect()"><i class="ti ti-check"></i> Opslaan</button>
     </div>
@@ -3652,41 +3666,102 @@ function tlChangeDatum(idx,val){if(currentTijdlijn[idx])currentTijdlijn[idx].dat
 // ══════════════════════════════════════════════
 // PROSPECTS (B2B)
 // ══════════════════════════════════════════════
+// ── HELPERS PROSPECTS ────────────────────────────────
+function prKansColor(val){
+  const v=parseInt(val);
+  if(v>=70)return'var(--green)';
+  if(v>=40)return'#f59e0b';
+  return'#ef4444';
+}
+
+function prAddContactRow(contact={}){
+  const list=document.getElementById('pr-contacts-list');
+  const idx=list.children.length;
+  const row=document.createElement('div');
+  row.className='pr-contact-row';
+  row.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr 1fr 32px;gap:8px;margin-bottom:8px;align-items:end';
+  row.innerHTML=`
+    <div><label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:3px">Naam</label><input placeholder="Jan Janssen" value="${contact.naam||''}"></div>
+    <div><label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:3px">Rol</label><input placeholder="Zaakvoerder" value="${contact.rol||''}"></div>
+    <div><label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:3px">Telefoon</label><input type="tel" placeholder="0499 123 456" value="${contact.tel||''}"></div>
+    <div><label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:3px">E-mail</label><input type="email" placeholder="jan@bedrijf.be" value="${contact.email||''}"></div>
+    <button class="btn sm danger" onclick="this.parentElement.remove()" style="height:34px;margin-top:auto"><i class="ti ti-x"></i></button>`;
+  list.appendChild(row);
+}
+
+function prGetContacts(){
+  const rows=document.querySelectorAll('#pr-contacts-list .pr-contact-row');
+  return Array.from(rows).map(row=>{
+    const inputs=row.querySelectorAll('input');
+    return{naam:inputs[0].value.trim(),rol:inputs[1].value.trim(),tel:inputs[2].value.trim(),email:inputs[3].value.trim()};
+  }).filter(c=>c.naam||c.tel||c.email);
+}
+
 function renderProspects(){
   const q=(document.getElementById('prospect-search')?.value||'').toLowerCase();
+  const sort=document.getElementById('prospect-sort')?.value||'';
+  const filterResp=document.getElementById('prospect-filter-resp')?.value||'';
+
+  // Update resp filter dropdown
+  const respSel=document.getElementById('prospect-filter-resp');
+  if(respSel){
+    const cur=respSel.value;
+    const rNames=[...new Set(prospects.map(p=>p.resp).filter(Boolean))];
+    respSel.innerHTML='<option value="">Alle verantwoordelijken</option>'+rNames.map(r=>`<option value="${r}"${r===cur?' selected':''}>${r}</option>`).join('');
+  }
+
   let list=prospects.filter(p=>{
+    if(filterResp&&p.resp!==filterResp)return false;
     if(!q)return true;
-    return (p.naam||'').toLowerCase().includes(q)
+    const contacts=(p.contacten||[]).map(c=>c.naam+' '+c.tel+' '+c.email).join(' ');
+    return(p.naam||'').toLowerCase().includes(q)
       ||(p.project||'').toLowerCase().includes(q)
-      ||(p.contact||'').toLowerCase().includes(q);
+      ||(p.postcode||'').toLowerCase().includes(q)
+      ||(p.bedrijf||'').toLowerCase().includes(q)
+      ||contacts.toLowerCase().includes(q);
   });
+
+  // Sortering
+  if(sort==='kans-hoog')list=[...list].sort((a,b)=>(parseInt(b.kans)||0)-(parseInt(a.kans)||0));
+  else if(sort==='kans-laag')list=[...list].sort((a,b)=>(parseInt(a.kans)||0)-(parseInt(b.kans)||0));
+  else if(sort==='postcode')list=[...list].sort((a,b)=>(a.postcode||'').localeCompare(b.postcode||''));
+  else if(sort==='naam')list=[...list].sort((a,b)=>(a.naam||'').localeCompare(b.naam||''));
+
   // Stats
   const statsEl=document.getElementById('prospect-stats');
   if(statsEl){
-    const totaal=prospects.length;
-    const gemKans=totaal?Math.round(prospects.reduce((a,p)=>a+(parseFloat(p.kans)||0),0)/totaal*100):0;
+    const totKans=prospects.reduce((a,p)=>a+(parseInt(p.kans)||0),0);
+    const gem=prospects.length?Math.round(totKans/prospects.length):0;
     statsEl.innerHTML=`
-      <div class="stat-card"><div class="stat-label">Prospects</div><div class="stat-value">${totaal}</div></div>
-      <div class="stat-card"><div class="stat-label">Gem. kans</div><div class="stat-value">${gemKans}%</div></div>
-    `;
+      <div class="stat-card"><div class="stat-label">Prospects</div><div class="stat-value">${prospects.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Gem. slagingskans</div><div class="stat-value">${gem}%</div></div>
+      <div class="stat-card"><div class="stat-label">Zichtbaar</div><div class="stat-value">${list.length}</div></div>`;
   }
+
   const el=document.getElementById('prospect-list');if(!el)return;
   if(!list.length){el.innerHTML='<div class="empty-state"><i class="ti ti-target"></i>Geen prospects gevonden.</div>';return;}
+
   el.innerHTML=list.map(p=>{
-    const kans=parseFloat(p.kans)||0;
-    const kansColor=kans>=0.7?'var(--green)':kans>=0.4?'#f59e0b':'#ef4444';
-    return `<div class="prospect-row" onclick="openProspectModal('${p.id}')">
+    const kans=parseInt(p.kans)||0;
+    const col=prKansColor(kans);
+    const eersteContact=(p.contacten&&p.contacten.length>0)?p.contacten[0]:null;
+    const contactHtml=eersteContact
+      ?`<div style="font-size:12px;font-weight:500">${eersteContact.naam||''}</div><div style="font-size:11px;color:var(--tx3)">${eersteContact.rol||''}</div><div style="font-size:11px;color:var(--tx3)">${eersteContact.tel||eersteContact.email||''}</div>`
+      :'<span style="color:var(--tx3);font-size:12px">—</span>';
+    const extraContacts=p.contacten&&p.contacten.length>1?`<span style="font-size:10px;background:var(--bg3);padding:1px 6px;border-radius:10px;color:var(--tx3)">+${p.contacten.length-1} meer</span>`:'';
+    return`<div style="display:grid;grid-template-columns:2fr 2fr 80px 80px 1.6fr 140px 50px;gap:10px;align-items:center;padding:12px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:8px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--bd)'" onclick="openProspectModal('${p.id}')">
       <div>
         <div style="font-weight:600;font-size:13px">${p.naam||''}</div>
         <div style="font-size:11px;color:var(--tx3)">${p.bedrijf||''}</div>
       </div>
-      <div style="font-size:12px;color:var(--tx2)">${p.project||''} ${p.postcode?'('+p.postcode+')':''}</div>
+      <div style="font-size:12px;color:var(--tx2)">${p.project||''}</div>
+      <div style="font-size:12px;color:var(--tx2)">${p.postcode||'—'}</div>
       <div>
-        <div style="font-size:12px;font-weight:700;color:${kansColor}">${Math.round(kans*100)}%</div>
-        <div class="kans-bar-wrap" style="margin-top:4px"><div class="kans-bar" style="width:${kans*100}%;background:${kansColor}"></div></div>
+        <div style="font-size:13px;font-weight:700;color:${col}">${kans}%</div>
+        <div style="background:var(--bg3);border-radius:20px;height:5px;overflow:hidden;margin-top:3px"><div style="width:${kans}%;height:100%;background:${col};border-radius:20px"></div></div>
       </div>
-      <div style="font-size:11px;color:var(--tx2)">${(p.contact||'').split('\n')[0]||''}</div>
-      <div style="font-size:11px;color:var(--tx2)">${(p.contactinfo||'').split('\n')[0]||''}</div>
+      <div>${contactHtml}${extraContacts}</div>
+      <div style="font-size:12px;color:var(--tx2)">${p.resp||'—'}</div>
       <div><button class="btn sm" onclick="event.stopPropagation();openProspectModal('${p.id}')"><i class="ti ti-edit"></i></button></div>
     </div>`;
   }).join('');
@@ -3696,26 +3771,41 @@ function openProspectModal(id){
   editingProspectId=id||null;
   const p=id?prospects.find(x=>x.id===id):null;
   document.getElementById('prospect-modal-title').textContent=p?'Prospect bewerken':'Nieuwe prospect';
+
+  // Vul resp dropdown
+  const respSel=document.getElementById('pr-resp');
+  respSel.innerHTML='<option value="">— kies —</option>'+respNames().map(r=>`<option value="${r}">${r}</option>`).join('');
+
   if(p){
     document.getElementById('pr-naam').value=p.naam||'';
     document.getElementById('pr-project').value=p.project||'';
     document.getElementById('pr-postcode').value=p.postcode||'';
-    document.getElementById('pr-kans').value=p.kans||0.5;
-    document.getElementById('pr-kans-lbl').textContent=Math.round((p.kans||0.5)*100)+'%';
-    document.getElementById('pr-contact').value=p.contact||'';
-    document.getElementById('pr-rol').value=p.rol||'';
-    document.getElementById('pr-contactinfo').value=p.contactinfo||'';
     document.getElementById('pr-bedrijf').value=p.bedrijf||'';
     document.getElementById('pr-notities').value=p.notities||'';
+    document.getElementById('pr-resp').value=p.resp||'';
+    const kans=parseInt(p.kans)||50;
+    document.getElementById('pr-kans').value=kans;
+    document.getElementById('pr-kans-lbl').textContent=kans+'%';
+    document.getElementById('pr-kans-bar').style.width=kans+'%';
+    document.getElementById('pr-kans-bar').style.background=prKansColor(kans);
+    // Contacten
+    document.getElementById('pr-contacts-list').innerHTML='';
+    (p.contacten||[]).forEach(c=>prAddContactRow(c));
     document.getElementById('pr-del-btn').style.display='inline-flex';
   }else{
-    ['pr-naam','pr-project','pr-postcode','pr-contact','pr-rol','pr-contactinfo','pr-bedrijf','pr-notities'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('pr-kans').value=0.5;
+    ['pr-naam','pr-project','pr-postcode','pr-bedrijf','pr-notities'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('pr-resp').value='';
+    document.getElementById('pr-kans').value=50;
     document.getElementById('pr-kans-lbl').textContent='50%';
+    document.getElementById('pr-kans-bar').style.width='50%';
+    document.getElementById('pr-kans-bar').style.background='#f59e0b';
+    document.getElementById('pr-contacts-list').innerHTML='';
+    prAddContactRow(); // altijd 1 lege rij
     document.getElementById('pr-del-btn').style.display='none';
   }
   document.getElementById('prospect-modal').classList.add('open');
 }
+
 function closeProspectModal(){document.getElementById('prospect-modal').classList.remove('open');editingProspectId=null;}
 
 async function saveProspect(){
@@ -3726,18 +3816,16 @@ async function saveProspect(){
     naam,
     project:document.getElementById('pr-project').value.trim(),
     postcode:document.getElementById('pr-postcode').value.trim(),
-    kans:parseFloat(document.getElementById('pr-kans').value)||0.5,
-    contact:document.getElementById('pr-contact').value.trim(),
-    rol:document.getElementById('pr-rol').value.trim(),
-    contactinfo:document.getElementById('pr-contactinfo').value.trim(),
     bedrijf:document.getElementById('pr-bedrijf').value.trim(),
+    resp:document.getElementById('pr-resp').value,
+    kans:parseInt(document.getElementById('pr-kans').value)||50,
+    contacten:prGetContacts(),
     notities:document.getElementById('pr-notities').value.trim(),
     updatedAt:new Date().toISOString()
   };
   if(editingProspectId){const i=prospects.findIndex(x=>x.id===editingProspectId);if(i>-1)prospects[i]=p;else prospects.push(p);}
   else{prospects.push(p);}
   closeProspectModal();renderProspects();showToast('Prospect opgeslagen.');
-  // Save to Supabase settings
   try{await sbSaveProspects();}catch(e){console.warn('Prospect save fout:',e);}
 }
 
