@@ -231,9 +231,9 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .leads-tabel{background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden}
 .leads-hdr{display:grid;grid-template-columns:2fr 1.3fr 1fr .9fr 1fr 1.2fr 90px;gap:10px;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--bd);font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px}
 /* B2C KANBAN */
-.b2c-kanban{display:flex;gap:10px;overflow-x:auto;padding-bottom:1rem;min-height:calc(100vh - 230px);align-items:flex-start}
+.b2c-kanban{display:flex;gap:14px;padding-bottom:1rem;min-height:calc(100vh - 220px);align-items:flex-start}
 .b2c-kanban::-webkit-scrollbar{height:6px}.b2c-kanban::-webkit-scrollbar-thumb{background:var(--gray);border-radius:3px}
-.b2c-kol{flex:0 0 210px;min-height:calc(100vh - 260px);background:var(--bg2);border-radius:var(--rl);padding:10px;display:flex;flex-direction:column}
+.b2c-kol{flex:0 0 220px;min-height:calc(100vh - 260px);background:var(--bg2);border-radius:var(--rl);padding:10px;display:flex;flex-direction:column}
 .b2c-kol-hdr{padding:8px 4px 10px;margin-bottom:4px;border-bottom:2px solid var(--bd)}
 .b2c-kol-title{font-family:'Poppins',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx2)}
 .b2c-kol-count{display:inline-block;background:var(--bg3);color:var(--tx3);font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;margin-left:6px}
@@ -423,7 +423,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 </div>
 
 <!-- DASHBOARD -->
-<div id="pane-dashboard" class="page">
+<div id="pane-dashboard" class="page" style="display:none">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
     <div>
       <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600;margin-bottom:4px">Projecten overzicht</div>
@@ -576,7 +576,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 <!-- B2C LEADS -->
-<div id="pane-b2c" class="page" style="display:none">
+<div id="pane-b2c" class="page wide" style="display:none">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
     <div>
       <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px">B2C — Leads & Opvolging</div>
@@ -605,7 +605,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="btn primary" onclick="b2cOpenNieuw(true)"><i class="ti ti-map-pin"></i> Lead via visit</button>
     </div>
   </div>
-  <div style="display:flex;gap:16px;align-items:flex-start">
+  <div style="display:flex;gap:16px;align-items:flex-start;max-width:1600px;margin:0 auto">
     <div style="flex:1;min-width:0;overflow-x:auto">
       <div id="b2c-kanban-board" class="b2c-kanban"></div>
     </div>
@@ -694,7 +694,8 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 <!-- AGENDA -->
-<div id="pane-agenda" class="page" style="display:none;max-width:1200px">
+<div id="pane-agenda" class="page">
+<div style="max-width:1200px;margin:0 auto">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
     <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700">Agenda</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -2641,7 +2642,7 @@ function agGetFiltered(){
 function agUpdateRespDropdown(){
   const sel=document.getElementById('ag-resp-filter');if(!sel)return;
   const names=respNames();
-  const userNaam=currentUser?.user_metadata?.naam||'';
+  const userNaam=(currentUser&&currentUser.user_metadata&&currentUser.user_metadata.naam)||'';
   const sorted=[...names].sort((a,b)=>{
     if(a===userNaam)return -1;if(b===userNaam)return 1;return a.localeCompare(b);
   });
@@ -3170,7 +3171,7 @@ function b2cVlSetResp(r){b2cVlRespFilter=r;b2cRenderVerloren();}
 function b2cHeractiveer(id){
   const l=b2cLeads.find(x=>x.id===id);if(!l)return;
   if(!confirm(`"${b2cNaam(l)}" terugzetten naar actieve leads?`))return;
-  l.status='Gecontacteerd';
+  l.status='1e contactpoging';
   l.acties=l.acties||[];
   l.acties.push({datum:today(),tekst:'Teruggezet naar actieve leads'});
   b2cRenderLeads();b2cRenderGewonnen();b2cRenderVerloren();
