@@ -319,12 +319,8 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .tl-item:hover .tl-del{opacity:1}
 .tl-del:hover{color:#a32d2d}
 /* PROSPECTS */
-.prospect-row{display:grid;grid-template-columns:2fr 2fr 80px 100px 120px 80px;gap:12px;align-items:center;padding:12px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:8px;cursor:pointer;transition:border-color .15s}
-.prospect-row:hover{border-color:var(--green)}
-.prospect-hdr{display:grid;grid-template-columns:2fr 2fr 80px 100px 120px 80px;gap:12px;padding:6px 16px;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .kans-bar-wrap{background:var(--bg3);border-radius:20px;height:8px;overflow:hidden;width:100%}
 .kans-bar{height:100%;border-radius:20px;background:var(--green)}
-@media(max-width:700px){.prospect-row,.prospect-hdr{grid-template-columns:1fr 1fr}}
 
 </style>
 </head>
@@ -382,14 +378,15 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 <div class="tabs" id="main-tabs" style="display:none">
   <span style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px 0 4px;align-self:center;white-space:nowrap">B2C</span>
   <button class="tab-btn active" id="tab-b2c" onclick="showTab('b2c')"><i class="ti ti-users"></i> Leads & Opvolging</button>
-  <button class="tab-btn" id="tab-agenda" onclick="showTab('agenda')"><i class="ti ti-calendar"></i> Agenda</button>
+  <button class="tab-btn" id="tab-b2c-gewonnen" onclick="showTab('b2c-gewonnen')"><i class="ti ti-trophy" style="color:#639922"></i> Gewonnen</button>
+  <button class="tab-btn" id="tab-b2c-verloren" onclick="showTab('b2c-verloren')"><i class="ti ti-x" style="color:#a32d2d"></i> Verloren</button>
   <span style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px;align-self:center;border-left:1px solid var(--bd);margin-left:4px;white-space:nowrap">B2B</span>
   <button class="tab-btn" id="tab-dashboard" onclick="showTab('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
   <button class="tab-btn" id="tab-lopend" onclick="showTab('lopend')"><i class="ti ti-briefcase"></i> Projecten</button>
-  <button class="tab-btn" id="tab-prospects" onclick="showTab('prospects')"><i class="ti ti-target"></i> Prospects</button>
   <button class="tab-btn" id="tab-verkocht" onclick="showTab('verkocht')"><i class="ti ti-trophy"></i> Verkocht</button>
   <button class="tab-btn" id="tab-verloren" onclick="showTab('verloren')"><i class="ti ti-x"></i> Verloren</button>
   <span style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px;align-self:center;border-left:1px solid var(--bd);margin-left:4px;white-space:nowrap">Beheer</span>
+  <button class="tab-btn" id="tab-agenda" onclick="showTab('agenda')"><i class="ti ti-calendar"></i> Agenda</button>
   <button class="tab-btn" id="tab-crm" onclick="showTab('crm')"><i class="ti ti-building"></i> CRM</button>
   <button class="tab-btn" id="tab-instellingen" onclick="showTab('instellingen')"><i class="ti ti-settings"></i> Instellingen</button>
   <button class="tab-btn" id="tab-gebruikers" onclick="showTab('gebruikers')" style="display:none"><i class="ti ti-users"></i> Gebruikers</button>
@@ -569,12 +566,14 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     </div>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
-    <div class="filter-bar" style="margin:0;flex:1;flex-wrap:wrap;gap:8px">
-      <span class="filter-label"><i class="ti ti-user-circle" style="margin-right:4px"></i>Verantwoordelijke:</span>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1">
+      <!-- Resp pills -->
       <div class="pills" id="b2c-pills-resp"></div>
-      <span class="filter-label" style="margin-left:6px"><i class="ti ti-filter" style="margin-right:4px"></i>Status:</span>
-      <div class="pills" id="b2c-pills-status"></div>
-      <span class="filter-label" style="margin-left:6px">Warmte:</span>
+      <!-- Status dropdown -->
+      <select id="b2c-select-status" onchange="b2cSetStatusFilter(this.value)" style="font-size:12px;padding:5px 10px;border:1px solid var(--bd);border-radius:20px;background:var(--bg);color:var(--tx);cursor:pointer">
+        <option value="alle">Alle statussen</option>
+      </select>
+      <!-- Warmte pills -->
       <div class="pills" id="b2c-pills-warmte"></div>
     </div>
     <div style="display:flex;gap:8px;flex-shrink:0">
@@ -590,18 +589,61 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   </div>
 </div>
 
+<!-- B2C GEWONNEN -->
+<div id="pane-b2c-gewonnen" class="page" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
+    <div>
+      <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px">B2C — Gewonnen leads</div>
+      <div style="font-size:12px;color:var(--tx2)">Leads met status "Gewonnen"</div>
+    </div>
+    <div class="stats-bar" style="margin:0" id="b2c-gew-stats"></div>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+    <div class="pills" id="b2c-gew-pills-resp"></div>
+    <select id="b2c-gew-maand" onchange="b2cRenderGewonnen()" style="font-size:12px;padding:5px 10px;border:1px solid var(--bd);border-radius:20px;background:var(--bg);color:var(--tx)">
+      <option value="">Alle maanden</option>
+    </select>
+  </div>
+  <div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr 120px;gap:10px;padding:6px 16px;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">
+    <span>Klant</span><span>Adres</span><span>Verantwoordelijke</span><span>Datum</span><span></span>
+  </div>
+  <div id="b2c-gew-list"></div>
+</div>
+
+<!-- B2C VERLOREN -->
+<div id="pane-b2c-verloren" class="page" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
+    <div>
+      <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px">B2C — Verloren leads</div>
+      <div style="font-size:12px;color:var(--tx2)">Leads met status "Verloren"</div>
+    </div>
+    <div class="stats-bar" style="margin:0" id="b2c-vl-stats"></div>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+    <div class="pills" id="b2c-vl-pills-resp"></div>
+    <select id="b2c-vl-maand" onchange="b2cRenderVerloren()" style="font-size:12px;padding:5px 10px;border:1px solid var(--bd);border-radius:20px;background:var(--bg);color:var(--tx)">
+      <option value="">Alle maanden</option>
+    </select>
+  </div>
+  <div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr 120px;gap:10px;padding:6px 16px;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">
+    <span>Klant</span><span>Adres</span><span>Verantwoordelijke</span><span>Datum</span><span></span>
+  </div>
+  <div id="b2c-vl-list"></div>
+</div>
+
 <!-- AGENDA -->
 <div id="pane-agenda" class="page" style="display:none;max-width:1200px">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
     <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700">Agenda</div>
-    <button class="btn primary" onclick="agOpenNieuw()"><i class="ti ti-plus"></i> Afspraak toevoegen</button>
-  </div>
-  <!-- Filters -->
-  <div class="filter-bar" style="margin-bottom:1rem;flex-wrap:wrap;gap:8px">
-    <span class="filter-label"><i class="ti ti-user-circle" style="margin-right:4px"></i>Verantwoordelijke:</span>
-    <div class="pills" id="ag-pills-resp"></div>
-    <span class="filter-label" style="margin-left:8px"><i class="ti ti-filter" style="margin-right:4px"></i>Type:</span>
-    <div class="pills" id="ag-pills-type"></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <!-- Verantwoordelijke dropdown - ingelogde gebruiker eerst -->
+      <select id="ag-resp-filter" onchange="agSetRespFilter(this.value)" style="font-size:13px;padding:7px 12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-weight:500">
+        <option value="alle">Iedereen</option>
+      </select>
+      <!-- Type filter pills -->
+      <div class="pills" id="ag-pills-type"></div>
+      <button class="btn primary" onclick="agOpenNieuw()"><i class="ti ti-plus"></i> Afspraak toevoegen</button>
+    </div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
     <!-- Kalender -->
@@ -876,7 +918,11 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   <div class="modal-box" style="max-width:880px">
     <div class="modal-header">
       <span class="modal-title" id="b2c-detail-titel">Klantdossier</span>
-      <button class="modal-close" onclick="b2cCloseDetail()"><i class="ti ti-x"></i></button>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        <button class="btn sm" style="color:#639922;border-color:rgba(99,153,34,.3)" onclick="b2cMarkeerStatus('Gewonnen')" title="Markeer als Gewonnen"><i class="ti ti-trophy"></i> Gewonnen</button>
+        <button class="btn sm" style="color:#a32d2d;border-color:rgba(163,45,45,.3)" onclick="b2cMarkeerStatus('Verloren')" title="Markeer als Verloren"><i class="ti ti-x"></i> Verloren</button>
+        <button class="modal-close" onclick="b2cCloseDetail()"><i class="ti ti-x"></i></button>
+      </div>
     </div>
     <div class="inner-tabs">
       <button class="inner-tab active" id="b2c-dtab-info" onclick="b2cShowDetailTab('info')"><i class="ti ti-info-circle" style="margin-right:5px"></i>Algemene info</button>
@@ -1077,19 +1123,21 @@ function respNames(){return resps.map(r=>typeof r==='string'?r:r.naam);}
 
 // ── TABS ──────────────────────────────────────────────
 function showTab(name){
-  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','agenda'].forEach(id=>{
-    document.getElementById('pane-'+id).style.display=(id===name)?'block':'none';
+  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda'].forEach(id=>{
+    const pane=document.getElementById('pane-'+id);
+    if(pane)pane.style.display=(id===name)?'block':'none';
     const tb=document.getElementById('tab-'+id);
     if(tb)tb.classList.toggle('active',id===name);
   });
   if(name==='verkocht')renderVerkocht();
   if(name==='verloren')renderVerloren();
   if(name==='crm'){loadKlanten().then(renderCrm);}
-  if(name==='prospects')renderProspects();
   if(name==='instellingen'){loadServiceRoleKeyField();}
   if(name==='gebruikers')loadGebruikers();
-  if(name==='b2c'){b2cRenderLeads();}
-  if(name==='agenda'){agRenderCalendar();agRenderAankomende();}
+  if(name==='b2c')b2cRenderLeads();
+  if(name==='b2c-gewonnen')b2cRenderGewonnen();
+  if(name==='b2c-verloren')b2cRenderVerloren();
+  if(name==='agenda'){agUpdateRespDropdown();agRenderCalendar();agRenderAankomende();}
 }
 
 // ── DB STATUS ─────────────────────────────────────────
@@ -1135,7 +1183,6 @@ async function loadAll(){
   setDbStatus('ok','verbonden');
   document.getElementById('db-setup-card').style.display='none';
   await loadKlanten();
-  await loadProspects();
   renderAll();renderResps();pushToTV();
 
   // Koppel ingelogde gebruiker aan verantwoordelijke na data laden
@@ -1983,74 +2030,6 @@ setInterval(()=>{const now=new Date();document.getElementById('clk').textContent
 setInterval(()=>nextPage(),60000);
 render();
 <\/script>
-<!-- PROSPECTS PANE (B2B) -->
-<div id="pane-prospects" class="page" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
-    <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">B2B Prospects</div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button class="btn sm" onclick="importProspectsExcel()"><i class="ti ti-file-spreadsheet"></i> Importeer Excel</button>
-      <input type="file" id="prospect-excel-input" accept=".xlsx,.xls" style="display:none" onchange="handleProspectExcel(event)">
-      <button class="btn primary" onclick="openProspectModal(null)"><i class="ti ti-plus"></i> Nieuwe prospect</button>
-    </div>
-  </div>
-  <div class="stats-bar" id="prospect-stats"></div>
-  <div style="display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
-    <input id="prospect-search" type="text" placeholder="Zoek op naam, project, postcode..." oninput="renderProspects()" style="max-width:260px">
-    <select id="prospect-sort" onchange="renderProspects()" style="font-size:13px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)">
-      <option value="">Sortering</option>
-      <option value="kans-hoog">Kans: hoog naar laag</option>
-      <option value="kans-laag">Kans: laag naar hoog</option>
-      <option value="postcode">Postcode</option>
-      <option value="naam">Naam A-Z</option>
-    </select>
-    <select id="prospect-filter-resp" onchange="renderProspects()" style="font-size:13px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)">
-      <option value="">Alle verantwoordelijken</option>
-    </select>
-  </div>
-  <div style="display:grid;grid-template-columns:2fr 2fr 80px 80px 1.6fr 140px 50px;gap:10px;padding:6px 16px;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">
-    <span>Naam / Bedrijf</span><span>Project</span><span>Postcode</span><span>Kans</span><span>Contactpersoon</span><span>Verantwoordelijke</span><span></span>
-  </div>
-  <div id="prospect-list"></div>
-</div>
-
-<!-- PROSPECT MODAL -->
-<div class="modal-overlay" id="prospect-modal">
-  <div class="modal-box" style="max-width:720px">
-    <div class="modal-header">
-      <span class="modal-title" id="prospect-modal-title">Nieuwe prospect</span>
-      <button class="modal-close" onclick="closeProspectModal()"><i class="ti ti-x"></i></button>
-    </div>
-    <div class="grid2">
-      <div class="field"><label>Naam prospect / bedrijf *</label><input id="pr-naam" placeholder="Colifac NV"></div>
-      <div class="field"><label>Bedrijf achter bedrijf</label><input id="pr-bedrijf" placeholder="bv. Monikids NV / BE0424.707.471"></div>
-    </div>
-    <div class="field"><label>Project / omschrijving</label><input id="pr-project" placeholder="bv. 8 laadpunten op de parking"></div>
-    <div class="grid2">
-      <div class="field"><label>Postcode</label><input id="pr-postcode" placeholder="9000" type="text" style="max-width:120px"></div>
-      <div class="field"><label>Verantwoordelijke</label><select id="pr-resp"><option value="">-- kies --</option></select></div>
-    </div>
-    <div class="field">
-      <label>Slagingskans</label>
-      <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
-        <input type="range" id="pr-kans" min="0" max="100" step="10" value="50" oninput="document.getElementById('pr-kans-lbl').textContent=this.value+'%';document.getElementById('pr-kans-bar').style.width=this.value+'%';document.getElementById('pr-kans-bar').style.background=prKansColor(this.value)" style="flex:1;accent-color:var(--green)">
-        <span id="pr-kans-lbl" style="font-family:'Poppins',sans-serif;font-weight:700;font-size:16px;min-width:48px">50%</span>
-      </div>
-      <div style="background:var(--bg3);border-radius:20px;height:6px;overflow:hidden;margin-top:4px"><div id="pr-kans-bar" style="height:100%;width:50%;background:#f59e0b;border-radius:20px;transition:all .2s"></div></div>
-    </div>
-    <div style="font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px;display:flex;align-items:center;justify-content:space-between">
-      <span><i class="ti ti-users" style="margin-right:6px"></i>Contactpersonen</span>
-      <button class="btn sm" onclick="prAddContactRow()"><i class="ti ti-plus"></i> Toevoegen</button>
-    </div>
-    <div id="pr-contacts-list"></div>
-    <div class="field" style="margin-top:12px"><label>Notities</label><textarea id="pr-notities" rows="2" placeholder="Extra info..."></textarea></div>
-    <div class="modal-footer">
-      <button class="btn danger" id="pr-del-btn" style="display:none;margin-right:auto" onclick="deleteProspect()"><i class="ti ti-trash"></i> Verwijderen</button>
-      <button class="btn" onclick="closeProspectModal()">Annuleren</button>
-      <button class="btn primary" onclick="saveProspect()"><i class="ti ti-check"></i> Opslaan</button>
-    </div>
-  </div>
-</div>
-
 </body></html>`;
   dashWindow=window.open('','BlitzPowerTV','width=1280,height=720,menubar=no,toolbar=no');
   dashWindow.document.write(html);dashWindow.document.close();
@@ -2556,24 +2535,31 @@ function agGetFiltered(){
   });
 }
 
-function agRenderPills(){
-  const rEl=document.getElementById('ag-pills-resp');
-  if(rEl){
-    const rNames=['alle',...new Set(agAfspraken.map(a=>a.resp).filter(Boolean))];
-    rEl.innerHTML=rNames.map(r=>`<button class="pill${r==='alle'?' all':''}${agRespFilter===r?' active':''}" onclick="agSetRespFilter('${r}')">${r==='alle'?'<i class="ti ti-users" style="font-size:12px;margin-right:3px"></i>Iedereen':r}</button>`).join('');
-  }
-  const tEl=document.getElementById('ag-pills-type');
-  if(tEl){
-    const types=['alle',...AG_TYPES];
-    tEl.innerHTML=types.map(t=>{
-      const col=AG_KLEUREN[t]||'var(--tx2)';
-      return`<button class="pill${agTypeFilter===t?' active':''}" style="${agTypeFilter===t?'':''}${t!=='alle'?'border-left:3px solid '+col+';':''}" onclick="agSetTypeFilter('${t}')">${t==='alle'?'Alles':t}</button>`;
-    }).join('');
+function agUpdateRespDropdown(){
+  const sel=document.getElementById('ag-resp-filter');if(!sel)return;
+  const names=respNames();
+  const userNaam=currentUser?.user_metadata?.naam||'';
+  const sorted=[...names].sort((a,b)=>{
+    if(a===userNaam)return -1;if(b===userNaam)return 1;return a.localeCompare(b);
+  });
+  sel.innerHTML='<option value="alle">Iedereen</option>'+sorted.map(r=>`<option value="${r}"${r===agRespFilter?' selected':''}>${r}${r===userNaam?' (jij)':''}</option>`).join('');
+  // Stel standaard in op ingelogde gebruiker
+  if(agRespFilter==='alle'&&userNaam&&names.includes(userNaam)){
+    sel.value=userNaam;agRespFilter=userNaam;
   }
 }
 
+function agRenderPills(){
+  const tEl=document.getElementById('ag-pills-type');if(!tEl)return;
+  const types=['alle',...AG_TYPES];
+  tEl.innerHTML=types.map(t=>{
+    const col=AG_KLEUREN[t]||'var(--tx2)';
+    return`<button class="pill${agTypeFilter===t?' active':''}" style="${t!=='alle'?'border-left:3px solid '+col+';':''}" onclick="agSetTypeFilter('${t}')">${t==='alle'?'Alles':t}</button>`;
+  }).join('');
+}
+
 function agSetRespFilter(r){agRespFilter=r;agRenderCalendar();agRenderAankomende();}
-function agSetTypeFilter(t){agTypeFilter=t;agRenderCalendar();agRenderAankomende();}
+function agSetTypeFilter(t){agTypeFilter=t;agRenderCalendar();agRenderAankomende();agRenderPills();}
 
 function agRenderCalendar(){
   const MAANDEN=['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
@@ -2741,7 +2727,6 @@ function agDelete(){
   document.getElementById('invite-modal').addEventListener('click',function(e){if(e.target===this)closeInviteModal();});
   document.getElementById('crm-modal').addEventListener('click',function(e){if(e.target===this)closeCrmModal();});
   document.getElementById('crm-complete-overlay').addEventListener('click',function(e){if(e.target===this)closeCrmComplete();});
-  document.getElementById('prospect-modal').addEventListener('click',function(e){if(e.target===this)closeProspectModal();});
 
   // Herstel lokale klanten backup
   try{const d=localStorage.getItem('blitz_klanten');if(d)klanten=JSON.parse(d);}catch{}
@@ -2872,16 +2857,25 @@ function b2cRenderStats(){
 }
 
 function b2cRenderPills(){
-  // Resp pills
+  // Resp pills — klikbaar
   const respEl=document.getElementById('b2c-pills-resp');
   if(respEl){
-    const rNames=['alle',...new Set(b2cLeads.map(l=>l.resp).filter(Boolean))];
+    const rNames=['alle',...new Set([...b2cLeads.map(l=>l.resp),...respNames()].filter(Boolean))];
     respEl.innerHTML=rNames.map(r=>`<button class="pill${r==='alle'?' all':''}${b2cRespFilter===r?' active':''}" onclick="b2cSetRespFilter('${r}')">${r==='alle'?'<i class="ti ti-users" style="font-size:12px;margin-right:3px"></i>Iedereen':r}</button>`).join('');
   }
-  const sp=['alle',...B2C_STATUSSEN];
-  document.getElementById('b2c-pills-status').innerHTML=sp.map(s=>`<button class="pill${b2cStatusFilter===s?' active':''}" onclick="b2cSetStatusFilter('${s}')">${s==='alle'?'Alle':s}</button>`).join('');
-  const wp=['alle',...B2C_WARMTES];
-  document.getElementById('b2c-pills-warmte').innerHTML=wp.map(w=>`<button class="pill${b2cWarmteFilter===w?' active':''}" onclick="b2cSetWarmteFilter('${w}')">${w==='alle'?'Alle':w}</button>`).join('');
+  // Status dropdown
+  const stSel=document.getElementById('b2c-select-status');
+  if(stSel){
+    const cur=stSel.value;
+    stSel.innerHTML='<option value="alle">Alle statussen</option>'+B2C_STATUSSEN.filter(s=>s!=='Gewonnen'&&s!=='Verloren').map(s=>`<option value="${s}"${b2cStatusFilter===s?' selected':''}>${s}</option>`).join('');
+    if(cur&&cur!=='alle')stSel.value=cur;
+  }
+  // Warmte pills
+  const warmEl=document.getElementById('b2c-pills-warmte');
+  if(warmEl){
+    const wp=['alle',...B2C_WARMTES];
+    warmEl.innerHTML=wp.map(w=>`<button class="pill${w==='alle'?' all':''}${b2cWarmteFilter===w?' active':''}" onclick="b2cSetWarmteFilter('${w}')">${w==='alle'?'Alles':w}</button>`).join('');
+  }
 }
 
 function b2cSetRespFilter(r){b2cRespFilter=r;b2cRenderLeads();}
@@ -2890,11 +2884,110 @@ function b2cSetWarmteFilter(w){b2cWarmteFilter=w;b2cRenderLeads();}
 
 function b2cGetFiltered(){
   return b2cLeads.filter(l=>{
+    // Gewonnen en verloren worden nooit getoond in de hoofdlijst
+    if(l.status==='Gewonnen'||l.status==='Verloren')return false;
     if(b2cRespFilter!=='alle'&&l.resp!==b2cRespFilter)return false;
     if(b2cStatusFilter!=='alle'&&l.status!==b2cStatusFilter)return false;
     if(b2cWarmteFilter!=='alle'&&l.warmte!==b2cWarmteFilter)return false;
     return true;
   });
+}
+
+// ── B2C GEWONNEN / VERLOREN TABS ─────────────────────
+let b2cGewRespFilter='alle';
+let b2cGewMaandFilter='';
+let b2cVlRespFilter='alle';
+let b2cVlMaandFilter='';
+
+function b2cRenderGewonnen(){
+  const list=b2cLeads.filter(l=>l.status==='Gewonnen');
+  b2cRenderGesloten('gew', list, '#639922', 'Gewonnen');
+}
+function b2cRenderVerloren(){
+  const list=b2cLeads.filter(l=>l.status==='Verloren');
+  b2cRenderGesloten('vl', list, '#a32d2d', 'Verloren');
+}
+
+function b2cRenderGesloten(prefix, allList, kleur, label){
+  const respFilter=prefix==='gew'?b2cGewRespFilter:b2cVlRespFilter;
+  const maandFilter=document.getElementById('b2c-'+prefix+'-maand')?.value||'';
+
+  // Stats
+  const statsEl=document.getElementById('b2c-'+prefix+'-stats');
+  if(statsEl){
+    statsEl.innerHTML=`<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value" style="color:${kleur}">${allList.length}</div></div>`;
+  }
+
+  // Resp pills
+  const pillsEl=document.getElementById('b2c-'+prefix+'-pills-resp');
+  if(pillsEl){
+    const rNames=['alle',...new Set(allList.map(l=>l.resp).filter(Boolean))];
+    pillsEl.innerHTML=rNames.map(r=>`<button class="pill${r==='alle'?' all':''}${respFilter===r?' active':''}" onclick="b2c${prefix==='gew'?'Gew':'Vl'}SetResp('${r}')">${r==='alle'?'Iedereen':r}</button>`).join('');
+  }
+
+  // Maand dropdown
+  const maandSel=document.getElementById('b2c-'+prefix+'-maand');
+  if(maandSel){
+    const maanden=[...new Set(allList.map(l=>(l.acties||[]).filter(a=>a.tekst.includes(label)).map(a=>a.datum?.slice(0,7)||'').filter(Boolean)).flat())].sort().reverse();
+    const cur=maandSel.value;
+    maandSel.innerHTML='<option value="">Alle maanden</option>'+maanden.map(m=>{
+      const [y,mo]=m.split('-');
+      const MAANDEN_NL=['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+      return`<option value="${m}"${m===cur?' selected':''}>${MAANDEN_NL[parseInt(mo)-1]} ${y}</option>`;
+    }).join('');
+  }
+
+  // Filter
+  let list=allList.filter(l=>{
+    if(respFilter!=='alle'&&l.resp!==respFilter)return false;
+    return true;
+  });
+
+  const el=document.getElementById('b2c-'+prefix+'-list');if(!el)return;
+  if(!list.length){el.innerHTML='<div class="empty-state"><i class="ti ti-users"></i>Geen '+label.toLowerCase()+' leads.</div>';return;}
+
+  el.innerHTML=list.map(l=>{
+    const datum=(l.acties||[]).filter(a=>a.tekst.toLowerCase().includes(label.toLowerCase())).pop()?.datum||'';
+    return`<div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr 120px;gap:10px;align-items:center;padding:12px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:8px;cursor:pointer" onclick="b2cOpenDetail(${l.id})">
+      <div>
+        <div style="font-weight:600;font-size:13px">${b2cNaam(l)}</div>
+        <div style="font-size:11px;color:var(--tx3)">${l.tel||l.email||''}</div>
+      </div>
+      <div style="font-size:12px;color:var(--tx2)">${l.adres||'—'}</div>
+      <div style="font-size:12px;color:var(--tx2)">${l.resp||'—'}</div>
+      <div style="font-size:12px;color:var(--tx3)">${datum||'—'}</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn sm" onclick="event.stopPropagation();b2cOpenDetail(${l.id})"><i class="ti ti-eye"></i></button>
+        <button class="btn sm" onclick="event.stopPropagation();b2cHeractiveer(${l.id})" title="Terugzetten naar actief"><i class="ti ti-refresh"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function b2cGewSetResp(r){b2cGewRespFilter=r;b2cRenderGewonnen();}
+function b2cVlSetResp(r){b2cVlRespFilter=r;b2cRenderVerloren();}
+
+function b2cHeractiveer(id){
+  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  if(!confirm(`"${b2cNaam(l)}" terugzetten naar actieve leads?`))return;
+  l.status='Gecontacteerd';
+  l.acties=l.acties||[];
+  l.acties.push({datum:today(),tekst:'Teruggezet naar actieve leads'});
+  b2cRenderLeads();b2cRenderGewonnen();b2cRenderVerloren();
+  showToast('Lead teruggezet naar actief.');
+}
+
+function b2cMarkeerStatus(status){
+  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  if(!confirm(`Lead "${b2cNaam(l)}" markeren als ${status}?`))return;
+  l.status=status;
+  l.acties=l.acties||[];
+  l.acties.push({datum:today(),tekst:'Status gewijzigd naar: '+status});
+  b2cCloseDetail();
+  b2cRenderLeads();
+  if(status==='Gewonnen'){b2cRenderGewonnen();showTab('b2c-gewonnen');}
+  else{b2cRenderVerloren();showTab('b2c-verloren');}
+  showToast(`Lead gemarkeerd als ${status}!`);
 }
 
 function b2cRenderLeads(){
@@ -3663,227 +3756,6 @@ function tlAddActie(){
 function tlDeleteActie(idx){currentTijdlijn.splice(idx,1);renderTijdlijn();}
 function tlChangeDatum(idx,val){if(currentTijdlijn[idx])currentTijdlijn[idx].datum=val;renderTijdlijn();}
 
-// ══════════════════════════════════════════════
-// PROSPECTS (B2B)
-// ══════════════════════════════════════════════
-// ── HELPERS PROSPECTS ────────────────────────────────
-function prKansColor(val){
-  const v=parseInt(val);
-  if(v>=70)return'var(--green)';
-  if(v>=40)return'#f59e0b';
-  return'#ef4444';
-}
-
-function prAddContactRow(contact={}){
-  const list=document.getElementById('pr-contacts-list');
-  const idx=list.children.length;
-  const row=document.createElement('div');
-  row.className='pr-contact-row';
-  row.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr 1fr 32px;gap:8px;margin-bottom:8px;align-items:end';
-  row.innerHTML=`
-    <div><label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:3px">Naam</label><input placeholder="Jan Janssen" value="${contact.naam||''}"></div>
-    <div><label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:3px">Rol</label><input placeholder="Zaakvoerder" value="${contact.rol||''}"></div>
-    <div><label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:3px">Telefoon</label><input type="tel" placeholder="0499 123 456" value="${contact.tel||''}"></div>
-    <div><label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:3px">E-mail</label><input type="email" placeholder="jan@bedrijf.be" value="${contact.email||''}"></div>
-    <button class="btn sm danger" onclick="this.parentElement.remove()" style="height:34px;margin-top:auto"><i class="ti ti-x"></i></button>`;
-  list.appendChild(row);
-}
-
-function prGetContacts(){
-  const rows=document.querySelectorAll('#pr-contacts-list .pr-contact-row');
-  return Array.from(rows).map(row=>{
-    const inputs=row.querySelectorAll('input');
-    return{naam:inputs[0].value.trim(),rol:inputs[1].value.trim(),tel:inputs[2].value.trim(),email:inputs[3].value.trim()};
-  }).filter(c=>c.naam||c.tel||c.email);
-}
-
-function renderProspects(){
-  const q=(document.getElementById('prospect-search')?.value||'').toLowerCase();
-  const sort=document.getElementById('prospect-sort')?.value||'';
-  const filterResp=document.getElementById('prospect-filter-resp')?.value||'';
-
-  // Update resp filter dropdown
-  const respSel=document.getElementById('prospect-filter-resp');
-  if(respSel){
-    const cur=respSel.value;
-    const rNames=[...new Set(prospects.map(p=>p.resp).filter(Boolean))];
-    respSel.innerHTML='<option value="">Alle verantwoordelijken</option>'+rNames.map(r=>`<option value="${r}"${r===cur?' selected':''}>${r}</option>`).join('');
-  }
-
-  let list=prospects.filter(p=>{
-    if(filterResp&&p.resp!==filterResp)return false;
-    if(!q)return true;
-    const contacts=(p.contacten||[]).map(c=>c.naam+' '+c.tel+' '+c.email).join(' ');
-    return(p.naam||'').toLowerCase().includes(q)
-      ||(p.project||'').toLowerCase().includes(q)
-      ||(p.postcode||'').toLowerCase().includes(q)
-      ||(p.bedrijf||'').toLowerCase().includes(q)
-      ||contacts.toLowerCase().includes(q);
-  });
-
-  // Sortering
-  if(sort==='kans-hoog')list=[...list].sort((a,b)=>(parseInt(b.kans)||0)-(parseInt(a.kans)||0));
-  else if(sort==='kans-laag')list=[...list].sort((a,b)=>(parseInt(a.kans)||0)-(parseInt(b.kans)||0));
-  else if(sort==='postcode')list=[...list].sort((a,b)=>(a.postcode||'').localeCompare(b.postcode||''));
-  else if(sort==='naam')list=[...list].sort((a,b)=>(a.naam||'').localeCompare(b.naam||''));
-
-  // Stats
-  const statsEl=document.getElementById('prospect-stats');
-  if(statsEl){
-    const totKans=prospects.reduce((a,p)=>a+(parseInt(p.kans)||0),0);
-    const gem=prospects.length?Math.round(totKans/prospects.length):0;
-    statsEl.innerHTML=`
-      <div class="stat-card"><div class="stat-label">Prospects</div><div class="stat-value">${prospects.length}</div></div>
-      <div class="stat-card"><div class="stat-label">Gem. slagingskans</div><div class="stat-value">${gem}%</div></div>
-      <div class="stat-card"><div class="stat-label">Zichtbaar</div><div class="stat-value">${list.length}</div></div>`;
-  }
-
-  const el=document.getElementById('prospect-list');if(!el)return;
-  if(!list.length){el.innerHTML='<div class="empty-state"><i class="ti ti-target"></i>Geen prospects gevonden.</div>';return;}
-
-  el.innerHTML=list.map(p=>{
-    const kans=parseInt(p.kans)||0;
-    const col=prKansColor(kans);
-    const eersteContact=(p.contacten&&p.contacten.length>0)?p.contacten[0]:null;
-    const contactHtml=eersteContact
-      ?`<div style="font-size:12px;font-weight:500">${eersteContact.naam||''}</div><div style="font-size:11px;color:var(--tx3)">${eersteContact.rol||''}</div><div style="font-size:11px;color:var(--tx3)">${eersteContact.tel||eersteContact.email||''}</div>`
-      :'<span style="color:var(--tx3);font-size:12px">—</span>';
-    const extraContacts=p.contacten&&p.contacten.length>1?`<span style="font-size:10px;background:var(--bg3);padding:1px 6px;border-radius:10px;color:var(--tx3)">+${p.contacten.length-1} meer</span>`:'';
-    return`<div style="display:grid;grid-template-columns:2fr 2fr 80px 80px 1.6fr 140px 50px;gap:10px;align-items:center;padding:12px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:8px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--bd)'" onclick="openProspectModal('${p.id}')">
-      <div>
-        <div style="font-weight:600;font-size:13px">${p.naam||''}</div>
-        <div style="font-size:11px;color:var(--tx3)">${p.bedrijf||''}</div>
-      </div>
-      <div style="font-size:12px;color:var(--tx2)">${p.project||''}</div>
-      <div style="font-size:12px;color:var(--tx2)">${p.postcode||'—'}</div>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:${col}">${kans}%</div>
-        <div style="background:var(--bg3);border-radius:20px;height:5px;overflow:hidden;margin-top:3px"><div style="width:${kans}%;height:100%;background:${col};border-radius:20px"></div></div>
-      </div>
-      <div>${contactHtml}${extraContacts}</div>
-      <div style="font-size:12px;color:var(--tx2)">${p.resp||'—'}</div>
-      <div><button class="btn sm" onclick="event.stopPropagation();openProspectModal('${p.id}')"><i class="ti ti-edit"></i></button></div>
-    </div>`;
-  }).join('');
-}
-
-function openProspectModal(id){
-  editingProspectId=id||null;
-  const p=id?prospects.find(x=>x.id===id):null;
-  document.getElementById('prospect-modal-title').textContent=p?'Prospect bewerken':'Nieuwe prospect';
-
-  // Vul resp dropdown
-  const respSel=document.getElementById('pr-resp');
-  respSel.innerHTML='<option value="">— kies —</option>'+respNames().map(r=>`<option value="${r}">${r}</option>`).join('');
-
-  if(p){
-    document.getElementById('pr-naam').value=p.naam||'';
-    document.getElementById('pr-project').value=p.project||'';
-    document.getElementById('pr-postcode').value=p.postcode||'';
-    document.getElementById('pr-bedrijf').value=p.bedrijf||'';
-    document.getElementById('pr-notities').value=p.notities||'';
-    document.getElementById('pr-resp').value=p.resp||'';
-    const kans=parseInt(p.kans)||50;
-    document.getElementById('pr-kans').value=kans;
-    document.getElementById('pr-kans-lbl').textContent=kans+'%';
-    document.getElementById('pr-kans-bar').style.width=kans+'%';
-    document.getElementById('pr-kans-bar').style.background=prKansColor(kans);
-    // Contacten
-    document.getElementById('pr-contacts-list').innerHTML='';
-    (p.contacten||[]).forEach(c=>prAddContactRow(c));
-    document.getElementById('pr-del-btn').style.display='inline-flex';
-  }else{
-    ['pr-naam','pr-project','pr-postcode','pr-bedrijf','pr-notities'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('pr-resp').value='';
-    document.getElementById('pr-kans').value=50;
-    document.getElementById('pr-kans-lbl').textContent='50%';
-    document.getElementById('pr-kans-bar').style.width='50%';
-    document.getElementById('pr-kans-bar').style.background='#f59e0b';
-    document.getElementById('pr-contacts-list').innerHTML='';
-    prAddContactRow(); // altijd 1 lege rij
-    document.getElementById('pr-del-btn').style.display='none';
-  }
-  document.getElementById('prospect-modal').classList.add('open');
-}
-
-function closeProspectModal(){document.getElementById('prospect-modal').classList.remove('open');editingProspectId=null;}
-
-async function saveProspect(){
-  const naam=document.getElementById('pr-naam').value.trim();
-  if(!naam){showToast('Naam is verplicht.');return;}
-  const p={
-    id:editingProspectId||(Date.now().toString(36)),
-    naam,
-    project:document.getElementById('pr-project').value.trim(),
-    postcode:document.getElementById('pr-postcode').value.trim(),
-    bedrijf:document.getElementById('pr-bedrijf').value.trim(),
-    resp:document.getElementById('pr-resp').value,
-    kans:parseInt(document.getElementById('pr-kans').value)||50,
-    contacten:prGetContacts(),
-    notities:document.getElementById('pr-notities').value.trim(),
-    updatedAt:new Date().toISOString()
-  };
-  if(editingProspectId){const i=prospects.findIndex(x=>x.id===editingProspectId);if(i>-1)prospects[i]=p;else prospects.push(p);}
-  else{prospects.push(p);}
-  closeProspectModal();renderProspects();showToast('Prospect opgeslagen.');
-  try{await sbSaveProspects();}catch(e){console.warn('Prospect save fout:',e);}
-}
-
-async function deleteProspect(){
-  if(!confirm('Prospect verwijderen?'))return;
-  prospects=prospects.filter(p=>p.id!==editingProspectId);
-  closeProspectModal();renderProspects();showToast('Prospect verwijderd.');
-  try{await sbSaveProspects();}catch{}
-}
-
-async function sbSaveProspects(){
-  if(!sbUrl)return;
-  await sbFetch('settings',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({key:'prospects',data:{list:prospects}})});
-  try{localStorage.setItem('blitz_prospects',JSON.stringify(prospects));}catch{}
-}
-
-async function loadProspects(){
-  try{const r=await sbFetch('settings?key=eq.prospects');prospects=(r&&r[0])?(r[0].data.list||[]):[];}
-  catch{try{const d=localStorage.getItem('blitz_prospects');if(d)prospects=JSON.parse(d);}catch{}}
-}
-
-function importProspectsExcel(){document.getElementById('prospect-excel-input').click();}
-
-function handleProspectExcel(event){
-  const file=event.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      const wb=XLSX.read(e.target.result,{type:'binary'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(ws,{header:1});
-      // Skip header row (row 0)
-      let imported=0;
-      for(let i=1;i<rows.length;i++){
-        const row=rows[i];
-        if(!row[0])continue; // skip empty naam
-        const naam=String(row[0]||'').trim();
-        const project=String(row[1]||'').trim();
-        const postcode=String(row[2]||'').trim();
-        const kans=parseFloat(row[3])||0.5;
-        const contact=String(row[4]||'').trim();
-        const rol=String(row[5]||'').trim();
-        const contactinfo=String(row[6]||'').trim();
-        const bedrijf=String(row[7]||'').trim();
-        // Check if already exists
-        const exists=prospects.find(p=>p.naam.toLowerCase()===naam.toLowerCase());
-        if(!exists){
-          prospects.push({id:Date.now().toString(36)+i,naam,project,postcode,kans,contact,rol,contactinfo,bedrijf,notities:'',updatedAt:new Date().toISOString()});
-          imported++;
-        }
-      }
-      renderProspects();showToast(imported+' prospects geïmporteerd!');
-      sbSaveProspects().catch(()=>{});
-    }catch(err){showToast('Fout bij importeren: '+err.message);}
-  };
-  reader.readAsBinaryString(file);
-  event.target.value='';
-}
 
 </script>
 
@@ -3912,60 +3784,6 @@ function handleProspectExcel(event){
   </div>
 </div>
 
-
-<!-- PROSPECTS PANE (B2B) -->
-<div id="pane-prospects" class="page" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
-    <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">B2B Prospects</div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button class="btn sm" onclick="importProspectsExcel()"><i class="ti ti-file-spreadsheet"></i> Importeer Excel</button>
-      <input type="file" id="prospect-excel-input" accept=".xlsx,.xls" style="display:none" onchange="handleProspectExcel(event)">
-      <button class="btn primary" onclick="openProspectModal(null)"><i class="ti ti-plus"></i> Nieuwe prospect</button>
-    </div>
-  </div>
-  <div class="stats-bar" id="prospect-stats"></div>
-  <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
-    <input id="prospect-search" type="text" placeholder="Zoek op naam, project, contact..." oninput="renderProspects()" style="max-width:300px">
-  </div>
-  <div class="prospect-hdr"><span>Naam / Bedrijf</span><span>Project</span><span>Kans</span><span>Contact</span><span>Contactgegevens</span><span></span></div>
-  <div id="prospect-list"></div>
-</div>
-
-<!-- PROSPECT MODAL -->
-<div class="modal-overlay" id="prospect-modal">
-  <div class="modal-box" style="max-width:720px">
-    <div class="modal-header">
-      <span class="modal-title" id="prospect-modal-title">Nieuwe prospect</span>
-      <button class="modal-close" onclick="closeProspectModal()"><i class="ti ti-x"></i></button>
-    </div>
-    <div class="grid2">
-      <div class="field"><label>Naam prospect / bedrijf *</label><input id="pr-naam" placeholder="Colifac / Krea"></div>
-      <div class="field"><label>Project omschrijving</label><input id="pr-project" placeholder="bv. laadpalen op de parking"></div>
-    </div>
-    <div class="grid2">
-      <div class="field"><label>Postcode</label><input id="pr-postcode" placeholder="9000" type="text"></div>
-      <div class="field">
-        <label>Kans op succes</label>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
-          <input type="range" id="pr-kans" min="0" max="1" step="0.1" value="0.5" oninput="document.getElementById('pr-kans-lbl').textContent=Math.round(this.value*100)+'%'">
-          <span id="pr-kans-lbl" style="font-weight:700;min-width:36px">50%</span>
-        </div>
-      </div>
-    </div>
-    <div class="field"><label>Contactpersoon(en)</label><textarea id="pr-contact" rows="2" placeholder="Pieter Van Den Poel&#10;Carl Van Den Poel"></textarea></div>
-    <div class="grid2">
-      <div class="field"><label>Rol contact</label><textarea id="pr-rol" rows="2" placeholder="Zaakvoerder&#10;CEO"></textarea></div>
-      <div class="field"><label>Contactgegevens</label><textarea id="pr-contactinfo" rows="2" placeholder="03 760 18 53&#10;0476 38 74 74"></textarea></div>
-    </div>
-    <div class="field"><label>Bedrijf achter bedrijf (moedermaatschappij, BTW...)</label><input id="pr-bedrijf" placeholder="bv. Monikids NV / BE0424.707.471"></div>
-    <div class="field"><label>Notities</label><textarea id="pr-notities" rows="2" placeholder="Extra info..."></textarea></div>
-    <div class="modal-footer">
-      <button class="btn danger" id="pr-del-btn" style="display:none;margin-right:auto" onclick="deleteProspect()"><i class="ti ti-trash"></i></button>
-      <button class="btn" onclick="closeProspectModal()">Annuleren</button>
-      <button class="btn primary" onclick="saveProspect()"><i class="ti ti-check"></i> Opslaan</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
