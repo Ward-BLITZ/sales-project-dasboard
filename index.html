@@ -231,13 +231,13 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .leads-tabel{background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden}
 .leads-hdr{display:grid;grid-template-columns:2fr 1.3fr 1fr .9fr 1fr 1.2fr 90px;gap:10px;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--bd);font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px}
 /* B2C KANBAN */
-.b2c-kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:1rem;min-height:calc(100vh - 250px);align-items:flex-start}
+.b2c-kanban{display:flex;gap:10px;overflow-x:auto;padding-bottom:1rem;min-height:calc(100vh - 230px);align-items:flex-start}
 .b2c-kanban::-webkit-scrollbar{height:6px}.b2c-kanban::-webkit-scrollbar-thumb{background:var(--gray);border-radius:3px}
-.b2c-kol{flex:0 0 200px;background:var(--bg2);border-radius:var(--rl);padding:10px;display:flex;flex-direction:column}
+.b2c-kol{flex:0 0 210px;min-height:calc(100vh - 260px);background:var(--bg2);border-radius:var(--rl);padding:10px;display:flex;flex-direction:column}
 .b2c-kol-hdr{padding:8px 4px 10px;margin-bottom:4px;border-bottom:2px solid var(--bd)}
 .b2c-kol-title{font-family:'Poppins',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx2)}
 .b2c-kol-count{display:inline-block;background:var(--bg3);color:var(--tx3);font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;margin-left:6px}
-.b2c-kol-body{min-height:180px;flex:1}
+.b2c-kol-body{flex:1;min-height:200px;padding-top:4px}
 .b2c-kol-body.drag-over{outline:2px dashed var(--green);outline-offset:-3px;background:rgba(0,223,163,.06);border-radius:var(--rl)}
 .b2c-tile{background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:8px;padding:10px 11px;cursor:pointer;user-select:none;transition:border-color .15s,box-shadow .15s}
 .b2c-tile:hover{border-color:var(--green);box-shadow:0 2px 8px rgba(0,223,163,.12)}
@@ -2646,9 +2646,16 @@ function agUpdateRespDropdown(){
     if(a===userNaam)return -1;if(b===userNaam)return 1;return a.localeCompare(b);
   });
   sel.innerHTML='<option value="alle">Iedereen</option>'+sorted.map(r=>`<option value="${r}"${r===agRespFilter?' selected':''}>${r}${r===userNaam?' (jij)':''}</option>`).join('');
-  // Stel standaard in op ingelogde gebruiker
-  if(agRespFilter==='alle'&&userNaam&&names.includes(userNaam)){
-    sel.value=userNaam;agRespFilter=userNaam;
+  // Stel in op ingelogde gebruiker ENKEL als die ook een verantwoordelijke is
+  if(userNaam&&names.includes(userNaam)){
+    if(agRespFilter==='alle'){
+      agRespFilter=userNaam;
+      sel.value=userNaam;
+    }
+  } else {
+    // Geen match — toon alles
+    agRespFilter='alle';
+    sel.value='alle';
   }
 }
 
@@ -3081,69 +3088,82 @@ let b2cVlMaandFilter='';
 
 function b2cRenderGewonnen(){
   const list=b2cLeads.filter(l=>l.status==='Gewonnen');
-  b2cRenderGesloten('gew', list, '#639922', 'Gewonnen');
+  b2cRenderGesloten('gew',list,'#639922','Gewonnen');
 }
 function b2cRenderVerloren(){
   const list=b2cLeads.filter(l=>l.status==='Verloren');
-  b2cRenderGesloten('vl', list, '#a32d2d', 'Verloren');
+  b2cRenderGesloten('vl',list,'#a32d2d','Verloren');
 }
 
-function b2cRenderGesloten(prefix, allList, kleur, label){
+function b2cRenderGesloten(prefix,allList,kleur,label){
   const respFilter=prefix==='gew'?b2cGewRespFilter:b2cVlRespFilter;
   const maandFilter=document.getElementById('b2c-'+prefix+'-maand')?.value||'';
 
-  // Stats
   const statsEl=document.getElementById('b2c-'+prefix+'-stats');
-  if(statsEl){
-    statsEl.innerHTML=`<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value" style="color:${kleur}">${allList.length}</div></div>`;
-  }
+  if(statsEl){statsEl.innerHTML=`<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value" style="color:${kleur}">${allList.length}</div></div>`;}
 
-  // Resp pills
   const pillsEl=document.getElementById('b2c-'+prefix+'-pills-resp');
   if(pillsEl){
-    const rNames=['alle',...new Set(allList.map(l=>l.resp).filter(Boolean))];
+    const rNames=['alle',...new Set([...allList.map(l=>l.resp),...respNames()].filter(Boolean))];
     pillsEl.innerHTML=rNames.map(r=>`<button class="pill${r==='alle'?' all':''}${respFilter===r?' active':''}" onclick="b2c${prefix==='gew'?'Gew':'Vl'}SetResp('${r}')">${r==='alle'?'Iedereen':r}</button>`).join('');
   }
 
-  // Maand dropdown
   const maandSel=document.getElementById('b2c-'+prefix+'-maand');
   if(maandSel){
-    const maanden=[...new Set(allList.map(l=>(l.acties||[]).filter(a=>a.tekst.includes(label)).map(a=>a.datum?.slice(0,7)||'').filter(Boolean)).flat())].sort().reverse();
+    const datums=allList.map(l=>(prefix==='gew'?l.gewonnenOp:l.verliesOp)||'').filter(Boolean);
+    const maanden=[...new Set(datums.map(d=>d.slice(0,7)))].sort().reverse();
     const cur=maandSel.value;
+    const MNL=['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
     maandSel.innerHTML='<option value="">Alle maanden</option>'+maanden.map(m=>{
       const [y,mo]=m.split('-');
-      const MAANDEN_NL=['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
-      return`<option value="${m}"${m===cur?' selected':''}>${MAANDEN_NL[parseInt(mo)-1]} ${y}</option>`;
+      return`<option value="${m}"${m===cur?' selected':''}>${MNL[parseInt(mo)-1]} ${y}</option>`;
     }).join('');
   }
 
-  // Filter
   let list=allList.filter(l=>{
     if(respFilter!=='alle'&&l.resp!==respFilter)return false;
+    const datum=prefix==='gew'?l.gewonnenOp:l.verliesOp;
+    if(maandFilter&&(!datum||!datum.startsWith(maandFilter)))return false;
     return true;
   });
 
   const el=document.getElementById('b2c-'+prefix+'-list');if(!el)return;
-  if(!list.length){el.innerHTML='<div class="empty-state"><i class="ti ti-users"></i>Geen '+label.toLowerCase()+' leads.</div>';return;}
+  if(!list.length){el.innerHTML=`<div class="empty-state"><i class="ti ti-users"></i>Geen ${label.toLowerCase()} leads.</div>`;return;}
 
-  el.innerHTML=list.map(l=>{
-    const datum=(l.acties||[]).filter(a=>a.tekst.toLowerCase().includes(label.toLowerCase())).pop()?.datum||'';
-    return`<div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr 120px;gap:10px;align-items:center;padding:12px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:8px;cursor:pointer" onclick="b2cOpenDetail(${l.id})">
-      <div>
-        <div style="font-weight:600;font-size:13px">${b2cNaam(l)}</div>
-        <div style="font-size:11px;color:var(--tx3)">${l.tel||l.email||''}</div>
-      </div>
-      <div style="font-size:12px;color:var(--tx2)">${l.adres||'—'}</div>
-      <div style="font-size:12px;color:var(--tx2)">${l.resp||'—'}</div>
-      <div style="font-size:12px;color:var(--tx3)">${datum||'—'}</div>
-      <div style="display:flex;gap:6px">
-        <button class="btn sm" onclick="event.stopPropagation();b2cOpenDetail(${l.id})"><i class="ti ti-eye"></i></button>
-        <button class="btn sm" onclick="event.stopPropagation();b2cHeractiveer(${l.id})" title="Terugzetten naar actief"><i class="ti ti-refresh"></i></button>
-      </div>
+  const byMonth={};
+  list.forEach(l=>{
+    const d=prefix==='gew'?l.gewonnenOp:l.verliesOp;
+    const m=(d||'').slice(0,7)||'onbekend';
+    (byMonth[m]=byMonth[m]||[]).push(l);
+  });
+  const MNL_FULL=['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+
+  el.innerHTML=Object.entries(byMonth).sort((a,b)=>b[0].localeCompare(a[0])).map(([m,items])=>{
+    const lbl=m!=='onbekend'?MNL_FULL[parseInt(m.slice(5))-1]+' '+m.slice(0,4):'Onbekend';
+    return`<div class="month-section">
+      <div class="month-title" style="${prefix==='vl'?'border-bottom-color:#f7c1c1':''}">${lbl} — ${items.length} lead${items.length!==1?'s':''}</div>
+      ${items.map(l=>{
+        const datum=prefix==='gew'?l.gewonnenOp:l.verliesOp;
+        const datumStr=datum?new Date(datum).toLocaleDateString('nl-BE',{day:'numeric',month:'short',year:'numeric'}):'—';
+        return`<div class="closed-row" onclick="b2cOpenDetail(${l.id})" style="cursor:pointer">
+          ${prefix==='gew'?'<i class="ti ti-trophy" style="color:#639922;font-size:18px"></i>':'<i class="ti ti-x" style="color:#a32d2d;font-size:18px"></i>'}
+          <div style="flex:1;min-width:0">
+            <div class="closed-naam">${b2cNaam(l)}</div>
+            <div class="closed-klant">${l.adres||l.tel||''}</div>
+            ${prefix==='vl'&&l.verliesReden?`<div style="font-size:11px;color:#a32d2d"><i class="ti ti-info-circle" style="margin-right:3px"></i>${l.verliesReden}</div>`:''}
+          </div>
+          <div class="closed-resp">${l.resp||''}</div>
+          <div class="closed-lp"><span class="badge ${b2cBadgeW(l.warmte||'Lauw')}">${l.warmte||''}</span></div>
+          <div class="closed-date">${datumStr}</div>
+          <div style="display:flex;gap:4px">
+            <button class="btn sm" onclick="event.stopPropagation();b2cOpenDetail(${l.id})"><i class="ti ti-eye"></i></button>
+            <button class="btn sm" onclick="event.stopPropagation();b2cHeractiveer(${l.id})" title="Terugzetten"><i class="ti ti-refresh"></i></button>
+          </div>
+        </div>`;
+      }).join('')}
     </div>`;
   }).join('');
 }
-
 function b2cGewSetResp(r){b2cGewRespFilter=r;b2cRenderGewonnen();}
 function b2cVlSetResp(r){b2cVlRespFilter=r;b2cRenderVerloren();}
 
@@ -3181,6 +3201,7 @@ function b2cMarkeerStatus(status){
 
 let b2cDragLeadId = null;
 let b2cVerliesLeadId = null;
+let b2cDidDrag = false;
 
 function b2cRenderLeads(){
   b2cRenderStats();b2cRenderPills();b2cRenderDashOpvolgingen();
@@ -3256,30 +3277,36 @@ function b2cRenderDashOpvolgingen(){
   }).join('');
 }
 function b2cDragStart(e,id){
-  b2cDragLeadId=id;
+  b2cDragLeadId=id;b2cDidDrag=false;
   e.dataTransfer.effectAllowed='move';
-  setTimeout(()=>e.target.classList.add('dragging'),0);
+  e.dataTransfer.setData('text/plain',String(id));
+  setTimeout(()=>{document.querySelectorAll('.b2c-tile[data-id="'+id+'"]').forEach(el=>el.classList.add('dragging'));},0);
   document.getElementById('b2c-trash-zone').classList.add('active');
 }
 function b2cDragEnd(e){
-  e.target.classList.remove('dragging');
+  b2cDidDrag=true;
+  document.querySelectorAll('.b2c-tile.dragging').forEach(el=>el.classList.remove('dragging'));
   document.querySelectorAll('.b2c-kol-body.drag-over').forEach(el=>el.classList.remove('drag-over'));
   document.getElementById('b2c-trash-zone').classList.remove('active','over');
+  setTimeout(()=>{b2cDidDrag=false;},150);
 }
 function b2cDragOver(e){e.preventDefault();e.stopPropagation();e.currentTarget.classList.add('drag-over');}
 function b2cDragLeave(e){if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.classList.remove('drag-over');}
 
 function b2cDrop(e,newStatus){
-  e.preventDefault();e.currentTarget.classList.remove('drag-over');
-  if(b2cDragLeadId===null)return;
-  const l=b2cLeads.find(x=>x.id===b2cDragLeadId);
+  e.preventDefault();e.stopPropagation();
+  e.currentTarget.classList.remove('drag-over');
+  const rawId=e.dataTransfer.getData('text/plain')||String(b2cDragLeadId||'');
+  const id=parseInt(rawId);
+  if(!id)return;
+  const l=b2cLeads.find(x=>x.id===id);
   if(!l||l.status===newStatus){b2cDragLeadId=null;return;}
   l.status=newStatus;
   l.acties=l.acties||[];
   l.acties.push({datum:today(),tekst:'Status gewijzigd naar: '+newStatus});
   if(newStatus==='Gewonnen'&&!l.gewonnenOp){
     l.gewonnenOp=today();
-    fireB2cConfetti(l);
+    showToast('🎉 Gewonnen: '+b2cNaam(l)+'!');
   }
   b2cDragLeadId=null;
   b2cRenderLeads();
