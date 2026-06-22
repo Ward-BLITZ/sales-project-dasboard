@@ -377,7 +377,9 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 <!-- TABS -->
 <div class="tabs" id="main-tabs" style="display:none">
   <span style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px 0 4px;align-self:center;white-space:nowrap">B2C</span>
-  <button class="tab-btn active" id="tab-b2c" onclick="showTab('b2c')"><i class="ti ti-users"></i> Leads & Opvolging</button>
+  <button class="tab-btn active" id="tab-agenda" onclick="showTab('agenda')"><i class="ti ti-calendar"></i> Agenda</button>
+  <span style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px 0 4px;align-self:center;white-space:nowrap;border-left:1px solid var(--bd);margin-left:4px">B2C</span>
+  <button class="tab-btn" id="tab-b2c" onclick="showTab('b2c')"><i class="ti ti-users"></i> Leads & Opvolging</button>
   <button class="tab-btn" id="tab-b2c-gewonnen" onclick="showTab('b2c-gewonnen')"><i class="ti ti-trophy" style="color:#639922"></i> Gewonnen</button>
   <button class="tab-btn" id="tab-b2c-verloren" onclick="showTab('b2c-verloren')"><i class="ti ti-x" style="color:#a32d2d"></i> Verloren</button>
   <span style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px;align-self:center;border-left:1px solid var(--bd);margin-left:4px;white-space:nowrap">B2B</span>
@@ -386,7 +388,6 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
   <button class="tab-btn" id="tab-verkocht" onclick="showTab('verkocht')"><i class="ti ti-trophy"></i> Verkocht</button>
   <button class="tab-btn" id="tab-verloren" onclick="showTab('verloren')"><i class="ti ti-x"></i> Verloren</button>
   <span style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px;align-self:center;border-left:1px solid var(--bd);margin-left:4px;white-space:nowrap">Beheer</span>
-  <button class="tab-btn" id="tab-agenda" onclick="showTab('agenda')"><i class="ti ti-calendar"></i> Agenda</button>
   <button class="tab-btn" id="tab-crm" onclick="showTab('crm')"><i class="ti ti-building"></i> CRM</button>
   <button class="tab-btn" id="tab-instellingen" onclick="showTab('instellingen')"><i class="ti ti-settings"></i> Instellingen</button>
   <button class="tab-btn" id="tab-gebruikers" onclick="showTab('gebruikers')" style="display:none"><i class="ti ti-users"></i> Gebruikers</button>
@@ -2527,8 +2528,47 @@ const AG_KLEUREN = {B2C:'#00DFA3',B2B:'#534AB7',Andere:'#EF9F27'};
 function agCalPrev(){agCalMonth--;if(agCalMonth<0){agCalMonth=11;agCalYear--;}agRenderCalendar();}
 function agCalNext(){agCalMonth++;if(agCalMonth>11){agCalMonth=0;agCalYear++;}agRenderCalendar();}
 
+function agGetAlleAfspraken(){
+  // Handmatige agenda-afspraken
+  const handmatig = agAfspraken.map(a=>({...a, _bron:'agenda'}));
+
+  // B2C visits — alleen als er een datum is
+  const b2cVisits = b2cLeads
+    .filter(l=>l.visitDatum)
+    .map(l=>({
+      id: 'b2c-'+l.id,
+      titel: 'Visit: '+b2cNaam(l),
+      datum: l.visitDatum,
+      uur: l.visitUur||'',
+      type: 'B2C',
+      resp: l.resp||'',
+      link: b2cNaam(l),
+      notitie: l.adres||'',
+      _bron: 'b2c',
+      _leadId: l.id
+    }));
+
+  // B2B visits — projecten met een datum EN status "Akkoord / project verkocht" of met een expliciete visitDatum
+  const b2bVisits = projects
+    .filter(p=>p.visitDatum) // enkel projecten met expliciet visitDatum
+    .map(p=>({
+      id: 'b2b-'+p.id,
+      titel: 'Visit B2B: '+(p.naam||''),
+      datum: p.visitDatum,
+      uur: p.visitUur||'',
+      type: 'B2B',
+      resp: p.resp||'',
+      link: p.naam||'',
+      notitie: (p.klant||'')+(p.adres?' — '+p.adres:''),
+      _bron: 'b2b',
+      _projectId: p.id
+    }));
+
+  return [...handmatig, ...b2cVisits, ...b2bVisits];
+}
+
 function agGetFiltered(){
-  return agAfspraken.filter(a=>{
+  return agGetAlleAfspraken().filter(a=>{
     if(agTypeFilter!=='alle'&&a.type!==agTypeFilter)return false;
     if(agRespFilter!=='alle'&&a.resp!==agRespFilter)return false;
     return true;
@@ -2610,14 +2650,22 @@ function agRenderDag(ds){
   titelEl.textContent=d.toLocaleDateString('nl-BE',{weekday:'long',day:'numeric',month:'long'});
   const list=agGetFiltered().filter(a=>a.datum===ds).sort((a,b)=>(a.uur||'').localeCompare(b.uur||''));
   if(!list.length){listEl.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen afspraken</div>';return;}
-  listEl.innerHTML=list.map(a=>`<div onclick="agOpenEdit(${a.id})" style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);cursor:pointer">
-    <div style="width:8px;height:8px;border-radius:50%;background:${AG_KLEUREN[a.type]||'var(--green)'};flex-shrink:0;margin-top:4px"></div>
-    <div style="flex:1;min-width:0">
-      <div style="font-size:13px;font-weight:600">${a.titel}</div>
-      <div style="font-size:11px;color:var(--tx3)">${a.uur||''}${a.resp?' · '+a.resp:''}${a.link?' · '+a.link:''}</div>
-      <div style="display:inline-block;margin-top:3px;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:${AG_KLEUREN[a.type]||'var(--green)'}22;color:${AG_KLEUREN[a.type]||'var(--green)'}">${a.type}</div>
-    </div>
-  </div>`).join('');
+  listEl.innerHTML=list.map(a=>{
+    const isLinked=a._bron==='b2c'||a._bron==='b2b';
+    const badge=a._bron==='b2c'
+      ?`<span style="font-size:10px;background:rgba(0,223,163,.15);color:#00805e;padding:1px 5px;border-radius:4px;font-weight:600">B2C visit</span>`
+      :a._bron==='b2b'
+      ?`<span style="font-size:10px;background:rgba(83,74,183,.15);color:#3c3489;padding:1px 5px;border-radius:4px;font-weight:600">B2B visit</span>`
+      :'';
+    return`<div onclick="agOpenEdit(${JSON.stringify(a.id)})" style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);cursor:pointer">
+      <div style="width:8px;height:8px;border-radius:50%;background:${AG_KLEUREN[a.type]||'var(--green)'};flex-shrink:0;margin-top:4px"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${a.titel}</div>
+        <div style="font-size:11px;color:var(--tx3)">${a.uur||''}${a.resp?' · '+a.resp:''}${a.notitie?' · '+a.notitie:''}</div>
+        ${badge}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function agRenderAankomende(){
@@ -2630,10 +2678,15 @@ function agRenderAankomende(){
     const d=new Date(a.datum);
     const diff=Math.round((new Date(a.datum)-new Date(t))/86400000);
     const lbl=diff===0?'Vandaag':diff===1?'Morgen':d.getDate()+' '+MAANDEN_K[d.getMonth()];
-    return`<div onclick="agOpenEdit(${a.id})" style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--bd);cursor:pointer">
+    const badge=a._bron==='b2c'
+      ?`<span style="font-size:10px;background:rgba(0,223,163,.12);color:#00805e;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px">B2C</span>`
+      :a._bron==='b2b'
+      ?`<span style="font-size:10px;background:rgba(83,74,183,.12);color:#3c3489;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px">B2B</span>`
+      :'';
+    return`<div onclick="agOpenEdit(${JSON.stringify(a.id)})" style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--bd);cursor:pointer">
       <div style="width:8px;height:8px;border-radius:50%;background:${AG_KLEUREN[a.type]||'var(--green)'};flex-shrink:0;margin-top:4px"></div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600">${a.titel}</div>
+        <div style="font-size:12px;font-weight:600">${a.titel}${badge}</div>
         <div style="font-size:11px;color:var(--tx3)">${diff<=1?`<span style="color:#854f0b;font-weight:600">${lbl}</span>`:lbl}${a.uur?' '+a.uur:''}${a.resp?' · '+a.resp:''}</div>
       </div>
       <div style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:${AG_KLEUREN[a.type]||'var(--green)'}22;color:${AG_KLEUREN[a.type]||'var(--green)'};white-space:nowrap">${a.type}</div>
@@ -2659,6 +2712,21 @@ function agOpenNieuw(datum=null){
 }
 
 function agOpenEdit(id){
+  const sid=String(id);
+  // B2C visit — open lead dossier
+  if(sid.startsWith('b2c-')){
+    const leadId=parseInt(sid.replace('b2c-',''));
+    b2cOpenDetail(leadId);
+    return;
+  }
+  // B2B visit — open project modal
+  if(sid.startsWith('b2b-')){
+    const projId=sid.replace('b2b-','');
+    const idx=projects.findIndex(p=>p.id===projId||p._rowid===projId);
+    if(idx>-1)openModal(idx);
+    return;
+  }
+  // Gewone agenda-afspraak
   const a=agAfspraken.find(x=>x.id===id);if(!a)return;
   agEditId=id;
   document.getElementById('ag-nieuw-titel').textContent='Afspraak bewerken';
@@ -2670,7 +2738,7 @@ function agOpenEdit(id){
   document.getElementById('ag-notitie').value=a.notitie||'';
   document.getElementById('ag-del-btn').style.display='inline-flex';
   const sel=document.getElementById('ag-resp');
-  sel.innerHTML='<option value="">— kies —</option>'+respNames().map(r=>`<option value="${r}">${r}</option>`).join('');
+  sel.innerHTML='<option value="">— kies —</option>'+respNames().map(r=>`<option value="${r}"${r===a.resp?' selected':''}>${r}</option>`).join('');
   sel.value=a.resp||'';
   document.getElementById('ag-nieuw-overlay').classList.add('open');
 }
@@ -2785,15 +2853,9 @@ function startAppAfterLogin(userNaam='', userEmail=''){
   window._pendingUserLink={naam:userNaam,email:userEmail};
 
   renderAll();renderResps();
-  b2cInitDemo(); // laad demo data als er nog geen b2c leads zijn
+  b2cInitDemo();
   checkAutoMove();
-
-  // Admin start op dashboard, gebruiker op lopende projecten gefilterd op zichzelf
-  if(currentRole==='admin'){
-    showTab('b2c');
-  } else {
-    showTab('b2c');
-  }
+  showTab('agenda');
 }
 
 function linkUserToResp(userNaam, userEmail){
@@ -3083,11 +3145,35 @@ function b2cRenderInfo(l){
         </div>
       </div>
     </div>
-    <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Activiteit</div>
-    <div class="b2c-tl">${(l.acties||[]).slice().reverse().map(a=>`<div class="b2c-tl-item"><span class="b2c-tl-date">${a.datum}</span><span class="b2c-tl-text">${a.tekst}</span></div>`).join('')}</div>
-    <div style="margin-top:12px;display:flex;gap:8px">
-      <input type="text" id="b2c-actie-input" placeholder="Actie loggen..." style="flex:1">
-      <button class="btn primary" onclick="b2cLogActie(${l.id})"><i class="ti ti-plus"></i> Log</button>
+
+    <!-- OPVOLGINGSAGENDA -->
+    <div style="border-top:1px solid var(--bd);margin-top:4px;padding-top:14px">
+      <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+        <span><i class="ti ti-calendar-check" style="margin-right:6px;color:var(--green)"></i>Opvolgingen</span>
+        <button class="btn sm primary" onclick="b2cAddOpvolging(${l.id})"><i class="ti ti-plus"></i> Toevoegen</button>
+      </div>
+      <div id="b2c-opvolging-list">${b2cRenderOpvolgingen(l)}</div>
+      <!-- Nieuw opvolging invoer -->
+      <div id="b2c-opvolging-form" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-top:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="field" style="margin:0"><label style="font-size:11px">Datum</label><input type="date" id="bop-datum" value="${today()}" style="font-size:12px"></div>
+          <div class="field" style="margin:0"><label style="font-size:11px">Uur (optioneel)</label><input type="time" id="bop-uur" style="font-size:12px"></div>
+        </div>
+        <div class="field" style="margin-bottom:8px"><label style="font-size:11px">Wat moet er gedaan worden?</label><input id="bop-tekst" placeholder="bv. Offerte opvolgen, terugbellen..." style="font-size:12px"></div>
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <button class="btn sm" onclick="document.getElementById('b2c-opvolging-form').style.display='none'">Annuleren</button>
+          <button class="btn sm primary" onclick="b2cSaveOpvolging(${l.id})"><i class="ti ti-check"></i> Opslaan</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:10px">
+      <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Activiteit</div>
+      <div class="b2c-tl">${(l.acties||[]).slice().reverse().map(a=>`<div class="b2c-tl-item"><span class="b2c-tl-date">${a.datum}</span><span class="b2c-tl-text">${a.tekst}</span></div>`).join('')}</div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <input type="text" id="b2c-actie-input" placeholder="Actie loggen..." style="flex:1">
+        <button class="btn primary" onclick="b2cLogActie(${l.id})"><i class="ti ti-plus"></i> Log</button>
+      </div>
     </div>
   `;
 }
@@ -3106,8 +3192,75 @@ function b2cSaveContactInfo(id){
   l.acties.push({datum:today(),tekst:'Contactgegevens bijgewerkt'});
   showToast('Contactgegevens opgeslagen!');
   b2cRenderLeads();
-  // Update modal titel
   document.getElementById('b2c-detail-titel').textContent=b2cNaam(l);
+}
+
+// ── B2C OPVOLGINGSAGENDA ──────────────────────────────
+function b2cRenderOpvolgingen(l){
+  const ops=(l.opvolgingen||[]).slice().sort((a,b)=>a.datum.localeCompare(b.datum));
+  if(!ops.length)return'<div style="font-size:12px;color:var(--tx3);padding:4px 0">Geen opvolgingen gepland.</div>';
+  const t=today();
+  return ops.map((op,i)=>{
+    const verleden=op.datum<t;
+    const isVandaag=op.datum===t;
+    const kleur=verleden?'#a32d2d':isVandaag?'#854f0b':'var(--tx2)';
+    const bg=verleden?'rgba(163,45,45,.06)':isVandaag?'rgba(133,79,11,.06)':'var(--bg2)';
+    const gedaanStijl=op.gedaan?'opacity:.5;text-decoration:line-through;':'' ;
+    return`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:var(--r);background:${bg};margin-bottom:6px;${gedaanStijl}">
+      <div style="width:36px;text-align:center;flex-shrink:0">
+        <div style="font-size:10px;font-weight:700;color:${kleur}">${op.datum.slice(8)}</div>
+        <div style="font-size:9px;color:var(--tx3)">${['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][parseInt(op.datum.slice(5,7))-1]}</div>
+        ${op.uur?`<div style="font-size:10px;color:var(--tx3)">${op.uur}</div>`:''}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--tx)">${op.tekst}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button class="btn sm" onclick="b2cToggleOpvolgingGedaan(${l.id},${i})" title="${op.gedaan?'Heractiveren':'Markeer als gedaan'}" style="color:${op.gedaan?'var(--tx3)':'#639922'}"><i class="ti ti-${op.gedaan?'refresh':'check'}"></i></button>
+        <button class="btn sm danger" onclick="b2cDeleteOpvolging(${l.id},${i})"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function b2cAddOpvolging(id){
+  document.getElementById('b2c-opvolging-form').style.display='block';
+  document.getElementById('bop-datum').value=today();
+  document.getElementById('bop-uur').value='';
+  document.getElementById('bop-tekst').value='';
+  document.getElementById('bop-tekst').focus();
+}
+
+function b2cSaveOpvolging(id){
+  const datum=document.getElementById('bop-datum').value;
+  const tekst=document.getElementById('bop-tekst').value.trim();
+  if(!datum||!tekst){showToast('Vul datum en omschrijving in.');return;}
+  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  l.opvolgingen=l.opvolgingen||[];
+  l.opvolgingen.push({datum,uur:document.getElementById('bop-uur').value,tekst,gedaan:false});
+  document.getElementById('b2c-opvolging-form').style.display='none';
+  document.getElementById('b2c-opvolging-list').innerHTML=b2cRenderOpvolgingen(l);
+  showToast('Opvolging toegevoegd.');
+  l.acties=l.acties||[];
+  l.acties.push({datum:today(),tekst:'Opvolging ingepland: '+tekst+' op '+datum});
+}
+
+function b2cToggleOpvolgingGedaan(id,idx){
+  const l=b2cLeads.find(x=>x.id===id);if(!l||!l.opvolgingen)return;
+  l.opvolgingen[idx].gedaan=!l.opvolgingen[idx].gedaan;
+  document.getElementById('b2c-opvolging-list').innerHTML=b2cRenderOpvolgingen(l);
+  if(l.opvolgingen[idx].gedaan){
+    l.acties=l.acties||[];
+    l.acties.push({datum:today(),tekst:'Opvolging afgevinkt: '+l.opvolgingen[idx].tekst});
+  }
+}
+
+function b2cDeleteOpvolging(id,idx){
+  const l=b2cLeads.find(x=>x.id===id);if(!l||!l.opvolgingen)return;
+  if(!confirm('Opvolging verwijderen?'))return;
+  l.opvolgingen.splice(idx,1);
+  document.getElementById('b2c-opvolging-list').innerHTML=b2cRenderOpvolgingen(l);
+  showToast('Opvolging verwijderd.');
 }
 
 function b2cChangeStatus(id,s){
