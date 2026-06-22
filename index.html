@@ -444,7 +444,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 </div>
 
 <!-- LOPENDE PROJECTEN -->
-<div id="pane-lopend" class="page wide" style="display:none">
+<div id="pane-lopend" class="page" style="display:none">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:1rem;max-width:1600px;margin-left:auto;margin-right:auto">
     <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">Lopende projecten</div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -591,13 +591,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1">
-      <!-- Resp pills -->
       <div class="pills" id="b2c-pills-resp"></div>
-      <!-- Status dropdown -->
-      <select id="b2c-select-status" onchange="b2cSetStatusFilter(this.value)" style="font-size:12px;padding:5px 10px;border:1px solid var(--bd);border-radius:20px;background:var(--bg);color:var(--tx);cursor:pointer">
-        <option value="alle">Alle statussen</option>
-      </select>
-      <!-- Warmte pills -->
       <div class="pills" id="b2c-pills-warmte"></div>
     </div>
     <div style="display:flex;gap:8px;flex-shrink:0">
@@ -605,7 +599,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="btn primary" onclick="b2cOpenNieuw(true)"><i class="ti ti-map-pin"></i> Lead via visit</button>
     </div>
   </div>
-  <div style="display:flex;gap:16px;align-items:flex-start;max-width:1600px;margin:0 auto">
+  <div style="display:flex;gap:16px;align-items:flex-start">
     <div style="flex:1;min-width:0;overflow-x:auto">
       <div id="b2c-kanban-board" class="b2c-kanban"></div>
     </div>
@@ -1178,6 +1172,13 @@ let b2cScreeningLeadId   = null;
 let b2cScreeningFotos    = [];
 let b2cScreeningSelects  = {gevelbekleding:'',aansluiting:''};
 let b2cContractTekst     = '';
+let b2cGewRespFilter     = 'alle';
+let b2cGewMaandFilter    = '';
+let b2cVlRespFilter      = 'alle';
+let b2cVlMaandFilter     = '';
+let b2cDragLeadId        = null;
+let b2cVerliesLeadId     = null;
+let b2cDidDrag           = false;
 
 // ── HELPERS ────────────────────────────────────────────
 function pctColor(p){const t=Math.max(0,Math.min(1,p/100));return`hsl(${Math.round(30+t*100)},${Math.round(90-t*25)}%,${Math.round(48-t*10)}%)`;}
@@ -2929,12 +2930,13 @@ function agDelete(){
   document.getElementById('resp-modal').addEventListener('click',function(e){if(e.target===this)closeRespModal();});
   document.getElementById('invite-modal').addEventListener('click',function(e){if(e.target===this)closeInviteModal();});
   document.getElementById('crm-modal').addEventListener('click',function(e){if(e.target===this)closeCrmModal();});
-  document.getElementById('crm-complete-overlay').addEventListener('click',function(e){if(e.target===this)closeCrmComplete();});
+  const cco=document.getElementById('crm-complete-overlay');if(cco)cco.addEventListener('click',function(e){if(e.target===this)closeCrmComplete();});
 
   // Herstel lokale klanten backup
   try{const d=localStorage.getItem('blitz_klanten');if(d)klanten=JSON.parse(d);}catch{}
   try{const d=localStorage.getItem('blitz_ag');if(d){agAfspraken=JSON.parse(d);agNextId=Math.max(1,...agAfspraken.map(a=>a.id||0))+1;}}catch{}
-  document.getElementById('ag-nieuw-overlay').addEventListener('click',function(e){if(e.target===this)agCloseNieuw();});
+  const agov=document.getElementById('ag-nieuw-overlay');if(agov)agov.addEventListener('click',function(e){if(e.target===this)agCloseNieuw();});
+  const vlv=document.getElementById('b2c-verlies-overlay');if(vlv)vlv.addEventListener('click',function(e){if(e.target===this)b2cAnnuleerVerlies();});
 
   // Probeer bestaande sessie te herstellen
   initSupabaseClient();
@@ -3041,20 +3043,11 @@ function b2cRenderStats(){
 }
 
 function b2cRenderPills(){
-  // Resp pills — klikbaar
   const respEl=document.getElementById('b2c-pills-resp');
   if(respEl){
     const rNames=['alle',...new Set([...b2cLeads.map(l=>l.resp),...respNames()].filter(Boolean))];
     respEl.innerHTML=rNames.map(r=>`<button class="pill${r==='alle'?' all':''}${b2cRespFilter===r?' active':''}" onclick="b2cSetRespFilter('${r}')">${r==='alle'?'<i class="ti ti-users" style="font-size:12px;margin-right:3px"></i>Iedereen':r}</button>`).join('');
   }
-  // Status dropdown
-  const stSel=document.getElementById('b2c-select-status');
-  if(stSel){
-    const cur=stSel.value;
-    stSel.innerHTML='<option value="alle">Alle statussen</option>'+B2C_STATUSSEN.filter(s=>s!=='Gewonnen'&&s!=='Verloren').map(s=>`<option value="${s}"${b2cStatusFilter===s?' selected':''}>${s}</option>`).join('');
-    if(cur&&cur!=='alle')stSel.value=cur;
-  }
-  // Warmte pills
   const warmEl=document.getElementById('b2c-pills-warmte');
   if(warmEl){
     const wp=['alle',...B2C_WARMTES];
@@ -3082,10 +3075,6 @@ function b2cGetFiltered(){
 }
 
 // ── B2C GEWONNEN / VERLOREN TABS ─────────────────────
-let b2cGewRespFilter='alle';
-let b2cGewMaandFilter='';
-let b2cVlRespFilter='alle';
-let b2cVlMaandFilter='';
 
 function b2cRenderGewonnen(){
   const list=b2cLeads.filter(l=>l.status==='Gewonnen');
@@ -3200,9 +3189,6 @@ function b2cMarkeerStatus(status){
   showToast(`Lead gemarkeerd als ${status}!`);
 }
 
-let b2cDragLeadId = null;
-let b2cVerliesLeadId = null;
-let b2cDidDrag = false;
 
 function b2cRenderLeads(){
   b2cRenderStats();b2cRenderPills();b2cRenderDashOpvolgingen();
@@ -4000,7 +3986,7 @@ function b2cSaveLead(){
     tel:document.getElementById('bn-tel').value,email:document.getElementById('bn-email').value,
     adres:document.getElementById('bn-adres').value,bron:document.getElementById('bn-bron').value,
     warmte:document.getElementById('bn-warmte').value,
-    status:b2cIsVisitMode&&vd?'Visit gepland':'Nieuw',
+    status:b2cIsVisitMode&&vd?'1e contactpoging':'Nieuw',
     resp:document.getElementById('bn-resp').value,
     actie:document.getElementById('bn-actie').value||'Opvolgen',
     notities:document.getElementById('bn-notities').value,
