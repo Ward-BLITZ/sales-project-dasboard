@@ -3062,20 +3062,7 @@ function linkUserToResp(userNaam, userEmail){
 
 // Demo data - wordt aangeroepen vanuit init()
 function b2cInitDemo(){
-  if(b2cLeads.length>0)return; // al geladen
-  b2cLeads=[
-    {id:b2cNextId++,voornaam:'Jan',achternaam:'Vermeersch',tel:'0477 12 34 56',email:'jan.v@mail.be',adres:'Kapelstraat 12, 9000 Gent',bron:'Website',warmte:'Warm',status:'Visit gedaan',resp:'Sofie',actie:'Offerte opmaken',notities:'Geïnteresseerd in EV-lader, garage op zuiden.',visitDatum:'2026-06-12',visitUur:'10:00',
-      screening:{digitale_meter:'JA',p1_bezet:'NEE',eigendom:'JA',vrije_route:'JA',gevelbekleding:'STEEN',afstand:'Ca. 8m',hoofdzekering:'40',aansluiting:'3-fase',vrije_ruimte:'JA',lan:'JA',vierg:'NEE',extra_werken:'NEE',opmerkingen:'Nette woning, geen obstakels.',fotos:[],datum:'2026-06-12'},
-      acties:[{datum:'2026-06-05',tekst:'Lead via website'},{datum:'2026-06-08',tekst:'Telefonisch contact'},{datum:'2026-06-12',tekst:'Visit uitgevoerd'}]},
-    {id:b2cNextId++,voornaam:'Marie',achternaam:'Claes',tel:'0468 98 76 54',email:'m.claes@outlook.com',adres:'Lindenlaan 7, 8000 Brugge',bron:'Doorverwijzing',warmte:'Hot',status:'Offerte',resp:'Koen',actie:'Offerte opvolgen',notities:'Wil snel geïnstalleerd.',visitDatum:'2026-06-08',visitUur:'14:00',
-      screening:{digitale_meter:'JA',p1_bezet:'NEE',eigendom:'JA',vrije_route:'JA',gevelbekleding:'CREPI',afstand:'Ca. 5m',hoofdzekering:'63',aansluiting:'3-fase',vrije_ruimte:'JA',lan:'NEE',vierg:'JA',extra_werken:'NEE',opmerkingen:'',fotos:[],datum:'2026-06-08'},
-      acties:[{datum:'2026-06-01',tekst:'Doorverwijzing'},{datum:'2026-06-05',tekst:'Visit gedaan'},{datum:'2026-06-14',tekst:'Offerte verstuurd'}]},
-    {id:b2cNextId++,voornaam:'Pieter',achternaam:'Janssen',tel:'0492 11 22 33',email:'p.janssen@gmail.com',adres:'Stationsplein 3, 2000 Antwerpen',bron:'Google Ads',warmte:'Lauw',status:'Gecontacteerd',resp:'Sofie',actie:'Visit inplannen',notities:'Vraag via contactformulier.',visitDatum:null,screening:null,
-      acties:[{datum:'2026-06-15',tekst:'Lead via Google Ads'},{datum:'2026-06-16',tekst:'E-mail verstuurd'}]},
-    {id:b2cNextId++,voornaam:'Tom',achternaam:'Bogaert',tel:'0471 66 77 88',email:'t.bogaert@proximus.be',adres:'Kerkweg 88, 3000 Leuven',bron:'Social media',warmte:'Hot',status:'Gewonnen',resp:'Sofie',actie:'Installatie plannen',notities:'Contract getekend.',visitDatum:'2026-06-25',visitUur:'11:00',
-      screening:{digitale_meter:'JA',p1_bezet:'JA',eigendom:'JA',vrije_route:'JA',gevelbekleding:'STEEN',afstand:'Ca. 3m',hoofdzekering:'40',aansluiting:'1-fase',vrije_ruimte:'JA',lan:'JA',vierg:'JA',extra_werken:'JA',opmerkingen:'P1-splitter nodig.',fotos:[],datum:'2026-06-25'},
-      acties:[{datum:'2026-05-10',tekst:'DM via Facebook'},{datum:'2026-06-25',tekst:'Visit gedaan'},{datum:'2026-06-28',tekst:'Contract getekend — Gewonnen!'}]},
-  ];
+  // Geen demo data — leads starten leeg
 }
 
 // ─── HELPERS ────────────────────────────────────────
