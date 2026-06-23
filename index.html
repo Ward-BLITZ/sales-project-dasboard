@@ -973,7 +973,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 
 <!-- B2C LEAD DETAIL MODAL -->
 <div class="modal-overlay" id="b2c-detail-overlay">
-  <div class="modal-box" style="max-width:880px">
+  <div class="modal-box" style="max-width:880px;display:flex;flex-direction:column;max-height:90vh">
     <div class="modal-header">
       <span class="modal-title" id="b2c-detail-titel">Klantdossier</span>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
@@ -987,9 +987,16 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="inner-tab" id="b2c-dtab-screening" onclick="b2cShowDetailTab('screening')"><i class="ti ti-clipboard-list" style="margin-right:5px"></i>Screening</button>
       <button class="inner-tab" id="b2c-dtab-contract" onclick="b2cShowDetailTab('contract')"><i class="ti ti-file-invoice" style="margin-right:5px"></i>Contract</button>
     </div>
-    <div id="b2c-detail-info"></div>
-    <div id="b2c-detail-screening" style="display:none"></div>
-    <div id="b2c-detail-contract" style="display:none"></div>
+    <div style="flex:1;overflow-y:auto">
+      <div id="b2c-detail-info"></div>
+      <div id="b2c-detail-screening" style="display:none"></div>
+      <div id="b2c-detail-contract" style="display:none"></div>
+    </div>
+    <div class="modal-footer" id="b2c-detail-footer" style="border-top:1px solid var(--bd);padding:12px 20px;background:var(--bg);flex-shrink:0">
+      <button class="btn danger" onclick="b2cVerwijderLead(b2cOpenLeadId)" style="margin-right:auto"><i class="ti ti-trash"></i> Lead verwijderen</button>
+      <button class="btn" onclick="b2cCloseDetail()">Sluiten</button>
+      <button class="btn primary" onclick="b2cSaveLeadEdit()"><i class="ti ti-check"></i> Opslaan</button>
+    </div>
   </div>
 </div>
 
@@ -3415,11 +3422,12 @@ function b2cShowDetailTab(tab){
 // ─── TAB 1: INFO ────────────────────────────────────
 function b2cRenderInfo(l){
   document.getElementById('b2c-detail-info').innerHTML=`
+    <div style="padding:16px 20px">
     <div class="b2c-summary-grid">
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Status</div><div><span class="badge ${b2cBadgeSt(l.status)}">${l.status}</span></div></div>
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Warmte</div><div><span class="badge ${b2cBadgeW(l.warmte)}">${l.warmte}</span></div></div>
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Verantwoordelijke</div>
-        <select onchange="b2cLeads.find(x=>x.id==${l.id}).resp=this.value;showToast('Opgeslagen')" style="font-size:12px;padding:3px 6px;width:auto">
+        <select id="bi-resp" style="font-size:12px;padding:3px 6px;width:auto">
           <option value="">—</option>
           ${respNames().map(r=>`<option value="${r}"${l.resp===r?' selected':''}>${r}</option>`).join('')}
         </select>
@@ -3430,7 +3438,7 @@ function b2cRenderInfo(l){
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1rem">
       <div>
-        <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Contactgegevens <button class="btn sm" onclick="b2cSaveContactInfo(${l.id})" style="margin-left:8px;font-size:11px"><i class="ti ti-check"></i> Opslaan</button></div>
+        <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Contactgegevens</div>
         <div class="field" style="margin-bottom:8px"><label>Voornaam</label><input id="bi-vnaam" value="${l.voornaam||''}" style="font-size:12px"></div>
         <div class="field" style="margin-bottom:8px"><label>Achternaam</label><input id="bi-anaam" value="${l.achternaam||''}" style="font-size:12px"></div>
         <div class="field" style="margin-bottom:8px"><label><i class="ti ti-phone" style="margin-right:4px"></i>Telefoon</label><input id="bi-tel" value="${l.tel||''}" type="tel" style="font-size:12px"></div>
@@ -3446,12 +3454,12 @@ function b2cRenderInfo(l){
             ${B2C_WARMTES.map(w=>`<option${l.warmte===w?' selected':''}>${w}</option>`).join('')}
           </select>
         </div>
-        <div class="field" style="margin-bottom:8px"><label>Notities</label><textarea id="bi-notities" rows="2" style="font-size:12px">${l.notities||''}</textarea></div>
+        <div class="field" style="margin-bottom:8px"><label>Notities</label><textarea id="bi-notities" rows="3" style="font-size:12px">${l.notities||''}</textarea></div>
       </div>
       <div>
         <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Pipeline</div>
         <div class="b2c-status-steps">${B2C_STATUSSEN.map(s=>`<button class="b2c-status-step${l.status===s?' current':''}" onclick="b2cChangeStatus(${l.id},'${s}')">${s}</button>`).join('')}</div>
-        <div class="field" style="margin-bottom:8px"><label>Volgende actie</label><input type="text" value="${l.actie||''}" onchange="b2cLeads.find(x=>x.id==${l.id}).actie=this.value;showToast('Opgeslagen')" style="font-size:12px"></div>
+        <div class="field" style="margin-bottom:8px"><label>Volgende actie</label><input id="bi-actie" type="text" value="${l.actie||''}" style="font-size:12px"></div>
         ${!l.visitDatum
           ?`<button class="btn primary" style="width:100%;justify-content:center" onclick="b2cOpenVisitModal(${l.id})"><i class="ti ti-calendar-plus"></i> Visit inplannen</button>`
           :`<div style="background:rgba(0,223,163,.08);border:1px solid rgba(0,223,163,.3);border-radius:var(--r);padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between"><span><i class="ti ti-calendar-event" style="color:var(--green);margin-right:6px"></i><strong>${l.visitDatum}</strong>${l.visitUur?' om <strong>'+l.visitUur+'</strong>':''}</span><button class="btn sm" onclick="b2cOpenVisitModal(${l.id})"><i class="ti ti-edit"></i></button></div>`}
@@ -3468,7 +3476,6 @@ function b2cRenderInfo(l){
         <button class="btn sm primary" onclick="b2cAddOpvolging(${l.id})"><i class="ti ti-plus"></i> Toevoegen</button>
       </div>
       <div id="b2c-opvolging-list">${b2cRenderOpvolgingen(l)}</div>
-      <!-- Nieuw opvolging invoer -->
       <div id="b2c-opvolging-form" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-top:8px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
           <div class="field" style="margin:0"><label style="font-size:11px">Datum</label><input type="date" id="bop-datum" value="${today()}" style="font-size:12px"></div>
@@ -3490,27 +3497,32 @@ function b2cRenderInfo(l){
         <button class="btn primary" onclick="b2cLogActie(${l.id})"><i class="ti ti-plus"></i> Log</button>
       </div>
     </div>
-    <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px;display:flex;justify-content:flex-end">
-      <button class="btn danger" onclick="b2cVerwijderLead(${l.id})"><i class="ti ti-trash"></i> Lead verwijderen</button>
     </div>
   `;
 }
 
-function b2cSaveContactInfo(id){
-  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
-  l.voornaam=document.getElementById('bi-vnaam').value.trim();
-  l.achternaam=document.getElementById('bi-anaam').value.trim();
-  l.tel=document.getElementById('bi-tel').value.trim();
-  l.email=document.getElementById('bi-email').value.trim();
-  l.adres=document.getElementById('bi-adres').value.trim();
-  l.bron=document.getElementById('bi-bron').value;
-  l.warmte=document.getElementById('bi-warmte').value;
-  l.notities=document.getElementById('bi-notities').value.trim();
-  l.acties=l.acties||[];
-  l.acties.push({datum:today(),tekst:'Contactgegevens bijgewerkt'});
-  showToast('Contactgegevens opgeslagen!');
-  b2cRenderLeads();
+function b2cSaveLeadEdit(){
+  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  const get=id=>{const el=document.getElementById(id);return el?el.value.trim():null;};
+  const changed=[];
+  const nvnaam=get('bi-vnaam'), nanaam=get('bi-anaam');
+  if(nvnaam!==null&&(nvnaam!==l.voornaam||nanaam!==l.achternaam)){l.voornaam=nvnaam;l.achternaam=nanaam;changed.push('naam');}
+  const ntel=get('bi-tel');if(ntel!==null&&ntel!==l.tel){l.tel=ntel;changed.push('telefoon');}
+  const nemail=get('bi-email');if(nemail!==null&&nemail!==l.email){l.email=nemail;changed.push('e-mail');}
+  const nadres=get('bi-adres');if(nadres!==null&&nadres!==l.adres){l.adres=nadres;changed.push('adres');}
+  const nbron=get('bi-bron');if(nbron!==null&&nbron!==l.bron){l.bron=nbron;changed.push('bron');}
+  const nwarmte=get('bi-warmte');if(nwarmte!==null&&nwarmte!==l.warmte){l.warmte=nwarmte;changed.push('warmte');}
+  const nnotities=get('bi-notities');if(nnotities!==null&&nnotities!==l.notities){l.notities=nnotities;changed.push('notities');}
+  const nresp=get('bi-resp');if(nresp!==null&&nresp!==l.resp){l.resp=nresp;changed.push('verantwoordelijke');}
+  const nactie=get('bi-actie');if(nactie!==null&&nactie!==l.actie){l.actie=nactie;changed.push('volgende actie');}
+  if(changed.length){
+    l.acties=l.acties||[];
+    l.acties.push({datum:today(),tekst:'Bewerkt: '+changed.join(', ')});
+  }
   document.getElementById('b2c-detail-titel').textContent=b2cNaam(l);
+  b2cRenderInfo(l);
+  b2cRenderLeads();
+  showToast(changed.length?'Lead opgeslagen ✓':'Geen wijzigingen.');
 }
 
 // ── B2C OPVOLGINGSAGENDA ──────────────────────────────
