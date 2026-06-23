@@ -595,7 +595,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 <!-- B2C VERLOREN DROP ZONE -->
 <div id="b2c-trash-zone" style="position:fixed;bottom:24px;right:24px;width:68px;height:68px;border-radius:50%;background:var(--bg);border:2px dashed #a32d2d;display:none;align-items:center;justify-content:center;flex-direction:column;gap:2px;z-index:40;transition:all .2s"
      ondragover="b2cTrashOver(event)" ondragleave="b2cTrashLeave(event)" ondrop="b2cTrashDrop(event)">
-  <i class="ti ti-trash" style="font-size:24px;color:#a32d2d"></i>
+  <span style="font-size:26px;line-height:1">😢</span>
   <span style="font-size:9px;font-weight:700;color:#a32d2d">Verloren</span>
 </div>
 
@@ -2807,12 +2807,29 @@ function agSave(){
   const linkId=document.getElementById('ag-link-id').value.trim();
   const linkLabel=document.getElementById('ag-link-label').value.trim();
   const linkType=linkId.startsWith('b2c-')?'b2c':linkId.startsWith('b2b-')?'b2b':'';
+  // Auto-fill resp from linked lead or project
+  let autoResp = document.getElementById('ag-resp').value;
+  if(linkId){
+    if(linkType==='b2c'){
+      const leadId=parseInt(linkId.replace('b2c-',''));
+      const lead=b2cLeads.find(x=>x.id===leadId);
+      if(lead&&lead.resp) autoResp=lead.resp;
+    } else if(linkType==='b2b'){
+      const projId=linkId.replace('b2b-','');
+      const proj=projects.find(p=>p.id===projId||p._rowid===projId||(p.id||p._rowid||p.naam)==='projId');
+      if(!proj){
+        // fallback: match by label
+        const matchProj=projects.find(p=>p.naam===linkLabel);
+        if(matchProj&&matchProj.resp) autoResp=matchProj.resp;
+      } else if(proj.resp) autoResp=proj.resp;
+    }
+  }
   const a={
     id:agEditId||agNextId++,
     titel,datum,
     uur:document.getElementById('ag-uur').value,
     type:document.getElementById('ag-type').value,
-    resp:document.getElementById('ag-resp').value,
+    resp:autoResp,
     link:linkLabel||document.getElementById('ag-link-search').value.trim(),
     linkId,linkLabel,linkType,
     notitie:document.getElementById('ag-notitie').value.trim()
@@ -3283,8 +3300,11 @@ function b2cDrop(e,newStatus){
   if(!l||l.status===newStatus){b2cDragLeadId=null;return;}
   l.status=newStatus;
   l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Status → '+newStatus});
-  if(newStatus==='Gewonnen'&&!l.gewonnenOp){l.gewonnenOp=today();showToast('🎉 Gewonnen: '+b2cNaam(l)+'!');}
-  b2cDragLeadId=null;b2cRenderLeads();showToast('"'+b2cNaam(l)+'" → '+newStatus);
+  if(newStatus==='Gewonnen'&&!l.gewonnenOp){l.gewonnenOp=today();}
+  b2cDragLeadId=null;
+  b2cRenderLeads();
+  if(newStatus==='Gewonnen'){b2cRenderGewonnen();showTab('b2c-gewonnen');showToast('🎉 Gewonnen: '+b2cNaam(l)+'!');}
+  else{showToast('"'+b2cNaam(l)+'" → '+newStatus);}
 }
 function b2cTrashOver(e){e.preventDefault();const tz=document.getElementById('b2c-trash-zone');if(tz){tz.style.background='#fcebeb';tz.style.transform='scale(1.15)';}}
 function b2cTrashLeave(e){const tz=document.getElementById('b2c-trash-zone');if(tz){tz.style.background='';tz.style.transform='';}}
@@ -3309,7 +3329,7 @@ function b2cBevestigVerlies(){
   const reden=document.getElementById('b2c-verlies-input').value.trim();
   l.status='Verloren';l.verliesReden=reden||'Niet opgegeven';l.verliesOp=today();
   l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Verloren'+(reden?' — '+reden:'')});
-  b2cAnnuleerVerlies();b2cRenderLeads();b2cRenderVerloren();
+  b2cAnnuleerVerlies();b2cRenderLeads();b2cRenderVerloren();showTab('b2c-verloren');
   showToast('"'+b2cNaam(l)+'" als verloren gemarkeerd.');
 }
 function b2cAnnuleerVerlies(){
@@ -3329,6 +3349,15 @@ function b2cOpenDetail(id){
 function b2cCloseDetail(){
   document.getElementById('b2c-detail-overlay').classList.remove('open');
   b2cOpenLeadId=null;b2cRenderLeads();
+}
+
+function b2cVerwijderLead(id){
+  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  if(!confirm(`Lead "${b2cNaam(l)}" definitief verwijderen? Dit kan niet ongedaan gemaakt worden.`))return;
+  b2cLeads=b2cLeads.filter(x=>x.id!==id);
+  b2cCloseDetail();
+  b2cRenderLeads();b2cRenderGewonnen();b2cRenderVerloren();
+  showToast('Lead verwijderd.');
 }
 
 function b2cShowDetailTab(tab){
@@ -3418,6 +3447,9 @@ function b2cRenderInfo(l){
         <input type="text" id="b2c-actie-input" placeholder="Actie loggen..." style="flex:1">
         <button class="btn primary" onclick="b2cLogActie(${l.id})"><i class="ti ti-plus"></i> Log</button>
       </div>
+    </div>
+    <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px;display:flex;justify-content:flex-end">
+      <button class="btn danger" onclick="b2cVerwijderLead(${l.id})"><i class="ti ti-trash"></i> Lead verwijderen</button>
     </div>
   `;
 }
