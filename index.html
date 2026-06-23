@@ -1156,6 +1156,9 @@ let b2cScreeningLeadId   = null;
 let b2cScreeningFotos    = [];
 let b2cScreeningSelects  = {gevelbekleding:'',aansluiting:''};
 let b2cContractTekst     = '';
+let b2cDragLeadId        = null;
+let b2cDidDrag           = false;
+let b2cVerliesLeadId     = null;
 
 // ── HELPERS ────────────────────────────────────────────
 function pctColor(p){const t=Math.max(0,Math.min(1,p/100));return`hsl(${Math.round(30+t*100)},${Math.round(90-t*25)}%,${Math.round(48-t*10)}%)`;}
@@ -3181,9 +3184,7 @@ function b2cMarkeerStatus(status){
   showToast(`Lead gemarkeerd als ${status}!`);
 }
 
-let b2cDragLeadId = null;
-let b2cDidDrag = false;
-let b2cVerliesLeadId = null;
+
 
 function b2cRenderLeads(){
   b2cRenderStats();b2cRenderPills();b2cRenderDashOpvolgingen();
