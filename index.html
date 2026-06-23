@@ -49,6 +49,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 /* LAYOUT */
 .page{padding:1.5rem;max-width:960px;margin:0 auto}
 .page.wide{max-width:100%;padding:1.5rem}
+.page.wide{max-width:100%}
 /* STATS */
 .stats-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem}
 .stat-card{background:var(--bg2);border-radius:var(--r);padding:10px 18px}
@@ -230,29 +231,6 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 @media(max-width:700px){.grid3{grid-template-columns:1fr}}
 .leads-tabel{background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden}
 .leads-hdr{display:grid;grid-template-columns:2fr 1.3fr 1fr .9fr 1fr 1.2fr 90px;gap:10px;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--bd);font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px}
-/* B2C KANBAN */
-.b2c-kanban{display:flex;gap:14px;padding-bottom:1rem;min-height:calc(100vh - 220px);align-items:flex-start}
-.b2c-kanban::-webkit-scrollbar{height:6px}.b2c-kanban::-webkit-scrollbar-thumb{background:var(--gray);border-radius:3px}
-.b2c-kol{flex:0 0 220px;min-height:calc(100vh - 260px);background:var(--bg2);border-radius:var(--rl);padding:10px;display:flex;flex-direction:column}
-.b2c-kol-hdr{padding:8px 4px 10px;margin-bottom:4px;border-bottom:2px solid var(--bd)}
-.b2c-kol-title{font-family:'Poppins',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx2)}
-.b2c-kol-count{display:inline-block;background:var(--bg3);color:var(--tx3);font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;margin-left:6px}
-.b2c-kol-body{flex:1;min-height:200px;padding-top:4px}
-.b2c-kol-body.drag-over{outline:2px dashed var(--green);outline-offset:-3px;background:rgba(0,223,163,.06);border-radius:var(--rl)}
-.b2c-tile{background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:8px;padding:10px 11px;cursor:pointer;user-select:none;transition:border-color .15s,box-shadow .15s}
-.b2c-tile:hover{border-color:var(--green);box-shadow:0 2px 8px rgba(0,223,163,.12)}
-.b2c-tile.dragging{opacity:.3;transform:scale(.97)}
-.b2c-tile-naam{font-size:12px;font-weight:700;margin-bottom:2px;color:var(--tx)}
-.b2c-tile-sub{font-size:10px;color:var(--tx3);margin-bottom:6px}
-.b2c-tile-footer{display:flex;justify-content:space-between;align-items:center}
-/* Gewonnen kolom stijl */
-.b2c-kol.gewonnen .b2c-kol-hdr{border-bottom-color:#639922}
-.b2c-kol.gewonnen .b2c-kol-title{color:#639922}
-/* Verloren drop zone */
-.b2c-trash-zone{position:fixed;bottom:24px;right:24px;width:68px;height:68px;border-radius:50%;background:var(--bg);border:2px dashed #a32d2d;display:none;align-items:center;justify-content:center;font-size:24px;color:#a32d2d;z-index:40;transition:all .2s;flex-direction:column;gap:2px}
-.b2c-trash-zone.active{display:flex}
-.b2c-trash-zone.over{background:#fcebeb;border-style:solid;transform:scale(1.15)}
-.b2c-trash-label{font-size:9px;font-weight:700;color:#a32d2d}
 .lead-rij{display:grid;grid-template-columns:2fr 1.3fr 1fr .9fr 1fr 1.2fr 90px;gap:10px;padding:11px 14px;border-bottom:1px solid var(--bd);font-size:13px;align-items:center;cursor:pointer;transition:background .12s,border-left .12s,padding-left .12s}
 .lead-rij:last-child{border-bottom:none}
 .lead-rij:hover{background:var(--bg2);border-left:3px solid var(--green);padding-left:11px}
@@ -423,7 +401,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 </div>
 
 <!-- DASHBOARD -->
-<div id="pane-dashboard" class="page" style="display:none">
+<div id="pane-dashboard" class="page">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
     <div>
       <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600;margin-bottom:4px">Projecten overzicht</div>
@@ -445,7 +423,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 
 <!-- LOPENDE PROJECTEN -->
 <div id="pane-lopend" class="page wide" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:1rem">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:1rem;max-width:1600px;margin-left:auto;margin-right:auto">
     <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">Lopende projecten</div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div class="filter-bar" style="margin:0;padding:6px 12px">
@@ -455,7 +433,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
       <button class="btn primary" onclick="openModal(null)"><i class="ti ti-plus"></i> Nieuw project</button>
     </div>
   </div>
-  <div class="kanban-layout">
+  <div class="kanban-layout" >
     <div class="kanban-wrap"><div class="kanban" id="kanban-board"></div></div>
     <div class="cal-sidebar">
       <div class="cal-nav">
@@ -591,7 +569,12 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1">
+      <!-- Resp pills -->
       <div class="pills" id="b2c-pills-resp"></div>
+      <!-- Status dropdown -->
+        <option value="alle">Alle statussen</option>
+      </select>
+      <!-- Warmte pills -->
       <div class="pills" id="b2c-pills-warmte"></div>
     </div>
     <div style="display:flex;gap:8px;flex-shrink:0">
@@ -601,9 +584,8 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   </div>
   <div style="display:flex;gap:16px;align-items:flex-start">
     <div style="flex:1;min-width:0;overflow-x:auto">
-      <div id="b2c-kanban-board" class="b2c-kanban"></div>
+      <div id="b2c-kanban-board" style="display:flex;gap:14px;padding-bottom:1rem;min-height:calc(100vh - 220px);align-items:flex-start"></div>
     </div>
-    <!-- Opvolgingen zijbalk -->
     <div style="width:240px;flex-shrink:0;position:sticky;top:80px">
       <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:14px">
         <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ti-calendar-check" style="color:var(--green)"></i>Opvolgingen</div>
@@ -611,6 +593,14 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       </div>
     </div>
   </div>
+</div>
+
+<!-- B2C VERLOREN DROP ZONE -->
+<div id="b2c-trash-zone" style="position:fixed;bottom:24px;right:24px;width:68px;height:68px;border-radius:50%;background:var(--bg);border:2px dashed #a32d2d;display:none;align-items:center;justify-content:center;flex-direction:column;gap:2px;z-index:40;transition:all .2s"
+     ondragover="b2cTrashOver(event)" ondragleave="b2cTrashLeave(event)" ondrop="b2cTrashDrop(event)">
+  <i class="ti ti-trash" style="font-size:24px;color:#a32d2d"></i>
+  <span style="font-size:9px;font-weight:700;color:#a32d2d">Verloren</span>
+</div>
 
 <!-- B2C VERLOREN REDEN POPUP -->
 <div class="modal-overlay" id="b2c-verlies-overlay">
@@ -634,15 +624,6 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="btn danger" onclick="b2cBevestigVerlies()"><i class="ti ti-check"></i> Bevestig verloren</button>
     </div>
   </div>
-</div>
-
-<!-- B2C VERLOREN DROP ZONE -->
-<div class="b2c-trash-zone" id="b2c-trash-zone"
-     ondragover="b2cTrashOver(event)"
-     ondragleave="b2cTrashLeave(event)"
-     ondrop="b2cTrashDrop(event)">
-  <i class="ti ti-trash"></i>
-  <span class="b2c-trash-label">Verloren</span>
 </div>
 
 <!-- B2C GEWONNEN -->
@@ -688,8 +669,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 <!-- AGENDA -->
-<div id="pane-agenda" class="page wide">
-<div style="max-width:1200px;margin:0 auto">
+<div id="pane-agenda" class="page" style="display:none;max-width:1200px">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
     <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700">Agenda</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -743,7 +723,6 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <span class="modal-title" id="ag-nieuw-titel">Afspraak toevoegen</span>
       <button class="modal-close" onclick="agCloseNieuw()"><i class="ti ti-x"></i></button>
     </div>
-    <div id="ag-b2c-hint" style="display:none;background:rgba(0,223,163,.08);border:1px solid rgba(0,223,163,.3);border-radius:var(--r);padding:8px 12px;font-size:12px;color:var(--tx2);margin-bottom:12px"><i class="ti ti-info-circle" style="margin-right:6px;color:var(--green)"></i>Dit is een gelinkte visit. Datum en uur worden ook bijgewerkt in het B2C/B2B dossier.</div>
     <div class="field"><label>Titel *</label><input id="ag-titel" placeholder="bv. Visit Jan Vermeersch"></div>
     <div class="grid2">
       <div class="field"><label>Datum *</label><input type="date" id="ag-datum"></div>
@@ -1153,8 +1132,7 @@ let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 
 // ── B2C STATE (hier bovenaan zodat geen temporal dead zone) ──
-const B2C_STATUSSEN = ['Nieuw','1e contactpoging','2e contactpoging','3e contactpoging','Offerte eindklant','Offerte installateur','Gewonnen','Verloren'];
-const B2C_KANBAN_COLS = ['Nieuw','1e contactpoging','2e contactpoging','3e contactpoging','Offerte eindklant','Offerte installateur','Gewonnen'];
+const B2C_STATUSSEN = ['Nieuw','Gecontacteerd','Visit gepland','Visit gedaan','Offerte','Gewonnen','Verloren','Afkoeling'];
 const B2C_WARMTES   = ['Koud','Lauw','Warm','Hot'];
 let b2cLeads             = [];
 let b2cNextId            = 1;
@@ -1172,13 +1150,6 @@ let b2cScreeningLeadId   = null;
 let b2cScreeningFotos    = [];
 let b2cScreeningSelects  = {gevelbekleding:'',aansluiting:''};
 let b2cContractTekst     = '';
-let b2cGewRespFilter     = 'alle';
-let b2cGewMaandFilter    = '';
-let b2cVlRespFilter      = 'alle';
-let b2cVlMaandFilter     = '';
-let b2cDragLeadId        = null;
-let b2cVerliesLeadId     = null;
-let b2cDidDrag           = false;
 
 // ── HELPERS ────────────────────────────────────────────
 function pctColor(p){const t=Math.max(0,Math.min(1,p/100));return`hsl(${Math.round(30+t*100)},${Math.round(90-t*25)}%,${Math.round(48-t*10)}%)`;}
@@ -2643,21 +2614,14 @@ function agGetFiltered(){
 function agUpdateRespDropdown(){
   const sel=document.getElementById('ag-resp-filter');if(!sel)return;
   const names=respNames();
-  const userNaam=(currentUser&&currentUser.user_metadata&&currentUser.user_metadata.naam)||'';
+  const userNaam=currentUser?.user_metadata?.naam||'';
   const sorted=[...names].sort((a,b)=>{
     if(a===userNaam)return -1;if(b===userNaam)return 1;return a.localeCompare(b);
   });
   sel.innerHTML='<option value="alle">Iedereen</option>'+sorted.map(r=>`<option value="${r}"${r===agRespFilter?' selected':''}>${r}${r===userNaam?' (jij)':''}</option>`).join('');
-  // Stel in op ingelogde gebruiker ENKEL als die ook een verantwoordelijke is
-  if(userNaam&&names.includes(userNaam)){
-    if(agRespFilter==='alle'){
-      agRespFilter=userNaam;
-      sel.value=userNaam;
-    }
-  } else {
-    // Geen match — toon alles
-    agRespFilter='alle';
-    sel.value='alle';
+  // Stel standaard in op ingelogde gebruiker
+  if(agRespFilter==='alle'&&userNaam&&names.includes(userNaam)){
+    sel.value=userNaam;agRespFilter=userNaam;
   }
 }
 
@@ -2768,8 +2732,6 @@ function agRenderAankomende(){
 
 function agOpenNieuw(datum=null){
   agEditId=null;
-  const hint=document.getElementById('ag-b2c-hint');
-  if(hint)hint.style.display='none';
   document.getElementById('ag-nieuw-titel').textContent='Afspraak toevoegen';
   document.getElementById('ag-titel').value='';
   document.getElementById('ag-datum').value=datum||agCalSelDag||today();
@@ -2787,55 +2749,20 @@ function agOpenNieuw(datum=null){
 
 function agOpenEdit(id){
   const sid=String(id);
-
-  // B2C visit — toon bewerkbaar mini-modal voor visit datum/uur
+  // B2C visit — open lead dossier
   if(sid.startsWith('b2c-')){
     const leadId=parseInt(sid.replace('b2c-',''));
-    const l=b2cLeads.find(x=>x.id===leadId);if(!l)return;
-    agEditId=sid;
-    document.getElementById('ag-nieuw-titel').textContent='Visit bewerken — '+b2cNaam(l);
-    document.getElementById('ag-titel').value='Visit: '+b2cNaam(l);
-    document.getElementById('ag-datum').value=l.visitDatum||today();
-    document.getElementById('ag-uur').value=l.visitUur||'09:00';
-    document.getElementById('ag-type').value='B2C';
-    document.getElementById('ag-link').value=b2cNaam(l);
-    document.getElementById('ag-notitie').value=l.adres||'';
-    const sel=document.getElementById('ag-resp');
-    sel.innerHTML='<option value="">— kies —</option>'+respNames().map(r=>`<option value="${r}"${r===l.resp?' selected':''}>${r}</option>`).join('');
-    sel.value=l.resp||'';
-    document.getElementById('ag-del-btn').style.display='none'; // visit verwijder je via B2C tab
-    // Voeg hint toe
-    const hint=document.getElementById('ag-b2c-hint');
-    if(hint)hint.style.display='block';
-    document.getElementById('ag-nieuw-overlay').classList.add('open');
+    b2cOpenDetail(leadId);
     return;
   }
-
-  // B2B visit — toon bewerkbaar mini-modal voor visit datum/uur
+  // B2B visit — open project modal
   if(sid.startsWith('b2b-')){
     const projId=sid.replace('b2b-','');
-    const p=projects.find(x=>x.id===projId||x._rowid===projId);if(!p)return;
-    agEditId=sid;
-    document.getElementById('ag-nieuw-titel').textContent='Visit bewerken — '+(p.naam||'Project');
-    document.getElementById('ag-titel').value='Visit B2B: '+(p.naam||'');
-    document.getElementById('ag-datum').value=p.visitDatum||today();
-    document.getElementById('ag-uur').value=p.visitUur||'09:00';
-    document.getElementById('ag-type').value='B2B';
-    document.getElementById('ag-link').value=p.naam||'';
-    document.getElementById('ag-notitie').value=p.klant||'';
-    const sel=document.getElementById('ag-resp');
-    sel.innerHTML='<option value="">— kies —</option>'+respNames().map(r=>`<option value="${r}"${r===p.resp?' selected':''}>${r}</option>`).join('');
-    sel.value=p.resp||'';
-    document.getElementById('ag-del-btn').style.display='none';
-    const hint=document.getElementById('ag-b2c-hint');
-    if(hint)hint.style.display='block';
-    document.getElementById('ag-nieuw-overlay').classList.add('open');
+    const idx=projects.findIndex(p=>p.id===projId||p._rowid===projId);
+    if(idx>-1)openModal(idx);
     return;
   }
-
   // Gewone agenda-afspraak
-  const hint=document.getElementById('ag-b2c-hint');
-  if(hint)hint.style.display='none';
   const a=agAfspraken.find(x=>x.id===id);if(!a)return;
   agEditId=id;
   document.getElementById('ag-nieuw-titel').textContent='Afspraak bewerken';
@@ -2861,37 +2788,6 @@ function agSave(){
   const titel=document.getElementById('ag-titel').value.trim();
   const datum=document.getElementById('ag-datum').value;
   if(!titel||!datum){showToast('Titel en datum zijn verplicht.');return;}
-  const sid=String(agEditId||'');
-
-  // B2C visit — sla terug op in de lead
-  if(sid.startsWith('b2c-')){
-    const leadId=parseInt(sid.replace('b2c-',''));
-    const l=b2cLeads.find(x=>x.id===leadId);
-    if(l){
-      l.visitDatum=datum;
-      l.visitUur=document.getElementById('ag-uur').value;
-      l.resp=document.getElementById('ag-resp').value||l.resp;
-      l.acties=l.acties||[];
-      l.acties.push({datum:today(),tekst:'Visit verplaatst naar '+datum});
-      showToast('Visit bijgewerkt voor '+b2cNaam(l));
-    }
-    agCloseNieuw();agRenderCalendar();agRenderAankomende();return;
-  }
-
-  // B2B visit — sla terug op in het project
-  if(sid.startsWith('b2b-')){
-    const projId=sid.replace('b2b-','');
-    const p=projects.find(x=>x.id===projId||x._rowid===projId);
-    if(p){
-      p.visitDatum=datum;
-      p.visitUur=document.getElementById('ag-uur').value;
-      showToast('Visit bijgewerkt voor '+(p.naam||'project'));
-      sbSaveProject(p).catch(()=>{});
-    }
-    agCloseNieuw();agRenderCalendar();agRenderAankomende();return;
-  }
-
-  // Gewone agenda-afspraak
   const a={
     id:agEditId||agNextId++,
     titel,datum,
@@ -2903,10 +2799,14 @@ function agSave(){
   };
   if(agEditId){const i=agAfspraken.findIndex(x=>x.id===agEditId);if(i>-1)agAfspraken[i]=a;}
   else agAfspraken.push(a);
-  agCloseNieuw();agRenderCalendar();agRenderAankomende();
+  agCloseNieuw();
+  agRenderCalendar();
+  agRenderAankomende();
   showToast(agEditId?'Afspraak bijgewerkt.':'Afspraak toegevoegd.');
+  // Sla op in Supabase/lokaal
   try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
 }
+
 function agDelete(){
   if(!agEditId)return;
   if(!confirm('Afspraak verwijderen?'))return;
@@ -2927,16 +2827,15 @@ function agDelete(){
 
   // Modal sluit NIET bij klik buiten — opzettelijk uitgeschakeld
   // document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
-  const _rm=document.getElementById('resp-modal');if(_rm)_rm.addEventListener('click',function(e){if(e.target===this)closeRespModal();});
-  const _im=document.getElementById('invite-modal');if(_im)_im.addEventListener('click',function(e){if(e.target===this)closeInviteModal();});
-  const _cm=document.getElementById('crm-modal');if(_cm)_cm.addEventListener('click',function(e){if(e.target===this)closeCrmModal();});
-  const cco=document.getElementById('crm-complete-overlay');if(cco)cco.addEventListener('click',function(e){if(e.target===this)closeCrmComplete();});
+  document.getElementById('resp-modal').addEventListener('click',function(e){if(e.target===this)closeRespModal();});
+  document.getElementById('invite-modal').addEventListener('click',function(e){if(e.target===this)closeInviteModal();});
+  document.getElementById('crm-modal').addEventListener('click',function(e){if(e.target===this)closeCrmModal();});
+  document.getElementById('crm-complete-overlay').addEventListener('click',function(e){if(e.target===this)closeCrmComplete();});
 
   // Herstel lokale klanten backup
   try{const d=localStorage.getItem('blitz_klanten');if(d)klanten=JSON.parse(d);}catch{}
   try{const d=localStorage.getItem('blitz_ag');if(d){agAfspraken=JSON.parse(d);agNextId=Math.max(1,...agAfspraken.map(a=>a.id||0))+1;}}catch{}
-  const agov=document.getElementById('ag-nieuw-overlay');if(agov)agov.addEventListener('click',function(e){if(e.target===this)agCloseNieuw();});
-  const vlv=document.getElementById('b2c-verlies-overlay');if(vlv)vlv.addEventListener('click',function(e){if(e.target===this)b2cAnnuleerVerlies();});
+  document.getElementById('ag-nieuw-overlay').addEventListener('click',function(e){if(e.target===this)agCloseNieuw();});
 
   // Probeer bestaande sessie te herstellen
   initSupabaseClient();
@@ -3022,7 +2921,20 @@ function linkUserToResp(userNaam, userEmail){
 
 // Demo data - wordt aangeroepen vanuit init()
 function b2cInitDemo(){
-  // Geen demo data — gebruiker vult zelf leads in
+  if(b2cLeads.length>0)return; // al geladen
+  b2cLeads=[
+    {id:b2cNextId++,voornaam:'Jan',achternaam:'Vermeersch',tel:'0477 12 34 56',email:'jan.v@mail.be',adres:'Kapelstraat 12, 9000 Gent',bron:'Website',warmte:'Warm',status:'Visit gedaan',resp:'Sofie',actie:'Offerte opmaken',notities:'Geïnteresseerd in EV-lader, garage op zuiden.',visitDatum:'2026-06-12',visitUur:'10:00',
+      screening:{digitale_meter:'JA',p1_bezet:'NEE',eigendom:'JA',vrije_route:'JA',gevelbekleding:'STEEN',afstand:'Ca. 8m',hoofdzekering:'40',aansluiting:'3-fase',vrije_ruimte:'JA',lan:'JA',vierg:'NEE',extra_werken:'NEE',opmerkingen:'Nette woning, geen obstakels.',fotos:[],datum:'2026-06-12'},
+      acties:[{datum:'2026-06-05',tekst:'Lead via website'},{datum:'2026-06-08',tekst:'Telefonisch contact'},{datum:'2026-06-12',tekst:'Visit uitgevoerd'}]},
+    {id:b2cNextId++,voornaam:'Marie',achternaam:'Claes',tel:'0468 98 76 54',email:'m.claes@outlook.com',adres:'Lindenlaan 7, 8000 Brugge',bron:'Doorverwijzing',warmte:'Hot',status:'Offerte',resp:'Koen',actie:'Offerte opvolgen',notities:'Wil snel geïnstalleerd.',visitDatum:'2026-06-08',visitUur:'14:00',
+      screening:{digitale_meter:'JA',p1_bezet:'NEE',eigendom:'JA',vrije_route:'JA',gevelbekleding:'CREPI',afstand:'Ca. 5m',hoofdzekering:'63',aansluiting:'3-fase',vrije_ruimte:'JA',lan:'NEE',vierg:'JA',extra_werken:'NEE',opmerkingen:'',fotos:[],datum:'2026-06-08'},
+      acties:[{datum:'2026-06-01',tekst:'Doorverwijzing'},{datum:'2026-06-05',tekst:'Visit gedaan'},{datum:'2026-06-14',tekst:'Offerte verstuurd'}]},
+    {id:b2cNextId++,voornaam:'Pieter',achternaam:'Janssen',tel:'0492 11 22 33',email:'p.janssen@gmail.com',adres:'Stationsplein 3, 2000 Antwerpen',bron:'Google Ads',warmte:'Lauw',status:'Gecontacteerd',resp:'Sofie',actie:'Visit inplannen',notities:'Vraag via contactformulier.',visitDatum:null,screening:null,
+      acties:[{datum:'2026-06-15',tekst:'Lead via Google Ads'},{datum:'2026-06-16',tekst:'E-mail verstuurd'}]},
+    {id:b2cNextId++,voornaam:'Tom',achternaam:'Bogaert',tel:'0471 66 77 88',email:'t.bogaert@proximus.be',adres:'Kerkweg 88, 3000 Leuven',bron:'Social media',warmte:'Hot',status:'Gewonnen',resp:'Sofie',actie:'Installatie plannen',notities:'Contract getekend.',visitDatum:'2026-06-25',visitUur:'11:00',
+      screening:{digitale_meter:'JA',p1_bezet:'JA',eigendom:'JA',vrije_route:'JA',gevelbekleding:'STEEN',afstand:'Ca. 3m',hoofdzekering:'40',aansluiting:'1-fase',vrije_ruimte:'JA',lan:'JA',vierg:'JA',extra_werken:'JA',opmerkingen:'P1-splitter nodig.',fotos:[],datum:'2026-06-25'},
+      acties:[{datum:'2026-05-10',tekst:'DM via Facebook'},{datum:'2026-06-25',tekst:'Visit gedaan'},{datum:'2026-06-28',tekst:'Contract getekend — Gewonnen!'}]},
+  ];
 }
 
 // ─── HELPERS ────────────────────────────────────────
@@ -3043,11 +2955,17 @@ function b2cRenderStats(){
 }
 
 function b2cRenderPills(){
+  // Resp pills — klikbaar
   const respEl=document.getElementById('b2c-pills-resp');
   if(respEl){
     const rNames=['alle',...new Set([...b2cLeads.map(l=>l.resp),...respNames()].filter(Boolean))];
     respEl.innerHTML=rNames.map(r=>`<button class="pill${r==='alle'?' all':''}${b2cRespFilter===r?' active':''}" onclick="b2cSetRespFilter('${r}')">${r==='alle'?'<i class="ti ti-users" style="font-size:12px;margin-right:3px"></i>Iedereen':r}</button>`).join('');
   }
+  // Status dropdown
+  if(stSel){
+    const cur=stSel.value;
+  }
+  // Warmte pills
   const warmEl=document.getElementById('b2c-pills-warmte');
   if(warmEl){
     const wp=['alle',...B2C_WARMTES];
@@ -3060,107 +2978,96 @@ function b2cSetStatusFilter(s){b2cStatusFilter=s;b2cRenderLeads();}
 function b2cSetWarmteFilter(w){b2cWarmteFilter=w;b2cRenderLeads();}
 
 function b2cGetFiltered(){
-  const t=today();
   return b2cLeads.filter(l=>{
     if(l.status==='Verloren')return false;
     if(l.status==='Gewonnen'&&l.gewonnenOp){
-      const dagen=Math.round((new Date(t)-new Date(l.gewonnenOp))/86400000);
-      if(dagen>3)return false;
+      const d=Math.round((new Date(today())-new Date(l.gewonnenOp))/86400000);
+      if(d>3)return false;
     }
     if(b2cRespFilter!=='alle'&&l.resp!==b2cRespFilter)return false;
-    if(b2cStatusFilter!=='alle'&&l.status!==b2cStatusFilter)return false;
     if(b2cWarmteFilter!=='alle'&&l.warmte!==b2cWarmteFilter)return false;
     return true;
   });
 }
 
 // ── B2C GEWONNEN / VERLOREN TABS ─────────────────────
+let b2cGewRespFilter='alle';
+let b2cGewMaandFilter='';
+let b2cVlRespFilter='alle';
+let b2cVlMaandFilter='';
 
 function b2cRenderGewonnen(){
   const list=b2cLeads.filter(l=>l.status==='Gewonnen');
-  b2cRenderGesloten('gew',list,'#639922','Gewonnen');
+  b2cRenderGesloten('gew', list, '#639922', 'Gewonnen');
 }
 function b2cRenderVerloren(){
   const list=b2cLeads.filter(l=>l.status==='Verloren');
-  b2cRenderGesloten('vl',list,'#a32d2d','Verloren');
+  b2cRenderGesloten('vl', list, '#a32d2d', 'Verloren');
 }
 
-function b2cRenderGesloten(prefix,allList,kleur,label){
+function b2cRenderGesloten(prefix, allList, kleur, label){
   const respFilter=prefix==='gew'?b2cGewRespFilter:b2cVlRespFilter;
   const maandFilter=document.getElementById('b2c-'+prefix+'-maand')?.value||'';
 
+  // Stats
   const statsEl=document.getElementById('b2c-'+prefix+'-stats');
-  if(statsEl){statsEl.innerHTML=`<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value" style="color:${kleur}">${allList.length}</div></div>`;}
+  if(statsEl){
+    statsEl.innerHTML=`<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value" style="color:${kleur}">${allList.length}</div></div>`;
+  }
 
+  // Resp pills
   const pillsEl=document.getElementById('b2c-'+prefix+'-pills-resp');
   if(pillsEl){
-    const rNames=['alle',...new Set([...allList.map(l=>l.resp),...respNames()].filter(Boolean))];
+    const rNames=['alle',...new Set(allList.map(l=>l.resp).filter(Boolean))];
     pillsEl.innerHTML=rNames.map(r=>`<button class="pill${r==='alle'?' all':''}${respFilter===r?' active':''}" onclick="b2c${prefix==='gew'?'Gew':'Vl'}SetResp('${r}')">${r==='alle'?'Iedereen':r}</button>`).join('');
   }
 
+  // Maand dropdown
   const maandSel=document.getElementById('b2c-'+prefix+'-maand');
   if(maandSel){
-    const datums=allList.map(l=>(prefix==='gew'?l.gewonnenOp:l.verliesOp)||'').filter(Boolean);
-    const maanden=[...new Set(datums.map(d=>d.slice(0,7)))].sort().reverse();
+    const maanden=[...new Set(allList.map(l=>(l.acties||[]).filter(a=>a.tekst.includes(label)).map(a=>a.datum?.slice(0,7)||'').filter(Boolean)).flat())].sort().reverse();
     const cur=maandSel.value;
-    const MNL=['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
     maandSel.innerHTML='<option value="">Alle maanden</option>'+maanden.map(m=>{
       const [y,mo]=m.split('-');
-      return`<option value="${m}"${m===cur?' selected':''}>${MNL[parseInt(mo)-1]} ${y}</option>`;
+      const MAANDEN_NL=['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+      return`<option value="${m}"${m===cur?' selected':''}>${MAANDEN_NL[parseInt(mo)-1]} ${y}</option>`;
     }).join('');
   }
 
+  // Filter
   let list=allList.filter(l=>{
     if(respFilter!=='alle'&&l.resp!==respFilter)return false;
-    const datum=prefix==='gew'?l.gewonnenOp:l.verliesOp;
-    if(maandFilter&&(!datum||!datum.startsWith(maandFilter)))return false;
     return true;
   });
 
   const el=document.getElementById('b2c-'+prefix+'-list');if(!el)return;
-  if(!list.length){el.innerHTML=`<div class="empty-state"><i class="ti ti-users"></i>Geen ${label.toLowerCase()} leads.</div>`;return;}
+  if(!list.length){el.innerHTML='<div class="empty-state"><i class="ti ti-users"></i>Geen '+label.toLowerCase()+' leads.</div>';return;}
 
-  const byMonth={};
-  list.forEach(l=>{
-    const d=prefix==='gew'?l.gewonnenOp:l.verliesOp;
-    const m=(d||'').slice(0,7)||'onbekend';
-    (byMonth[m]=byMonth[m]||[]).push(l);
-  });
-  const MNL_FULL=['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
-
-  el.innerHTML=Object.entries(byMonth).sort((a,b)=>b[0].localeCompare(a[0])).map(([m,items])=>{
-    const lbl=m!=='onbekend'?MNL_FULL[parseInt(m.slice(5))-1]+' '+m.slice(0,4):'Onbekend';
-    return`<div class="month-section">
-      <div class="month-title" style="${prefix==='vl'?'border-bottom-color:#f7c1c1':''}">${lbl} — ${items.length} lead${items.length!==1?'s':''}</div>
-      ${items.map(l=>{
-        const datum=prefix==='gew'?l.gewonnenOp:l.verliesOp;
-        const datumStr=datum?new Date(datum).toLocaleDateString('nl-BE',{day:'numeric',month:'short',year:'numeric'}):'—';
-        return`<div class="closed-row" onclick="b2cOpenDetail(${l.id})" style="cursor:pointer">
-          ${prefix==='gew'?'<i class="ti ti-trophy" style="color:#639922;font-size:18px"></i>':'<i class="ti ti-x" style="color:#a32d2d;font-size:18px"></i>'}
-          <div style="flex:1;min-width:0">
-            <div class="closed-naam">${b2cNaam(l)}</div>
-            <div class="closed-klant">${l.adres||l.tel||''}</div>
-            ${prefix==='vl'&&l.verliesReden?`<div style="font-size:11px;color:#a32d2d"><i class="ti ti-info-circle" style="margin-right:3px"></i>${l.verliesReden}</div>`:''}
-          </div>
-          <div class="closed-resp">${l.resp||''}</div>
-          <div class="closed-lp"><span class="badge ${b2cBadgeW(l.warmte||'Lauw')}">${l.warmte||''}</span></div>
-          <div class="closed-date">${datumStr}</div>
-          <div style="display:flex;gap:4px">
-            <button class="btn sm" onclick="event.stopPropagation();b2cOpenDetail(${l.id})"><i class="ti ti-eye"></i></button>
-            <button class="btn sm" onclick="event.stopPropagation();b2cHeractiveer(${l.id})" title="Terugzetten"><i class="ti ti-refresh"></i></button>
-          </div>
-        </div>`;
-      }).join('')}
+  el.innerHTML=list.map(l=>{
+    const datum=(l.acties||[]).filter(a=>a.tekst.toLowerCase().includes(label.toLowerCase())).pop()?.datum||'';
+    return`<div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr 120px;gap:10px;align-items:center;padding:12px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:8px;cursor:pointer" onclick="b2cOpenDetail(${l.id})">
+      <div>
+        <div style="font-weight:600;font-size:13px">${b2cNaam(l)}</div>
+        <div style="font-size:11px;color:var(--tx3)">${l.tel||l.email||''}</div>
+      </div>
+      <div style="font-size:12px;color:var(--tx2)">${l.adres||'—'}</div>
+      <div style="font-size:12px;color:var(--tx2)">${l.resp||'—'}</div>
+      <div style="font-size:12px;color:var(--tx3)">${datum||'—'}</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn sm" onclick="event.stopPropagation();b2cOpenDetail(${l.id})"><i class="ti ti-eye"></i></button>
+        <button class="btn sm" onclick="event.stopPropagation();b2cHeractiveer(${l.id})" title="Terugzetten naar actief"><i class="ti ti-refresh"></i></button>
+      </div>
     </div>`;
   }).join('');
 }
+
 function b2cGewSetResp(r){b2cGewRespFilter=r;b2cRenderGewonnen();}
 function b2cVlSetResp(r){b2cVlRespFilter=r;b2cRenderVerloren();}
 
 function b2cHeractiveer(id){
   const l=b2cLeads.find(x=>x.id===id);if(!l)return;
   if(!confirm(`"${b2cNaam(l)}" terugzetten naar actieve leads?`))return;
-  l.status='1e contactpoging';
+  l.status='Nieuw';
   l.acties=l.acties||[];
   l.acties.push({datum:today(),tekst:'Teruggezet naar actieve leads'});
   b2cRenderLeads();b2cRenderGewonnen();b2cRenderVerloren();
@@ -3169,67 +3076,69 @@ function b2cHeractiveer(id){
 
 function b2cMarkeerStatus(status){
   const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
-  if(status==='Verloren'){
-    // Toon verlies popup
-    b2cVerliesLeadId=l.id;
-    document.getElementById('b2c-verlies-input').value='';
-    document.querySelectorAll('#b2c-verlies-quick .btn').forEach(b=>b.classList.remove('primary'));
-    b2cCloseDetail();
-    document.getElementById('b2c-verlies-overlay').classList.add('open');
-    return;
-  }
   if(!confirm(`Lead "${b2cNaam(l)}" markeren als ${status}?`))return;
   l.status=status;
-  if(status==='Gewonnen'&&!l.gewonnenOp)l.gewonnenOp=today();
   l.acties=l.acties||[];
   l.acties.push({datum:today(),tekst:'Status gewijzigd naar: '+status});
   b2cCloseDetail();
   b2cRenderLeads();
   if(status==='Gewonnen'){b2cRenderGewonnen();showTab('b2c-gewonnen');}
+  else{b2cRenderVerloren();showTab('b2c-verloren');}
   showToast(`Lead gemarkeerd als ${status}!`);
 }
 
+const B2C_KANBAN_COLS = ['Nieuw','1e contactpoging','2e contactpoging','3e contactpoging','Offerte eindklant','Offerte installateur','Gewonnen'];
+let b2cDragLeadId = null;
+let b2cDidDrag = false;
+let b2cVerliesLeadId = null;
 
 function b2cRenderLeads(){
   b2cRenderStats();b2cRenderPills();b2cRenderDashOpvolgingen();
-  const list=b2cGetFiltered();
+  const allActief=b2cLeads.filter(l=>{
+    if(l.status==='Verloren')return false;
+    if(l.status==='Gewonnen'&&l.gewonnenOp){
+      const dagen=Math.round((new Date(today())-new Date(l.gewonnenOp))/86400000);
+      if(dagen>3)return false;
+    }
+    return true;
+  });
+  const respF=b2cRespFilter;const warmteF=b2cWarmteFilter;
+  const list=allActief.filter(l=>{
+    if(respF!=='alle'&&l.resp!==respF)return false;
+    if(warmteF!=='alle'&&l.warmte!==warmteF)return false;
+    return true;
+  });
   const board=document.getElementById('b2c-kanban-board');if(!board)return;
-
   board.innerHTML=B2C_KANBAN_COLS.map(status=>{
     const isGewonnen=status==='Gewonnen';
     const cols=list.filter(l=>l.status===status);
     const tiles=cols.map(l=>{
       const warmteDot={Koud:'#8a9ba3',Lauw:'#f59e0b',Warm:'#f97316',Hot:'#ef4444'}[l.warmte]||'var(--tx3)';
       const visitBadge=l.visitDatum?`<span style="font-size:9px;background:rgba(0,223,163,.15);color:#00805e;padding:1px 5px;border-radius:4px"><i class="ti ti-map-pin" style="font-size:8px"></i> ${l.visitDatum}</span>`:'';
-      const gewonnenSince=isGewonnen&&l.gewonnenOp?Math.round((new Date()-new Date(l.gewonnenOp))/86400000):0;
-      const dagenLabel=isGewonnen&&l.gewonnenOp?`<span style="font-size:9px;color:${gewonnenSince>=3?'#a32d2d':'#639922'}">${gewonnenSince}d geleden</span>`:'';
-      return`<div class="b2c-tile"
-          draggable="true"
-          data-id="${l.id}"
-          ondragstart="b2cDragStart(event,${l.id})"
-          ondragend="b2cDragEnd(event)"
-          onclick="b2cOpenDetail(${l.id})">
-        <div class="b2c-tile-naam">${b2cNaam(l)}</div>
-        <div class="b2c-tile-sub">${l.adres||l.tel||'—'}</div>
-        <div class="b2c-tile-footer">
+      const dagBadge=isGewonnen&&l.gewonnenOp?`<span style="font-size:9px;color:${Math.round((new Date()-new Date(l.gewonnenOp))/86400000)>=3?'#a32d2d':'#639922'}">${Math.round((new Date()-new Date(l.gewonnenOp))/86400000)}d</span>`:'';
+      return`<div draggable="true" data-id="${l.id}"
+          ondragstart="b2cDragStart(event,${l.id})" ondragend="b2cDragEnd(event)"
+          onclick="if(!b2cDidDrag)b2cOpenDetail(${l.id})"
+          style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:8px;padding:10px 11px;cursor:pointer;user-select:none;transition:border-color .15s">
+        <div style="font-size:12px;font-weight:700;margin-bottom:2px">${b2cNaam(l)}</div>
+        <div style="font-size:10px;color:var(--tx3);margin-bottom:6px">${l.adres||l.tel||'—'}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="display:flex;align-items:center;gap:5px">
-            <div style="width:8px;height:8px;border-radius:50%;background:${warmteDot};flex-shrink:0" title="${l.warmte}"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:${warmteDot}" title="${l.warmte}"></div>
             <span style="font-size:10px;color:var(--tx3)">${l.resp||''}</span>
           </div>
-          <div style="display:flex;gap:4px;align-items:center">${visitBadge}${dagenLabel}</div>
+          <div style="display:flex;gap:4px">${visitBadge}${dagBadge}</div>
         </div>
         ${l.actie?`<div style="font-size:10px;color:var(--tx3);margin-top:5px;border-top:1px solid var(--bd);padding-top:4px"><i class="ti ti-arrow-right" style="font-size:9px"></i> ${l.actie}</div>`:''}
       </div>`;
     }).join('')||`<div style="text-align:center;padding:16px 8px;color:var(--tx3);font-size:11px"><i class="ti ti-inbox" style="font-size:18px;display:block;margin-bottom:4px"></i>Leeg</div>`;
-
-    return`<div class="b2c-kol${isGewonnen?' gewonnen':''}" data-status="${status}">
-      <div class="b2c-kol-hdr">
-        <span class="b2c-kol-title">${status}</span><span class="b2c-kol-count">${cols.length}</span>
+    return`<div style="flex:0 0 220px;min-height:calc(100vh - 260px);background:var(--bg2);border-radius:var(--rl);padding:10px;display:flex;flex-direction:column${isGewonnen?';border-top:2px solid #639922':''}">
+      <div style="padding:8px 4px 10px;margin-bottom:4px;border-bottom:2px solid var(--bd)">
+        <span style="font-family:'Poppins',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${isGewonnen?'#639922':'var(--tx2)'}">${status}</span>
+        <span style="display:inline-block;background:var(--bg3);color:var(--tx3);font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;margin-left:6px">${cols.length}</span>
       </div>
-      <div class="b2c-kol-body"
-           ondragover="b2cDragOver(event)"
-           ondragleave="b2cDragLeave(event)"
-           ondrop="b2cDrop(event,'${status}')">${tiles}</div>
+      <div style="flex:1;min-height:200px;padding-top:4px"
+           ondragover="b2cDragOver(event)" ondragleave="b2cDragLeave(event)" ondrop="b2cDrop(event,'${status}')">${tiles}</div>
     </div>`;
   }).join('');
 }
@@ -3237,113 +3146,81 @@ function b2cRenderLeads(){
 function b2cRenderDashOpvolgingen(){
   const el=document.getElementById('b2c-dash-opvolgingen');if(!el)return;
   const t=today();
-  // Verzamel alle openstaande opvolgingen van alle actieve leads
   const items=[];
   b2cLeads.filter(l=>l.status!=='Verloren').forEach(l=>{
-    (l.opvolgingen||[]).filter(op=>!op.gedaan).forEach(op=>{
-      items.push({op,l});
-    });
+    (l.opvolgingen||[]).filter(op=>!op.gedaan).forEach(op=>items.push({op,l}));
   });
   items.sort((a,b)=>a.op.datum.localeCompare(b.op.datum));
-  if(!items.length){
-    el.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen openstaande opvolgingen.</div>';
-    return;
-  }
-  const MAANDEN_K=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  if(!items.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen openstaande opvolgingen.</div>';return;}
+  const MK=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
   el.innerHTML=items.slice(0,10).map(({op,l})=>{
-    const verleden=op.datum<t;
-    const isVandaag=op.datum===t;
+    const verleden=op.datum<t,isVandaag=op.datum===t;
     const kleur=verleden?'#a32d2d':isVandaag?'#854f0b':'var(--tx3)';
     const d=new Date(op.datum);
-    const lbl=isVandaag?'Vandaag':verleden?`<span style="color:#a32d2d">${Math.abs(Math.round((new Date(t)-new Date(op.datum))/86400000))}d te laat</span>`:`${d.getDate()} ${MAANDEN_K[d.getMonth()]}`;
-    return`<div onclick="b2cOpenDetail(${l.id})" style="padding:7px 0;border-bottom:1px solid var(--bd);cursor:pointer" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">
-      <div style="font-size:12px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b2cNaam(l)}</div>
+    const lbl=isVandaag?'Vandaag':verleden?Math.abs(Math.round((new Date(t)-new Date(op.datum))/86400000))+'d te laat':`${d.getDate()} ${MK[d.getMonth()]}`;
+    return`<div onclick="b2cOpenDetail(${l.id})" style="padding:7px 0;border-bottom:1px solid var(--bd);cursor:pointer">
+      <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b2cNaam(l)}</div>
       <div style="font-size:11px;color:${kleur}">${lbl}${op.uur?' '+op.uur:''}</div>
       <div style="font-size:11px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${op.tekst}</div>
     </div>`;
   }).join('');
 }
+
 function b2cDragStart(e,id){
   b2cDragLeadId=id;b2cDidDrag=false;
   e.dataTransfer.effectAllowed='move';
   e.dataTransfer.setData('text/plain',String(id));
-  setTimeout(()=>{document.querySelectorAll('.b2c-tile[data-id="'+id+'"]').forEach(el=>el.classList.add('dragging'));},0);
-  document.getElementById('b2c-trash-zone').classList.add('active');
+  setTimeout(()=>{const el=document.querySelector('[data-id="'+id+'"]');if(el)el.style.opacity='.3';},0);
+  const tz=document.getElementById('b2c-trash-zone');if(tz)tz.style.display='flex';
 }
 function b2cDragEnd(e){
   b2cDidDrag=true;
-  document.querySelectorAll('.b2c-tile.dragging').forEach(el=>el.classList.remove('dragging'));
-  document.querySelectorAll('.b2c-kol-body.drag-over').forEach(el=>el.classList.remove('drag-over'));
-  document.getElementById('b2c-trash-zone').classList.remove('active','over');
+  document.querySelectorAll('[data-id]').forEach(el=>el.style.opacity='');
+  const tz=document.getElementById('b2c-trash-zone');if(tz)tz.style.display='none';
   setTimeout(()=>{b2cDidDrag=false;},150);
 }
-function b2cDragOver(e){e.preventDefault();e.stopPropagation();e.currentTarget.classList.add('drag-over');}
-function b2cDragLeave(e){if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.classList.remove('drag-over');}
-
+function b2cDragOver(e){e.preventDefault();e.stopPropagation();e.currentTarget.style.background='rgba(0,223,163,.06)';}
+function b2cDragLeave(e){if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.style.background='';}
 function b2cDrop(e,newStatus){
-  e.preventDefault();e.stopPropagation();
-  e.currentTarget.classList.remove('drag-over');
-  const rawId=e.dataTransfer.getData('text/plain')||String(b2cDragLeadId||'');
-  const id=parseInt(rawId);
+  e.preventDefault();e.stopPropagation();e.currentTarget.style.background='';
+  const id=parseInt(e.dataTransfer.getData('text/plain')||b2cDragLeadId);
   if(!id)return;
   const l=b2cLeads.find(x=>x.id===id);
   if(!l||l.status===newStatus){b2cDragLeadId=null;return;}
   l.status=newStatus;
-  l.acties=l.acties||[];
-  l.acties.push({datum:today(),tekst:'Status gewijzigd naar: '+newStatus});
-  if(newStatus==='Gewonnen'&&!l.gewonnenOp){
-    l.gewonnenOp=today();
-    showToast('🎉 Gewonnen: '+b2cNaam(l)+'!');
-  }
-  b2cDragLeadId=null;
-  b2cRenderLeads();
-  showToast('"'+b2cNaam(l)+'" → '+newStatus);
+  l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Status → '+newStatus});
+  if(newStatus==='Gewonnen'&&!l.gewonnenOp){l.gewonnenOp=today();showToast('🎉 Gewonnen: '+b2cNaam(l)+'!');}
+  b2cDragLeadId=null;b2cRenderLeads();showToast('"'+b2cNaam(l)+'" → '+newStatus);
 }
-
-// Verloren drop zone
-function b2cTrashOver(e){e.preventDefault();document.getElementById('b2c-trash-zone').classList.add('over');}
-function b2cTrashLeave(e){document.getElementById('b2c-trash-zone').classList.remove('over');}
+function b2cTrashOver(e){e.preventDefault();const tz=document.getElementById('b2c-trash-zone');if(tz){tz.style.background='#fcebeb';tz.style.transform='scale(1.15)';}}
+function b2cTrashLeave(e){const tz=document.getElementById('b2c-trash-zone');if(tz){tz.style.background='';tz.style.transform='';}}
 function b2cTrashDrop(e){
   e.preventDefault();
-  document.getElementById('b2c-trash-zone').classList.remove('over','active');
-  if(b2cDragLeadId===null)return;
-  b2cVerliesLeadId=b2cDragLeadId;
-  b2cDragLeadId=null;
-  // Toon popup voor reden
+  const tz=document.getElementById('b2c-trash-zone');if(tz){tz.style.background='';tz.style.transform='';tz.style.display='none';}
+  const id=parseInt(e.dataTransfer.getData('text/plain')||b2cDragLeadId);
+  if(!id)return;
+  b2cVerliesLeadId=id;b2cDragLeadId=null;
   document.getElementById('b2c-verlies-input').value='';
   document.querySelectorAll('#b2c-verlies-quick .btn').forEach(b=>b.classList.remove('primary'));
   document.getElementById('b2c-verlies-overlay').classList.add('open');
 }
-
 function b2cSelectVerliesReden(btn,reden){
   document.querySelectorAll('#b2c-verlies-quick .btn').forEach(b=>b.classList.remove('primary'));
   btn.classList.add('primary');
   document.getElementById('b2c-verlies-input').value=reden;
 }
-
 function b2cBevestigVerlies(){
   const l=b2cLeads.find(x=>x.id===b2cVerliesLeadId);
   if(!l){b2cAnnuleerVerlies();return;}
   const reden=document.getElementById('b2c-verlies-input').value.trim();
-  l.status='Verloren';
-  l.verliesReden=reden||'Niet opgegeven';
-  l.verliesOp=today();
-  l.acties=l.acties||[];
-  l.acties.push({datum:today(),tekst:'Verloren'+(reden?' — '+reden:'')});
-  b2cAnnuleerVerlies();
-  b2cRenderLeads();b2cRenderVerloren();
+  l.status='Verloren';l.verliesReden=reden||'Niet opgegeven';l.verliesOp=today();
+  l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Verloren'+(reden?' — '+reden:'')});
+  b2cAnnuleerVerlies();b2cRenderLeads();b2cRenderVerloren();
   showToast('"'+b2cNaam(l)+'" als verloren gemarkeerd.');
 }
-
 function b2cAnnuleerVerlies(){
   document.getElementById('b2c-verlies-overlay').classList.remove('open');
-  b2cVerliesLeadId=null;
-  b2cDragLeadId=null;
-  b2cRenderLeads();
-}
-
-function fireB2cConfetti(l){
-  showToast('🎉 Gewonnen: '+b2cNaam(l)+'!');
+  b2cVerliesLeadId=null;b2cDragLeadId=null;b2cRenderLeads();
 }
 
 // ─── DETAIL MODAL ───────────────────────────────────
@@ -3986,7 +3863,7 @@ function b2cSaveLead(){
     tel:document.getElementById('bn-tel').value,email:document.getElementById('bn-email').value,
     adres:document.getElementById('bn-adres').value,bron:document.getElementById('bn-bron').value,
     warmte:document.getElementById('bn-warmte').value,
-    status:b2cIsVisitMode&&vd?'1e contactpoging':'Nieuw',
+    status:b2cIsVisitMode&&vd?'Visit gepland':'Nieuw',
     resp:document.getElementById('bn-resp').value,
     actie:document.getElementById('bn-actie').value||'Opvolgen',
     notities:document.getElementById('bn-notities').value,
