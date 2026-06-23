@@ -741,7 +741,15 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       </div>
     </div>
     <div class="field"><label>Gelinkt project / lead (optioneel)</label>
-      <input id="ag-link" placeholder="Naam project of lead...">
+      <div style="position:relative">
+        <input id="ag-link-search" placeholder="Zoek project of B2C lead..." autocomplete="off"
+          oninput="agLinkSearch(this.value)" onfocus="agLinkSearch(this.value)"
+          style="width:100%">
+        <input type="hidden" id="ag-link-id" value="">
+        <input type="hidden" id="ag-link-label" value="">
+        <div id="ag-link-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:200px;overflow-y:auto;margin-top:2px"></div>
+      </div>
+      <div id="ag-link-chip" style="display:none;margin-top:6px;display:none;align-items:center;gap:6px;background:rgba(0,223,163,.12);border:1px solid rgba(0,223,163,.3);border-radius:6px;padding:4px 10px;font-size:12px;color:#00805e;font-weight:600"></div>
     </div>
     <div class="field"><label>Notitie</label><textarea id="ag-notitie" rows="2" placeholder="Extra info..."></textarea></div>
     <div class="modal-footer">
@@ -2737,7 +2745,10 @@ function agOpenNieuw(datum=null){
   document.getElementById('ag-datum').value=datum||agCalSelDag||today();
   document.getElementById('ag-uur').value='09:00';
   document.getElementById('ag-type').value='B2C';
-  document.getElementById('ag-link').value='';
+  document.getElementById('ag-link-search').value='';
+  document.getElementById('ag-link-id').value='';
+  document.getElementById('ag-link-label').value='';
+  agLinkChipHide();
   document.getElementById('ag-notitie').value='';
   document.getElementById('ag-del-btn').style.display='none';
   // Vul resp dropdown
@@ -2770,7 +2781,11 @@ function agOpenEdit(id){
   document.getElementById('ag-datum').value=a.datum||'';
   document.getElementById('ag-uur').value=a.uur||'09:00';
   document.getElementById('ag-type').value=a.type||'B2C';
-  document.getElementById('ag-link').value=a.link||'';
+  // Link veld
+  document.getElementById('ag-link-id').value=a.linkId||'';
+  document.getElementById('ag-link-label').value=a.linkLabel||'';
+  document.getElementById('ag-link-search').value=a.linkLabel||a.link||'';
+  if(a.linkId&&a.linkLabel){agLinkChipShow(a.linkLabel,a.linkType||'');}else{agLinkChipHide();}
   document.getElementById('ag-notitie').value=a.notitie||'';
   document.getElementById('ag-del-btn').style.display='inline-flex';
   const sel=document.getElementById('ag-resp');
@@ -2788,15 +2803,28 @@ function agSave(){
   const titel=document.getElementById('ag-titel').value.trim();
   const datum=document.getElementById('ag-datum').value;
   if(!titel||!datum){showToast('Titel en datum zijn verplicht.');return;}
+  const linkId=document.getElementById('ag-link-id').value.trim();
+  const linkLabel=document.getElementById('ag-link-label').value.trim();
+  const linkType=linkId.startsWith('b2c-')?'b2c':linkId.startsWith('b2b-')?'b2b':'';
   const a={
     id:agEditId||agNextId++,
     titel,datum,
     uur:document.getElementById('ag-uur').value,
     type:document.getElementById('ag-type').value,
     resp:document.getElementById('ag-resp').value,
-    link:document.getElementById('ag-link').value.trim(),
+    link:linkLabel||document.getElementById('ag-link-search').value.trim(),
+    linkId,linkLabel,linkType,
     notitie:document.getElementById('ag-notitie').value.trim()
   };
+  // Log koppeling naar B2C lead als aanwezig
+  if(linkType==='b2c'&&linkId){
+    const leadId=parseInt(linkId.replace('b2c-',''));
+    const lead=b2cLeads.find(x=>x.id===leadId);
+    if(lead){
+      lead.acties=lead.acties||[];
+      lead.acties.push({datum:datum||today(),tekst:`Agenda-afspraak gekoppeld: "${titel}"${a.uur?' om '+a.uur:''}`});
+    }
+  }
   if(agEditId){const i=agAfspraken.findIndex(x=>x.id===agEditId);if(i>-1)agAfspraken[i]=a;}
   else agAfspraken.push(a);
   agCloseNieuw();
@@ -2806,6 +2834,70 @@ function agSave(){
   // Sla op in Supabase/lokaal
   try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
 }
+
+function agLinkSearch(q){
+  const dd=document.getElementById('ag-link-dropdown');
+  if(!q||q.length<1){dd.style.display='none';return;}
+  const ql=q.toLowerCase();
+  const results=[];
+  // B2C leads
+  b2cLeads.filter(l=>l.status!=='Verloren').forEach(l=>{
+    const naam=b2cNaam(l);
+    if(naam.toLowerCase().includes(ql)||(l.adres||'').toLowerCase().includes(ql)){
+      results.push({id:'b2c-'+l.id,label:naam,sub:l.adres||l.tel||'',type:'B2C Lead',color:'#00805e',bg:'rgba(0,223,163,.12)'});
+    }
+  });
+  // B2B projecten
+  projects.forEach(p=>{
+    const naam=p.naam||'';
+    const klant=p.klant||'';
+    if(naam.toLowerCase().includes(ql)||klant.toLowerCase().includes(ql)){
+      results.push({id:'b2b-'+(p.id||p._rowid||naam),label:naam,sub:klant,type:'B2B Project',color:'#3c3489',bg:'rgba(83,74,183,.12)'});
+    }
+  });
+  if(!results.length){
+    dd.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--tx3)">Geen resultaten gevonden</div>';
+    dd.style.display='block';return;
+  }
+  dd.innerHTML=results.slice(0,8).map(r=>`
+    <div onclick="agLinkSelect('${r.id}','${r.label.replace(/'/g,"\\'")}','${r.type}')"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;transition:background .1s"
+      onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+      <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:${r.bg};color:${r.color};white-space:nowrap">${r.type}</span>
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.label}</div>
+        <div style="font-size:11px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.sub}</div>
+      </div>
+    </div>`).join('');
+  dd.style.display='block';
+}
+function agLinkSelect(id,label,type){
+  document.getElementById('ag-link-id').value=id;
+  document.getElementById('ag-link-label').value=label;
+  document.getElementById('ag-link-search').value=label;
+  document.getElementById('ag-link-dropdown').style.display='none';
+  agLinkChipShow(label,type);
+}
+function agLinkChipShow(label,type){
+  const chip=document.getElementById('ag-link-chip');
+  chip.style.display='flex';
+  chip.innerHTML=`<i class="ti ti-link" style="font-size:12px"></i> ${label}<span style="font-size:10px;opacity:.7;margin-left:4px">${type}</span><button onclick="agLinkClear()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;padding:0;font-size:13px;line-height:1" title="Ontkoppelen"><i class="ti ti-x"></i></button>`;
+}
+function agLinkChipHide(){
+  const chip=document.getElementById('ag-link-chip');
+  if(chip){chip.style.display='none';chip.innerHTML='';}
+}
+function agLinkClear(){
+  document.getElementById('ag-link-id').value='';
+  document.getElementById('ag-link-label').value='';
+  document.getElementById('ag-link-search').value='';
+  agLinkChipHide();
+}
+// Sluit dropdown als buiten geklikt
+document.addEventListener('click',function(e){
+  const dd=document.getElementById('ag-link-dropdown');
+  if(dd&&!dd.contains(e.target)&&e.target.id!=='ag-link-search'){dd.style.display='none';}
+});
 
 function agDelete(){
   if(!agEditId)return;
@@ -2961,10 +3053,6 @@ function b2cRenderPills(){
     const rNames=['alle',...new Set([...b2cLeads.map(l=>l.resp),...respNames()].filter(Boolean))];
     respEl.innerHTML=rNames.map(r=>`<button class="pill${r==='alle'?' all':''}${b2cRespFilter===r?' active':''}" onclick="b2cSetRespFilter('${r}')">${r==='alle'?'<i class="ti ti-users" style="font-size:12px;margin-right:3px"></i>Iedereen':r}</button>`).join('');
   }
-  // Status dropdown
-  if(stSel){
-    const cur=stSel.value;
-  }
   // Warmte pills
   const warmEl=document.getElementById('b2c-pills-warmte');
   if(warmEl){
@@ -3087,7 +3175,7 @@ function b2cMarkeerStatus(status){
   showToast(`Lead gemarkeerd als ${status}!`);
 }
 
-const B2C_KANBAN_COLS = ['Nieuw','1e contactpoging','2e contactpoging','3e contactpoging','Offerte eindklant','Offerte installateur','Gewonnen'];
+const B2C_KANBAN_COLS = ['Nieuw','Gecontacteerd','Visit gepland','Visit gedaan','Offerte','Gewonnen'];
 let b2cDragLeadId = null;
 let b2cDidDrag = false;
 let b2cVerliesLeadId = null;
