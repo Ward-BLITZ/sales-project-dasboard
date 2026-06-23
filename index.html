@@ -1177,6 +1177,22 @@ let b2cDidDrag           = false;
 let b2cVerliesLeadId     = null;
 let b2cInstallateurLeadId = null;
 let b2cInstallateurNewStatus = null;
+let b2cGewRespFilter     = 'alle';
+let b2cGewMaandFilter    = '';
+let b2cVlRespFilter      = 'alle';
+let b2cVlMaandFilter     = '';
+
+// ── AGENDA STATE (bovenaan zodat geen temporal dead zone) ──
+let agAfspraken  = [];
+let agNextId     = 1;
+let agCalYear    = new Date().getFullYear();
+let agCalMonth   = new Date().getMonth();
+let agCalSelDag  = null;
+let agTypeFilter = 'alle';
+let agRespFilter = 'alle';
+let agEditId     = null;
+const AG_TYPES   = ['B2C','B2B','Andere'];
+const AG_KLEUREN = {B2C:'#00DFA3',B2B:'#534AB7',Andere:'#EF9F27'};
 
 // ── HELPERS ────────────────────────────────────────────
 function pctColor(p){const t=Math.max(0,Math.min(1,p/100));return`hsl(${Math.round(30+t*100)},${Math.round(90-t*25)}%,${Math.round(48-t*10)}%)`;}
@@ -2576,18 +2592,6 @@ async function removeUser(id,email){
 }
 
 // ── AGENDA ────────────────────────────────────────────
-let agAfspraken = [];
-let agNextId = 1;
-let agCalYear = new Date().getFullYear();
-let agCalMonth = new Date().getMonth();
-let agCalSelDag = null;
-let agTypeFilter = 'alle';
-let agRespFilter = 'alle';
-let agEditId = null;
-
-const AG_TYPES = ['B2C','B2B','Andere'];
-const AG_KLEUREN = {B2C:'#00DFA3',B2B:'#534AB7',Andere:'#EF9F27'};
-
 function agCalPrev(){agCalMonth--;if(agCalMonth<0){agCalMonth=11;agCalYear--;}agRenderCalendar();}
 function agCalNext(){agCalMonth++;if(agCalMonth>11){agCalMonth=0;agCalYear++;}agRenderCalendar();}
 
@@ -3124,10 +3128,7 @@ function b2cGetFiltered(){
 }
 
 // ── B2C GEWONNEN / VERLOREN TABS ─────────────────────
-let b2cGewRespFilter='alle';
-let b2cGewMaandFilter='';
-let b2cVlRespFilter='alle';
-let b2cVlMaandFilter='';
+
 
 function b2cRenderGewonnen(){
   const list=b2cLeads.filter(l=>l.status==='Gewonnen');
