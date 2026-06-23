@@ -1142,6 +1142,7 @@ let calMonth = new Date().getMonth();
 // ── B2C STATE (hier bovenaan zodat geen temporal dead zone) ──
 const B2C_STATUSSEN = ['Nieuw','Gecontacteerd','Visit gepland','Visit gedaan','Offerte','Gewonnen','Verloren','Afkoeling'];
 const B2C_WARMTES   = ['Koud','Lauw','Warm','Hot'];
+const B2C_KANBAN_COLS = ['Nieuw','Gecontacteerd','Visit gepland','Visit gedaan','Offerte','Gewonnen'];
 let b2cLeads             = [];
 let b2cNextId            = 1;
 let b2cStatusFilter      = 'alle';
@@ -3183,7 +3184,6 @@ function b2cMarkeerStatus(status){
   showToast(`Lead gemarkeerd als ${status}!`);
 }
 
-const B2C_KANBAN_COLS = ['Nieuw','Gecontacteerd','Visit gepland','Visit gedaan','Offerte','Gewonnen'];
 let b2cDragLeadId = null;
 let b2cDidDrag = false;
 let b2cVerliesLeadId = null;
