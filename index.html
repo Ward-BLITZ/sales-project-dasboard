@@ -2859,8 +2859,9 @@ function agLinkSearch(q){
     dd.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--tx3)">Geen resultaten gevonden</div>';
     dd.style.display='block';return;
   }
-  dd.innerHTML=results.slice(0,8).map(r=>`
-    <div onclick="agLinkSelect('${r.id}','${r.label.replace(/'/g,"\\'")}','${r.type}')"
+  const sliced=results.slice(0,8);
+  dd.innerHTML=sliced.map((r,i)=>`
+    <div data-link-idx="${i}"
       style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;transition:background .1s"
       onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
       <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:${r.bg};color:${r.color};white-space:nowrap">${r.type}</span>
@@ -2869,6 +2870,13 @@ function agLinkSearch(q){
         <div style="font-size:11px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.sub}</div>
       </div>
     </div>`).join('');
+  dd._results=sliced;
+  dd.querySelectorAll('[data-link-idx]').forEach(el=>{
+    el.addEventListener('click',function(){
+      const r=dd._results[parseInt(this.dataset.linkIdx)];
+      if(r)agLinkSelect(r.id,r.label,r.type);
+    });
+  });
   dd.style.display='block';
 }
 function agLinkSelect(id,label,type){
