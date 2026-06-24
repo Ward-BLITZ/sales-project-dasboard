@@ -1266,9 +1266,9 @@ let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 
 // ── B2C STATE (hier bovenaan zodat geen temporal dead zone) ──
-const B2C_STATUSSEN = ['Nieuw','1e contactpoging','2e contactpoging','Visit gepland','Offerte eindklant','Offerte installateur','Gewonnen','Verloren','Afkoeling'];
+const B2C_STATUSSEN = ['Nieuw','1e contactpoging gedaan','2e contactpoging gedaan','Visit gepland','Opvolgen','Offerte eindklant','Offerte installateur','Gewonnen','Verloren','Afkoeling'];
 const B2C_WARMTES   = ['Koud','Lauw','Warm','Hot'];
-const B2C_KANBAN_COLS = ['Nieuw','1e contactpoging','2e contactpoging','Visit gepland','Offerte eindklant','Offerte installateur','Gewonnen'];
+const B2C_KANBAN_COLS = ['Nieuw','1e contactpoging gedaan','2e contactpoging gedaan','Visit gepland','Opvolgen','Offerte eindklant','Offerte installateur','Gewonnen'];
 let b2cLeads             = [];
 let b2cNextId            = 1;
 let b2cStatusFilter      = 'alle';
