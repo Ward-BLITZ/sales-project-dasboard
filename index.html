@@ -85,11 +85,12 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .kanban-wrap{flex:1;min-width:0;overflow-x:auto}
 .kanban{display:flex;gap:14px;padding-bottom:1rem;min-height:calc(100vh - 220px);align-items:flex-start}
 .kanban::-webkit-scrollbar{height:6px}.kanban::-webkit-scrollbar-thumb{background:var(--gray);border-radius:3px}
-.kol{flex:0 0 220px;background:var(--bg2);border-radius:var(--rl);padding:10px;display:flex;flex-direction:column}
-.kol-header{padding:8px 4px 10px;margin-bottom:4px;border-bottom:2px solid var(--bd)}
+.kol{flex:0 0 220px;background:var(--bg2);border-radius:var(--rl);padding:10px;display:flex;flex-direction:column;max-height:calc(100vh - 140px)}
+.kol-header{padding:8px 4px 10px;margin-bottom:4px;border-bottom:2px solid var(--bd);flex-shrink:0}
 .kol-title{font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--tx2)}
 .kol-count{display:inline-block;background:var(--bg3);color:var(--tx3);font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;margin-left:6px}
-.kol-body{min-height:200px;flex:1}
+.kol-body{min-height:200px;flex:1;overflow-y:auto;padding-right:2px}
+.kol-body::-webkit-scrollbar{width:4px}.kol-body::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
 .kol-body.drag-over{outline:2px dashed var(--green);outline-offset:-3px;background:rgba(0,223,163,.06);border-radius:var(--rl)}
 .tile{background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:10px;cursor:pointer;overflow:hidden;user-select:none;transition:border-color .15s,box-shadow .15s}
 .tile:hover{border-color:var(--green);box-shadow:0 3px 12px rgba(0,223,163,.15)}
@@ -377,6 +378,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 
 <!-- TABS -->
 <div class="tabs" id="main-tabs" style="display:none">
+  <button class="tab-btn" id="tab-zoek" onclick="zoekOpen()" title="Zoeken" style="font-size:15px;padding:6px 10px"><i class="ti ti-search"></i></button>
   <span style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px 0 4px;align-self:center;white-space:nowrap">B2C</span>
   <button class="tab-btn active" id="tab-agenda" onclick="showTab('agenda')"><i class="ti ti-calendar"></i> Agenda</button>
   <span style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px 0 4px;align-self:center;white-space:nowrap;border-left:1px solid var(--bd);margin-left:4px">B2C</span>
@@ -662,10 +664,11 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <div style="flex:1;min-width:0;overflow-x:auto">
       <div id="b2c-kanban-board" style="display:flex;gap:14px;padding-bottom:1rem;min-height:calc(100vh - 220px);align-items:flex-start"></div>
     </div>
-    <div style="width:240px;flex-shrink:0;position:sticky;top:80px">
+    <div style="width:260px;flex-shrink:0;position:sticky;top:80px;max-height:calc(100vh - 100px);overflow-y:auto;display:flex;flex-direction:column;gap:10px">
+      <!-- Opvolgingen per dag -->
       <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:14px">
         <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ti-calendar-check" style="color:var(--green)"></i>Opvolgingen</div>
-        <div id="b2c-dash-opvolgingen"></div>
+        <div id="b2c-opvolg-dag-list" style="max-height:calc(100vh - 180px);overflow-y:auto;padding-right:2px"></div>
       </div>
     </div>
   </div>
@@ -703,6 +706,22 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 <!-- B2C OPVOLGING AFVINKEN MODAL -->
+<!-- GLOBALE ZOEKBALK -->
+<div id="zoek-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:flex-start;justify-content:center;padding-top:80px" onclick="if(event.target===this)zoekSluit()">
+  <div style="background:var(--bg);border-radius:16px;width:100%;max-width:640px;box-shadow:0 12px 48px rgba(0,0,0,.25);overflow:hidden">
+    <div style="display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--bd);gap:10px">
+      <i class="ti ti-search" style="font-size:18px;color:var(--green);flex-shrink:0"></i>
+      <input id="zoek-input" placeholder="Zoek op naam, telefoon, project, adres, e-mail..." autocomplete="off"
+        oninput="zoekRender(this.value)"
+        style="flex:1;border:none;background:transparent;font-size:15px;color:var(--tx);outline:none"
+        onkeydown="if(event.key==='Escape')zoekSluit()">
+      <button onclick="zoekSluit()" style="background:none;border:none;cursor:pointer;color:var(--tx3);font-size:18px;line-height:1"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="zoek-results" style="max-height:480px;overflow-y:auto;padding:8px 0"></div>
+  </div>
+</div>
+
+<!-- B2C AFVINK OPMERKING MODAL -->
 <div class="modal-overlay" id="b2c-afvink-overlay">
   <div class="modal-box" style="max-width:440px">
     <div class="modal-header">
@@ -1019,7 +1038,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
         </div>
         <div class="grid2">
           <div class="field"><label><i class="ti ti-bolt" style="color:var(--green);margin-right:4px"></i>Aantal laadpunten</label><input type="number" id="m-lp" placeholder="0" min="0"></div>
-          <div></div>
+          <div class="field"><label><i class="ti ti-file-invoice" style="color:var(--green);margin-right:4px"></i>Offertenummer</label><input id="m-offertenr" placeholder="bv. OFF-2026-001"></div>
         </div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin:14px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--bd)"><i class="ti ti-calendar-event" style="margin-right:5px"></i>Opvolging</div>
         <div class="grid2">
@@ -1137,6 +1156,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Volgende actie</label><input id="bn-actie" value="Eerste contact opnemen"></div>
     </div>
     <div class="field" style="max-width:200px"><label><i class="ti ti-calendar" style="color:var(--green);margin-right:4px"></i>Aanmaakdatum lead</label><input type="date" id="bn-aanmaakdatum"></div>
+    <div class="field" style="max-width:220px"><label><i class="ti ti-file-invoice" style="color:var(--green);margin-right:4px"></i>Offertenummer</label><input id="bn-offertenr" placeholder="bv. OFF-2026-001"></div>
     <div class="field"><label>Notities</label><textarea id="bn-notities" rows="2" placeholder="Eerste indruk, wensen..."></textarea></div>
     <div id="bn-visit-blok" style="display:none">
       <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:var(--tx2);margin:10px 0 8px;padding-top:10px;border-top:1px solid var(--bd)"><i class="ti ti-map-pin" style="margin-right:5px;color:var(--green)"></i>Visit plannen</div>
@@ -1166,6 +1186,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <div class="field"><label>Adres (bevestig)</label><input type="text" id="bv-adres"></div>
     <div class="field"><label>Notitie voor visit</label><textarea id="bv-nota" rows="2" placeholder="bv. parkeer achteraan, bel aan bij buren..."></textarea></div>
     <div class="modal-footer">
+      <button class="btn danger" id="bv-annuleer-btn" style="margin-right:auto;display:none" onclick="b2cAnnuleerVisit()"><i class="ti ti-trash"></i> Visit verwijderen</button>
       <button class="btn" onclick="b2cCloseVisitModal()">Annuleren</button>
       <button class="btn primary" onclick="b2cSaveVisit()"><i class="ti ti-check"></i> Visit opslaan</button>
     </div>
@@ -2053,6 +2074,7 @@ function openModal(idx){
     document.getElementById('m-resp').value=p.resp||'';
     document.getElementById('m-omzet').value=p.omzet||'';
     document.getElementById('m-lp').value=p.lp||'';
+    document.getElementById('m-offertenr').value=p.offertenr||'';
     document.getElementById('m-datum').value=p.datum||'';
     document.getElementById('m-notitie').value=p.notitie||'';
     const pct=p.pct!=null?p.pct:DEFAULT_PCT[parseInt(p.status)||0];
@@ -2066,7 +2088,7 @@ function openModal(idx){
     renderTijdlijn();
   } else {
     document.getElementById('modal-title').textContent='Nieuw project';
-    ['m-naam','m-klant','m-btw','m-contact','m-contactgsm','m-contactemail','m-adres','m-product','m-info','m-omzet','m-lp','m-datum','m-notitie'].forEach(id=>document.getElementById(id).value='');
+    ['m-naam','m-klant','m-btw','m-contact','m-contactgsm','m-contactemail','m-adres','m-product','m-info','m-omzet','m-lp','m-offertenr','m-datum','m-notitie'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('m-status').value='0';
     document.getElementById('m-pct').value=5;document.getElementById('m-pct-label').textContent='5%';
     document.getElementById('m-resp').value='';
@@ -2113,6 +2135,7 @@ async function saveProject(){
     status:String(si),pct,
     resp:document.getElementById('m-resp').value,
     lp:document.getElementById('m-lp').value||'',
+    offertenr:document.getElementById('m-offertenr').value.trim()||'',
     omzet:(()=>{const v=document.getElementById('m-omzet').value.trim();if(v)return v;const lp=parseInt(document.getElementById('m-lp').value)||0;return lp>0?String(lp*1200):'';})(),
     datum:document.getElementById('m-datum').value||'',
     notitie:document.getElementById('m-notitie').value.trim()||'',
@@ -3108,31 +3131,36 @@ function agRenderDag(ds){
   titelEl.textContent=d.toLocaleDateString('nl-BE',{weekday:'long',day:'numeric',month:'long'});
   const list=agGetFiltered().filter(a=>a.datum===ds).sort((a,b)=>(a.uur||'').localeCompare(b.uur||''));
   if(!list.length){listEl.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen afspraken</div>';return;}
-  listEl.innerHTML=list.map(a=>{
-    const isLinked=a._bron==='b2c'||a._bron==='b2b';
+  listEl.innerHTML=list.map((a,i)=>{
     const badge=a._bron==='b2c'
       ?`<span style="font-size:10px;background:rgba(0,223,163,.15);color:#00805e;padding:1px 5px;border-radius:4px;font-weight:600">B2C visit</span>`
       :a._bron==='b2b'
       ?`<span style="font-size:10px;background:rgba(83,74,183,.15);color:#3c3489;padding:1px 5px;border-radius:4px;font-weight:600">B2B visit</span>`
       :'';
-    return`<div onclick="agOpenEdit(${JSON.stringify(a.id)})" style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);cursor:pointer">
+    const openTip=a._bron==='b2c'?'Lead openen':a._bron==='b2b'?'Project openen':'Bewerken';
+    return`<div data-agid="${i}" style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);cursor:pointer"
+        onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
       <div style="width:8px;height:8px;border-radius:50%;background:${AG_KLEUREN[a.type]||'var(--green)'};flex-shrink:0;margin-top:4px"></div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600">${a.titel}</div>
         <div style="font-size:11px;color:var(--tx3)">${a.uur||''}${a.resp?' · '+a.resp:''}${a.notitie?' · '+a.notitie:''}</div>
-        ${badge}
+        <div style="display:flex;align-items:center;gap:6px;margin-top:3px">${badge}${a._bron==='b2c'||a._bron==='b2b'?`<span style="font-size:10px;color:var(--green)"><i class="ti ti-external-link" style="font-size:10px"></i> ${openTip}</span>`:''}</div>
       </div>
     </div>`;
   }).join('');
+  listEl.querySelectorAll('[data-agid]').forEach(el=>{
+    const a=list[parseInt(el.dataset.agid)];
+    el.addEventListener('click',()=>agOpenEditItem(a));
+  });
 }
 
 function agRenderAankomende(){
   const el=document.getElementById('ag-aankomende');if(!el)return;
   const t=today();
-  const list=agGetFiltered().filter(a=>a.datum>=t).sort((a,b)=>a.datum.localeCompare(b.datum)||(a.uur||'').localeCompare(b.uur||'')).slice(0,8);
+  const list=agGetFiltered().filter(a=>a.datum>=t).sort((a,b)=>a.datum.localeCompare(b.datum)||(a.uur||'').localeCompare(b.uur||'')).slice(0,12);
   if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen aankomende afspraken</div>';return;}
   const MAANDEN_K=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-  el.innerHTML=list.map(a=>{
+  el.innerHTML=list.map((a,i)=>{
     const d=new Date(a.datum);
     const diff=Math.round((new Date(a.datum)-new Date(t))/86400000);
     const lbl=diff===0?'Vandaag':diff===1?'Morgen':d.getDate()+' '+MAANDEN_K[d.getMonth()];
@@ -3141,7 +3169,8 @@ function agRenderAankomende(){
       :a._bron==='b2b'
       ?`<span style="font-size:10px;background:rgba(83,74,183,.12);color:#3c3489;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px">B2B</span>`
       :'';
-    return`<div onclick="agOpenEdit(${JSON.stringify(a.id)})" style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--bd);cursor:pointer">
+    return`<div data-agidx="${i}" style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--bd);cursor:pointer"
+        onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
       <div style="width:8px;height:8px;border-radius:50%;background:${AG_KLEUREN[a.type]||'var(--green)'};flex-shrink:0;margin-top:4px"></div>
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:600">${a.titel}${badge}</div>
@@ -3150,6 +3179,10 @@ function agRenderAankomende(){
       <div style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:${AG_KLEUREN[a.type]||'var(--green)'}22;color:${AG_KLEUREN[a.type]||'var(--green)'};white-space:nowrap">${a.type}</div>
     </div>`;
   }).join('');
+  el.querySelectorAll('[data-agidx]').forEach(div=>{
+    const a=list[parseInt(div.dataset.agidx)];
+    div.addEventListener('click',()=>agOpenEditItem(a));
+  });
 }
 
 function agOpenNieuw(datum=null){
@@ -3170,6 +3203,27 @@ function agOpenNieuw(datum=null){
   sel.innerHTML='<option value="">— kies —</option>'+respNames().map(r=>`<option value="${r}">${r}</option>`).join('');
   sel.value='';
   document.getElementById('ag-nieuw-overlay').classList.add('open');
+}
+
+function agOpenEditItem(a){
+  if(!a)return;
+  if(a._bron==='b2c'&&a._leadId){
+    // Navigeer naar B2C tab en open lead dossier
+    showTab('b2c');
+    setTimeout(()=>b2cOpenDetail(a._leadId),150);
+    return;
+  }
+  if(a._bron==='b2b'&&a._projectId){
+    // Navigeer naar B2B projecten en open project modal
+    showTab('lopend');
+    setTimeout(()=>{
+      const idx=projects.findIndex(p=>p.id===a._projectId||p._rowid===a._projectId);
+      if(idx>-1)openModal(idx);
+    },150);
+    return;
+  }
+  // Gewone agenda-afspraak — open edit modal
+  agOpenEdit(a.id);
 }
 
 function agOpenEdit(id){
@@ -3460,6 +3514,86 @@ function linkUserToResp(userNaam, userEmail){
 // ════════════════════════════════════════════════════════
 
 // Demo data - wordt aangeroepen vanuit init()
+// ── GLOBALE ZOEKFUNCTIE ───────────────────────────────
+function zoekOpen(){
+  const ov=document.getElementById('zoek-overlay');
+  ov.style.display='flex';
+  setTimeout(()=>{
+    const inp=document.getElementById('zoek-input');
+    if(inp){inp.value='';inp.focus();}
+    document.getElementById('zoek-results').innerHTML='<div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Typ om te zoeken…</div>';
+  },50);
+}
+function zoekSluit(){document.getElementById('zoek-overlay').style.display='none';}
+function zoekRender(q){
+  const el=document.getElementById('zoek-results');
+  q=q.trim();
+  if(q.length<2){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--tx3);font-size:13px">Typ minstens 2 tekens…</div>';return;}
+  const ql=q.toLowerCase();
+  const results=[];
+  // B2C Leads
+  b2cLeads.forEach(l=>{
+    const hay=[b2cNaam(l),l.tel,l.email,l.adres,l.bron,l.notities,l.status,l.resp,l.actie].filter(Boolean).join(' ').toLowerCase();
+    if(hay.includes(ql)){
+      results.push({type:'B2C Lead',icon:'ti-user',color:'#00805e',bg:'rgba(0,223,163,.10)',label:b2cNaam(l),sub:l.status+(l.tel?' · '+l.tel:'')+(l.adres?' · '+l.adres:''),snippet:zoekSnippet(hay,ql),action:()=>{zoekSluit();showTab('b2c');setTimeout(()=>b2cOpenDetail(l.id),100);}});
+    }
+  });
+  // B2B Projecten
+  projects.forEach(p=>{
+    const hay=[p.naam,p.klant,p.adres,p.contact,p.gsm,p.email,p.notities,p.resp,p.status].filter(Boolean).join(' ').toLowerCase();
+    if(hay.includes(ql)){
+      results.push({type:'B2B Project',icon:'ti-briefcase',color:'#534AB7',bg:'rgba(83,74,183,.10)',label:p.naam||p.klant,sub:(p.klant||'')+(p.status?' · '+p.status:''),snippet:zoekSnippet(hay,ql),action:()=>{zoekSluit();showTab('lopend');setTimeout(()=>openModal(p._rowid||p.id),100);}});
+    }
+  });
+  // Prospects
+  prospects.forEach(p=>{
+    const contacts=(p.contacts||[]).map(c=>[c.naam,c.tel,c.email,c.rol].join(' ')).join(' ');
+    const hay=[p.naam,p.project,p.postcode,p.resp,p.moeder,p.notities,contacts].filter(Boolean).join(' ').toLowerCase();
+    if(hay.includes(ql)){
+      results.push({type:'Prospect',icon:'ti-target',color:'#854f0b',bg:'rgba(133,79,11,.10)',label:p.naam,sub:(p.project||'')+(p.postcode?' · '+p.postcode:'')+(p.kans!==undefined?' · '+p.kans+'%':''),snippet:zoekSnippet(hay,ql),action:()=>{zoekSluit();showTab('prospects');setTimeout(()=>prospOpenEdit(p.id),100);}});
+    }
+  });
+  // CRM Klanten
+  klanten.forEach(k=>{
+    const hay=[k.naam,k.contact,k.gsm,k.btw,k.adres,k.email].filter(Boolean).join(' ').toLowerCase();
+    if(hay.includes(ql)){
+      results.push({type:'CRM Klant',icon:'ti-building',color:'#2563eb',bg:'rgba(37,99,235,.10)',label:k.naam||k.contact,sub:(k.contact||'')+(k.gsm?' · '+k.gsm:''),snippet:zoekSnippet(hay,ql),action:()=>{zoekSluit();showTab('crm');}});
+    }
+  });
+  if(!results.length){
+    el.innerHTML='<div style="padding:24px;text-align:center;color:var(--tx3)"><i class="ti ti-search-off" style="font-size:28px;display:block;margin-bottom:8px"></i>Geen resultaten voor <strong style="color:var(--tx)">"'+q+'"</strong></div>';
+    return;
+  }
+  window._zoekActions=results.map(r=>r.action);
+  el.innerHTML=results.map((r,i)=>`
+    <div data-zi="${i}" style="display:flex;align-items:flex-start;gap:12px;padding:10px 18px;cursor:pointer;border-bottom:1px solid var(--bd)"
+      onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+      <div style="width:32px;height:32px;border-radius:8px;background:${r.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="ti ${r.icon}" style="color:${r.color};font-size:15px"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">
+          <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:${r.color};background:${r.bg};padding:1px 6px;border-radius:4px">${r.type}</span>
+          <span style="font-size:13px;font-weight:700;color:var(--tx)">${r.label}</span>
+        </div>
+        <div style="font-size:11px;color:var(--tx2)">${r.sub}</div>
+        ${r.snippet?`<div style="font-size:11px;color:var(--tx3);margin-top:2px">…${r.snippet}…</div>`:''}
+      </div>
+      <i class="ti ti-chevron-right" style="color:var(--tx3);font-size:14px;flex-shrink:0;margin-top:4px"></i>
+    </div>`).join('');
+  el.querySelectorAll('[data-zi]').forEach(el2=>{
+    el2.addEventListener('click',()=>window._zoekActions[parseInt(el2.dataset.zi)]&&window._zoekActions[parseInt(el2.dataset.zi)]());
+  });
+}
+function zoekSnippet(hay,q){
+  const i=hay.indexOf(q);if(i<0)return'';
+  return hay.substring(Math.max(0,i-20),Math.min(hay.length,i+q.length+30));
+}
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();zoekOpen();}
+  if(e.key==='Escape'&&document.getElementById('zoek-overlay').style.display==='flex')zoekSluit();
+});
+
 function b2cInitDemo(){
   // Geen demo data — leads starten leeg
 }
@@ -3651,12 +3785,12 @@ function b2cRenderLeads(){
         ${l.actie?`<div style="font-size:10px;color:var(--tx3);margin-top:5px;border-top:1px solid var(--bd);padding-top:4px"><i class="ti ti-arrow-right" style="font-size:9px"></i> ${l.actie}</div>`:''}
       </div>`;
     }).join('')||`<div style="text-align:center;padding:16px 8px;color:var(--tx3);font-size:11px"><i class="ti ti-inbox" style="font-size:18px;display:block;margin-bottom:4px"></i>Leeg</div>`;
-    return`<div style="flex:0 0 220px;min-height:calc(100vh - 260px);background:var(--bg2);border-radius:var(--rl);padding:10px;display:flex;flex-direction:column${isGewonnen?';border-top:2px solid #639922':''}">
-      <div style="padding:8px 4px 10px;margin-bottom:4px;border-bottom:2px solid var(--bd)">
+    return`<div style="flex:0 0 200px;max-height:calc(100vh - 180px);background:var(--bg2);border-radius:var(--rl);padding:10px;display:flex;flex-direction:column${isGewonnen?';border-top:2px solid #639922':''}">
+      <div style="padding:8px 4px 10px;margin-bottom:4px;border-bottom:2px solid var(--bd);flex-shrink:0">
         <span style="font-family:'Poppins',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${isGewonnen?'#639922':'var(--tx2)'}">${status}</span>
         <span style="display:inline-block;background:var(--bg3);color:var(--tx3);font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;margin-left:6px">${cols.length}</span>
       </div>
-      <div style="flex:1;min-height:200px;padding-top:4px"
+      <div style="flex:1;overflow-y:auto;padding-top:4px;padding-right:2px;scrollbar-width:thin"
            ondragover="b2cDragOver(event)" ondragleave="b2cDragLeave(event)" ondrop="b2cDrop(event,'${status}')">${tiles}</div>
     </div>`;
   }).join('');
@@ -3830,6 +3964,7 @@ function b2cRenderInfo(l){
       </div>
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Visit</div><div class="b2c-summary-val">${l.visitDatum?(l.visitDatum+(l.visitUur?' om '+l.visitUur:'')):'Niet gepland'}</div></div>
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Aanmaakdatum</div><div><input type="date" id="bi-aanmaakdatum" value="${l.aanmaakdatum||today()}" style="font-size:12px;padding:3px 6px;width:auto"></div></div>
+      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Offertenummer</div><div><input type="text" id="bi-offertenr" value="${l.offertenr||''}" placeholder="OFF-2026-001" style="font-size:12px;padding:3px 6px;width:130px"></div></div>
       ${l.installatiepartner?`<div class="b2c-summary-item"><div class="b2c-summary-lbl">Installatiepartner</div><div class="b2c-summary-val" style="font-weight:600;color:var(--green)"><i class="ti ti-tools" style="font-size:11px;margin-right:3px"></i>${l.installatiepartner}</div></div>`:''}
     </div>
 
@@ -3913,6 +4048,7 @@ function b2cSaveLeadEdit(){
   const nresp=get('bi-resp');if(nresp!==null&&nresp!==l.resp){l.resp=nresp;changed.push('verantwoordelijke');}
   const nactie=get('bi-actie');if(nactie!==null&&nactie!==l.actie){l.actie=nactie;changed.push('volgende actie');}
   const naanmaak=get('bi-aanmaakdatum');if(naanmaak!==null&&naanmaak!==l.aanmaakdatum){l.aanmaakdatum=naanmaak;changed.push('aanmaakdatum');}
+  const noffertenr=get('bi-offertenr');if(noffertenr!==null&&noffertenr!==l.offertenr){l.offertenr=noffertenr;changed.push('offertenummer');}
   if(changed.length){
     l.acties=l.acties||[];
     l.acties.push({datum:today(),tekst:'Bewerkt: '+changed.join(', ')});
@@ -3953,8 +4089,14 @@ function b2cRenderOpvolgingen(l){
 }
 
 function b2cRenderDashOpvolgingen(){
-  const el=document.getElementById('b2c-dash-opvolgingen');if(!el)return;
+  // Legacy support: if old element still exists
+  const legEl=document.getElementById('b2c-dash-opvolgingen');
+  const el=document.getElementById('b2c-opvolg-dag-list')||legEl;
+  if(!el)return;
   const t=today();
+  const MK=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+
+  // Collect all open opvolgingen
   const items=[];
   b2cLeads.filter(l=>l.status!=='Verloren').forEach(l=>{
     (l.opvolgingen||[]).forEach((op,idx)=>{
@@ -3962,27 +4104,44 @@ function b2cRenderDashOpvolgingen(){
     });
   });
   items.sort((a,b)=>a.op.datum.localeCompare(b.op.datum));
-  if(!items.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen openstaande opvolgingen.</div>';return;}
-  const MK=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-  el.innerHTML=items.slice(0,10).map(({op,l,idx})=>{
-    const verleden=op.datum<t,isVandaag=op.datum===t;
-    const kleur=verleden?'#a32d2d':isVandaag?'#854f0b':'var(--tx3)';
-    const d=new Date(op.datum);
-    const lbl=isVandaag?'Vandaag':verleden?Math.abs(Math.round((new Date(t)-new Date(op.datum))/86400000))+'d te laat':`${d.getDate()} ${MK[d.getMonth()]}`;
-    return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--bd)">
-      <button onclick="b2cToggleOpvolgingGedaan(${l.id},${idx})"
-        style="width:22px;height:22px;border-radius:5px;border:2px solid rgba(99,153,34,.5);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s"
-        onmouseover="this.style.background='rgba(99,153,34,.12)'" onmouseout="this.style.background='none'"
-        title="Afvinken">
-        <i class="ti ti-check" style="font-size:12px;color:#639922"></i>
-      </button>
-      <div style="flex:1;min-width:0;cursor:pointer" onclick="b2cOpenDetail(${l.id})">
-        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b2cNaam(l)}</div>
-        <div style="font-size:11px;color:${kleur}">${lbl}${op.uur?' '+op.uur:''}</div>
-        <div style="font-size:11px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${op.tekst}</div>
-      </div>
+
+  if(!items.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:1rem 0">Geen openstaande opvolgingen.</div>';
+    return;
+  }
+
+  // Group by day
+  const byDay={};
+  items.forEach(item=>{
+    const d=item.op.datum;
+    if(!byDay[d])byDay[d]=[];
+    byDay[d].push(item);
+  });
+
+  const html=Object.keys(byDay).sort().map(datum=>{
+    const verleden=datum<t, isVandaag=datum===t;
+    const d=new Date(datum);
+    const dagNamen=['Zo','Ma','Di','Wo','Do','Vr','Za'];
+    const dagLbl=isVandaag?'Vandaag':verleden?`<span style="color:#a32d2d">${dagNamen[d.getDay()]} ${d.getDate()} ${MK[d.getMonth()]}</span>`:`${dagNamen[d.getDay()]} ${d.getDate()} ${MK[d.getMonth()]}`;
+    const items_dag=byDay[datum];
+    return`<div style="margin-bottom:10px">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:${isVandaag?'var(--green)':verleden?'#a32d2d':'var(--tx3)'};margin-bottom:5px;padding:0 2px">${isVandaag?'📅 Vandaag':verleden?'⚠ '+datum.slice(8)+' '+MK[parseInt(datum.slice(5,7))-1]:dagNamen[d.getDay()]+' '+d.getDate()+' '+MK[d.getMonth()]}</div>
+      ${items_dag.map(({op,l,idx})=>`
+        <div style="display:flex;align-items:flex-start;gap:6px;padding:6px 8px;background:var(--bg2);border-radius:8px;margin-bottom:4px;border-left:3px solid ${isVandaag?'var(--green)':verleden?'#a32d2d':'var(--bd2)'}">
+          <button onclick="b2cToggleOpvolgingGedaan(${l.id},${idx})"
+            style="width:18px;height:18px;border-radius:4px;border:2px solid rgba(99,153,34,.5);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px"
+            onmouseover="this.style.background='rgba(99,153,34,.15)'" onmouseout="this.style.background='none'">
+            <i class="ti ti-check" style="font-size:10px;color:#639922"></i>
+          </button>
+          <div style="flex:1;min-width:0;cursor:pointer" onclick="b2cOpenDetail(${l.id})">
+            <div style="font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b2cNaam(l)}</div>
+            <div style="font-size:11px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${op.tekst}</div>
+            ${op.uur?`<div style="font-size:10px;color:var(--tx3)">${op.uur}</div>`:''}
+          </div>
+        </div>`).join('')}
     </div>`;
   }).join('');
+  el.innerHTML=html;
 }
 
 function b2cAddOpvolging(id){
@@ -4496,6 +4655,7 @@ function b2cOpenNieuw(visitMode){
     const el=document.getElementById(id);if(el)el.value=id==='bn-actie'?'Eerste contact opnemen':'';
   });
   const aanmaakEl=document.getElementById('bn-aanmaakdatum');if(aanmaakEl)aanmaakEl.value=today();
+  const offEl=document.getElementById('bn-offertenr');if(offEl)offEl.value='';
   const vuur=document.getElementById('bn-vuur');if(vuur)vuur.value='10:00';
   const bron=document.getElementById('bn-bron');if(bron)bron.value='Website';
   const warmte=document.getElementById('bn-warmte');if(warmte)warmte.value=visitMode?'Warm':'Lauw';
@@ -4521,6 +4681,7 @@ function b2cSaveLead(){
   b2cLeads.unshift({
     id:b2cNextId++,voornaam:vn,achternaam:an,
     aanmaakdatum:aanmaakDatum,
+    offertenr:document.getElementById('bn-offertenr')?.value.trim()||'',
     tel:document.getElementById('bn-tel').value,email:document.getElementById('bn-email').value,
     adres:document.getElementById('bn-adres').value,bron:document.getElementById('bn-bron').value,
     warmte:document.getElementById('bn-warmte').value,
@@ -4544,6 +4705,7 @@ function b2cOpenVisitModal(id){
   document.getElementById('bv-uur').value=l.visitUur||'10:00';
   document.getElementById('bv-adres').value=l.adres||'';
   document.getElementById('bv-nota').value=l.notities||'';
+  document.getElementById('bv-annuleer-btn').style.display=l.visitDatum?'inline-flex':'none';
   document.getElementById('b2c-detail-overlay').classList.remove('open');
   document.getElementById('b2c-visit-overlay').classList.add('open');
 }
@@ -4567,7 +4729,16 @@ function b2cSaveVisit(){
   showToast('Visit ingepland!');
 }
 
-// ─── DOORSTUREN NAAR B2B ────────────────────────────
+function b2cAnnuleerVisit(){
+  const l=b2cLeads.find(x=>x.id===b2cVisitLeadId);if(!l)return;
+  if(!confirm(`Visit van ${b2cNaam(l)} op ${l.visitDatum} verwijderen?`))return;
+  l.visitDatum=null;l.visitUur=null;
+  if(l.status==='Visit gepland')l.status='Nieuw';
+  l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Visit geannuleerd'});
+  sbSaveB2cLead(l);
+  b2cCloseVisitModal();b2cRenderLeads();b2cRenderCalendar();b2cRenderAankomende();
+  showToast('Visit verwijderd.');
+}
 function b2cOpenDoorstuur(id){
   b2cDoorstuurLeadId=id;
   const l=b2cLeads.find(x=>x.id===id);if(!l)return;
