@@ -1512,10 +1512,11 @@ function prospSave(){
   };
   if(prospEditId){
     const idx=prospects.findIndex(x=>x.id===prospEditId);
-    if(idx>=0)prospects[idx]={...prospects[idx],...data};
+    if(idx>=0){prospects[idx]={...prospects[idx],...data};sbSaveProspect(prospects[idx]);}
   } else {
     data.id=prospNextId++;
     prospects.push(data);
+    sbSaveProspect(data);
   }
   prospCloseModal();prospRender();
   showToast(prospEditId?'Prospect opgeslagen ✓':'Prospect aangemaakt ✓');
@@ -1524,6 +1525,7 @@ function prospSave(){
 function prospDelete(){
   const p=prospects.find(x=>x.id===prospEditId);
   if(!p||!confirm(`Prospect "${p.naam}" verwijderen?`))return;
+  sbDeleteProspect(p.id);
   prospects=prospects.filter(x=>x.id!==prospEditId);
   prospCloseModal();prospRender();showToast('Prospect verwijderd.');
 }
@@ -1540,6 +1542,7 @@ function prospNaarProject(){
     const rEl=document.getElementById('m-resp');if(rEl)rEl.value=p.resp||'';
     const pcEl=document.getElementById('m-postcode');if(pcEl)pcEl.value=p.postcode||'';
   },150);
+  sbDeleteProspect(p.id);
   prospects=prospects.filter(x=>x.id!==prospEditId);
   prospRender();showTab('lopend');
 }
@@ -1590,6 +1593,15 @@ async function loadAll(){
   setDbStatus('ok','verbonden');
   document.getElementById('db-setup-card').style.display='none';
   await loadKlanten();
+  // Prospects laden
+  try{
+    const prows=await sbFetch('prospects?order=created_at.asc');
+    if(prows&&prows.length>0){
+      prospects=(prows||[]).map(r=>({id:r.id,...r.data}));
+      prospNextId=Math.max(1,...prospects.map(p=>p.id||0))+1;
+      try{localStorage.setItem('blitz_prospects',JSON.stringify(prospects));}catch{}
+    }
+  }catch(e){console.warn('Prospects tabel niet gevonden (nog niet aangemaakt):',e.message);}
   renderAll();renderResps();pushToTV();
 
   // Koppel ingelogde gebruiker aan verantwoordelijke na data laden
@@ -1625,6 +1637,29 @@ async function sbSaveClosed(p){
 
 async function sbDeleteClosed(id){if(sbUrl)await sbFetch('closed_projects?id=eq.'+id,{method:'DELETE'}).catch(()=>{});}
 
+async function sbSaveProspect(p){
+  if(!sbUrl){try{localStorage.setItem('blitz_prospects',JSON.stringify(prospects));}catch{}return;}
+  const data={...p};const id=data.id;delete data.id;
+  data.updatedAt=new Date().toISOString();
+  try{
+    if(id){
+      await sbFetch('prospects?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({data})});
+    } else {
+      const r=await sbFetch('prospects',{method:'POST',body:JSON.stringify({data})});
+      return r&&r[0]?r[0].id:null;
+    }
+  }catch(e){
+    // Tabel bestaat nog niet — maak aan via POST (Supabase geeft 404/400)
+    console.warn('sbSaveProspect error:',e.message);
+  }
+  try{localStorage.setItem('blitz_prospects',JSON.stringify(prospects));}catch{}
+}
+async function sbDeleteProspect(id){
+  if(sbUrl){
+    try{await sbFetch('prospects?id=eq.'+id,{method:'DELETE'});}catch(e){console.warn('sbDeleteProspect:',e.message);}
+  }
+  try{localStorage.setItem('blitz_prospects',JSON.stringify(prospects));}catch{}
+}
 async function sbSaveResps(){
   if(!sbUrl){lsSave();return;}
   await sbFetch('settings',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({key:'resps',data:{list:resps}})});
@@ -3297,15 +3332,20 @@ function agDelete(){
   document.getElementById('resp-modal').addEventListener('click',function(e){if(e.target===this)closeRespModal();});
   document.getElementById('invite-modal').addEventListener('click',function(e){if(e.target===this)closeInviteModal();});
   document.getElementById('crm-modal').addEventListener('click',function(e){if(e.target===this)closeCrmModal();});
-  document.getElementById('crm-complete-overlay').addEventListener('click',function(e){if(e.target===this)closeCrmComplete();});
+  // Gebruik setTimeout zodat elementen die later in de HTML staan zeker bestaan
+  setTimeout(()=>{
+    const safe=(id,fn)=>{const el=document.getElementById(id);if(el)el.addEventListener('click',function(e){if(e.target===this)fn();});};
+    safe('crm-complete-overlay',closeCrmComplete);
+    safe('ag-nieuw-overlay',agCloseNieuw);
+    safe('b2c-installateur-overlay',b2cSluitInstallateur);
+    safe('b2c-afvink-overlay',b2cSluitAfvink);
+    safe('prosp-modal-overlay',prospCloseModal);
+  },0);
 
-  // Herstel lokale klanten backup
+  // Herstel lokale backup
   try{const d=localStorage.getItem('blitz_klanten');if(d)klanten=JSON.parse(d);}catch{}
   try{const d=localStorage.getItem('blitz_ag');if(d){agAfspraken=JSON.parse(d);agNextId=Math.max(1,...agAfspraken.map(a=>a.id||0))+1;}}catch{}
-  document.getElementById('ag-nieuw-overlay').addEventListener('click',function(e){if(e.target===this)agCloseNieuw();});
-  document.getElementById('b2c-installateur-overlay').addEventListener('click',function(e){if(e.target===this)b2cSluitInstallateur();});
-  document.getElementById('b2c-afvink-overlay').addEventListener('click',function(e){if(e.target===this)b2cSluitAfvink();});
-  document.getElementById('prosp-modal-overlay').addEventListener('click',function(e){if(e.target===this)prospCloseModal();});
+  try{const d=localStorage.getItem('blitz_prospects');if(d){prospects=JSON.parse(d);prospNextId=Math.max(1,...prospects.map(p=>p.id||0))+1;}}catch{}
 
   // Probeer bestaande sessie te herstellen
   initSupabaseClient();
