@@ -3762,9 +3762,38 @@ function b2cRenderLeads(){
     return true;
   });
   const board=document.getElementById('b2c-kanban-board');if(!board)return;
+
+  // Sorteer leads per kolom: geen opvolging eerst, daarna vroegste opvolging
+  function eerstvolgendeOpvolging(l){
+    const open=(l.opvolgingen||[]).filter(op=>!op.gedaan);
+    if(!open.length)return null;
+    return open.sort((a,b)=>{
+      const dc=a.datum.localeCompare(b.datum);
+      if(dc!==0)return dc;
+      // zelfde dag: met uur voor zonder uur
+      if(a.uur&&!b.uur)return -1;
+      if(!a.uur&&b.uur)return 1;
+      return(a.uur||'').localeCompare(b.uur||'');
+    })[0];
+  }
+  function sorteerLeads(leads){
+    return [...leads].sort((a,b)=>{
+      const oa=eerstvolgendeOpvolging(a);
+      const ob=eerstvolgendeOpvolging(b);
+      if(!oa&&!ob)return 0;
+      if(!oa)return -1; // geen opvolging → bovenaan
+      if(!ob)return 1;
+      const dc=oa.datum.localeCompare(ob.datum);
+      if(dc!==0)return dc;
+      if(oa.uur&&!ob.uur)return -1;
+      if(!oa.uur&&ob.uur)return 1;
+      return(oa.uur||'').localeCompare(ob.uur||'');
+    });
+  }
+
   board.innerHTML=B2C_KANBAN_COLS.map(status=>{
     const isGewonnen=status==='Gewonnen';
-    const cols=list.filter(l=>l.status===status);
+    const cols=sorteerLeads(list.filter(l=>l.status===status));
     const tiles=cols.map(l=>{
       const warmteDot={Koud:'#8a9ba3',Lauw:'#f59e0b',Warm:'#f97316',Hot:'#ef4444'}[l.warmte]||'var(--tx3)';
       const visitBadge=l.visitDatum?`<span style="font-size:9px;background:rgba(0,223,163,.15);color:#00805e;padding:1px 5px;border-radius:4px"><i class="ti ti-map-pin" style="font-size:8px"></i> ${l.visitDatum}</span>`:'';
