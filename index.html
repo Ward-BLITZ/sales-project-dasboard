@@ -3630,7 +3630,7 @@ function b2cRenderPills(){
   }
 }
 
-function b2cSetRespFilter(r){b2cRespFilter=r;b2cRenderLeads();}
+function b2cSetRespFilter(r){b2cRespFilter=r;b2cRenderLeads();b2cRenderDashOpvolgingen();}
 function b2cSetStatusFilter(s){b2cStatusFilter=s;b2cRenderLeads();}
 function b2cSetWarmteFilter(w){b2cWarmteFilter=w;b2cRenderLeads();}
 
@@ -3796,28 +3796,8 @@ function b2cRenderLeads(){
   }).join('');
 }
 
-function b2cRenderDashOpvolgingen(){
-  const el=document.getElementById('b2c-dash-opvolgingen');if(!el)return;
-  const t=today();
-  const items=[];
-  b2cLeads.filter(l=>l.status!=='Verloren').forEach(l=>{
-    (l.opvolgingen||[]).filter(op=>!op.gedaan).forEach(op=>items.push({op,l}));
-  });
-  items.sort((a,b)=>a.op.datum.localeCompare(b.op.datum));
-  if(!items.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen openstaande opvolgingen.</div>';return;}
-  const MK=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-  el.innerHTML=items.slice(0,10).map(({op,l})=>{
-    const verleden=op.datum<t,isVandaag=op.datum===t;
-    const kleur=verleden?'#a32d2d':isVandaag?'#854f0b':'var(--tx3)';
-    const d=new Date(op.datum);
-    const lbl=isVandaag?'Vandaag':verleden?Math.abs(Math.round((new Date(t)-new Date(op.datum))/86400000))+'d te laat':`${d.getDate()} ${MK[d.getMonth()]}`;
-    return`<div onclick="b2cOpenDetail(${l.id})" style="padding:7px 0;border-bottom:1px solid var(--bd);cursor:pointer">
-      <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b2cNaam(l)}</div>
-      <div style="font-size:11px;color:${kleur}">${lbl}${op.uur?' '+op.uur:''}</div>
-      <div style="font-size:11px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${op.tekst}</div>
-    </div>`;
-  }).join('');
-}
+
+
 
 function b2cDragStart(e,id){
   b2cDragLeadId=id;b2cDidDrag=false;
@@ -4096,9 +4076,11 @@ function b2cRenderDashOpvolgingen(){
   const t=today();
   const MK=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 
-  // Collect all open opvolgingen
+  // Collect all open opvolgingen, gefilterd op verantwoordelijke
   const items=[];
-  b2cLeads.filter(l=>l.status!=='Verloren').forEach(l=>{
+  b2cLeads
+    .filter(l=>l.status!=='Verloren'&&(b2cRespFilter==='alle'||l.resp===b2cRespFilter))
+    .forEach(l=>{
     (l.opvolgingen||[]).forEach((op,idx)=>{
       if(!op.gedaan)items.push({op,l,idx});
     });
