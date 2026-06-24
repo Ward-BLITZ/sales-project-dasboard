@@ -623,6 +623,33 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   </div>
 </div>
 
+<!-- B2C OPVOLGING AFVINKEN MODAL -->
+<div class="modal-overlay" id="b2c-afvink-overlay">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-header">
+      <span class="modal-title"><i class="ti ti-check" style="color:#639922;margin-right:6px"></i>Opvolging afvinken</span>
+      <button class="modal-close" onclick="b2cSluitAfvink()"><i class="ti ti-x"></i></button>
+    </div>
+    <p style="font-size:13px;color:var(--tx2);margin-bottom:6px" id="b2c-afvink-omschrijving"></p>
+    <div class="field" style="margin-bottom:8px">
+      <label>Wat werd er gedaan? <span style="color:var(--tx3);font-weight:400">(optioneel)</span></label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="b2c-afvink-quick">
+        <button class="btn sm" onclick="b2cAfvinkKies(this,'Voicemail ingesproken')">📞 Voicemail</button>
+        <button class="btn sm" onclick="b2cAfvinkKies(this,'Telefonisch contact gehad')">✅ Tel. contact</button>
+        <button class="btn sm" onclick="b2cAfvinkKies(this,'E-mail verstuurd')">📧 E-mail</button>
+        <button class="btn sm" onclick="b2cAfvinkKies(this,'Geen gehoor')">🔕 Geen gehoor</button>
+        <button class="btn sm" onclick="b2cAfvinkKies(this,'Afspraak gemaakt')">📅 Afspraak</button>
+        <button class="btn sm" onclick="b2cAfvinkKies(this,'Offerte besproken')">📄 Offerte</button>
+      </div>
+      <textarea id="b2c-afvink-opmerking" rows="3" placeholder="Of typ een eigen opmerking..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="b2cSluitAfvink()">Annuleren</button>
+      <button class="btn primary" onclick="b2cBevestigAfvink()"><i class="ti ti-check"></i> Afvinken &amp; loggen</button>
+    </div>
+  </div>
+</div>
+
 <!-- B2C INSTALLATIEPARTNER POPUP -->
 <div class="modal-overlay" id="b2c-installateur-overlay">
   <div class="modal-box" style="max-width:420px">
@@ -1188,6 +1215,8 @@ let b2cGewRespFilter     = 'alle';
 let b2cGewMaandFilter    = '';
 let b2cVlRespFilter      = 'alle';
 let b2cVlMaandFilter     = '';
+let b2cAfvinkLeadId      = null;
+let b2cAfvinkOpIdx       = null;
 
 // ── AGENDA STATE (bovenaan zodat geen temporal dead zone) ──
 let agAfspraken  = [];
@@ -2984,6 +3013,7 @@ function agDelete(){
   try{const d=localStorage.getItem('blitz_ag');if(d){agAfspraken=JSON.parse(d);agNextId=Math.max(1,...agAfspraken.map(a=>a.id||0))+1;}}catch{}
   document.getElementById('ag-nieuw-overlay').addEventListener('click',function(e){if(e.target===this)agCloseNieuw();});
   document.getElementById('b2c-installateur-overlay').addEventListener('click',function(e){if(e.target===this)b2cSluitInstallateur();});
+  document.getElementById('b2c-afvink-overlay').addEventListener('click',function(e){if(e.target===this)b2cSluitAfvink();});
 
   // Probeer bestaande sessie te herstellen
   initSupabaseClient();
@@ -3527,16 +3557,16 @@ function b2cSaveLeadEdit(){
 
 // ── B2C OPVOLGINGSAGENDA ──────────────────────────────
 function b2cRenderOpvolgingen(l){
-  const ops=(l.opvolgingen||[]).slice().sort((a,b)=>a.datum.localeCompare(b.datum));
-  if(!ops.length)return'<div style="font-size:12px;color:var(--tx3);padding:4px 0">Geen opvolgingen gepland.</div>';
+  const ops=(l.opvolgingen||[]).filter(op=>!op.gedaan).slice().sort((a,b)=>a.datum.localeCompare(b.datum));
+  if(!ops.length)return'<div style="font-size:12px;color:var(--tx3);padding:4px 0">Geen openstaande opvolgingen.</div>';
   const t=today();
-  return ops.map((op,i)=>{
+  return ops.map((op)=>{
+    const origIdx=(l.opvolgingen||[]).indexOf(op);
     const verleden=op.datum<t;
     const isVandaag=op.datum===t;
     const kleur=verleden?'#a32d2d':isVandaag?'#854f0b':'var(--tx2)';
     const bg=verleden?'rgba(163,45,45,.06)':isVandaag?'rgba(133,79,11,.06)':'var(--bg2)';
-    const gedaanStijl=op.gedaan?'opacity:.5;text-decoration:line-through;':'' ;
-    return`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:var(--r);background:${bg};margin-bottom:6px;${gedaanStijl}">
+    return`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:var(--r);background:${bg};margin-bottom:6px">
       <div style="width:36px;text-align:center;flex-shrink:0">
         <div style="font-size:10px;font-weight:700;color:${kleur}">${op.datum.slice(8)}</div>
         <div style="font-size:9px;color:var(--tx3)">${['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][parseInt(op.datum.slice(5,7))-1]}</div>
@@ -3546,8 +3576,41 @@ function b2cRenderOpvolgingen(l){
         <div style="font-size:12px;font-weight:600;color:var(--tx)">${op.tekst}</div>
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0">
-        <button class="btn sm" onclick="b2cToggleOpvolgingGedaan(${l.id},${i})" title="${op.gedaan?'Heractiveren':'Markeer als gedaan'}" style="color:${op.gedaan?'var(--tx3)':'#639922'}"><i class="ti ti-${op.gedaan?'refresh':'check'}"></i></button>
-        <button class="btn sm danger" onclick="b2cDeleteOpvolging(${l.id},${i})"><i class="ti ti-trash"></i></button>
+        <button class="btn sm" style="color:#639922;border-color:rgba(99,153,34,.3)" title="Afvinken" data-lead="${l.id}" data-idx="${origIdx}" onclick="b2cToggleOpvolgingGedaan(${l.id},${origIdx})"><i class="ti ti-check"></i></button>
+        <button class="btn sm danger" onclick="b2cDeleteOpvolging(${l.id},${origIdx})"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function b2cRenderDashOpvolgingen(){
+  const el=document.getElementById('b2c-dash-opvolgingen');if(!el)return;
+  const t=today();
+  const items=[];
+  b2cLeads.filter(l=>l.status!=='Verloren').forEach(l=>{
+    (l.opvolgingen||[]).forEach((op,idx)=>{
+      if(!op.gedaan)items.push({op,l,idx});
+    });
+  });
+  items.sort((a,b)=>a.op.datum.localeCompare(b.op.datum));
+  if(!items.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen openstaande opvolgingen.</div>';return;}
+  const MK=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  el.innerHTML=items.slice(0,10).map(({op,l,idx})=>{
+    const verleden=op.datum<t,isVandaag=op.datum===t;
+    const kleur=verleden?'#a32d2d':isVandaag?'#854f0b':'var(--tx3)';
+    const d=new Date(op.datum);
+    const lbl=isVandaag?'Vandaag':verleden?Math.abs(Math.round((new Date(t)-new Date(op.datum))/86400000))+'d te laat':`${d.getDate()} ${MK[d.getMonth()]}`;
+    return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--bd)">
+      <button onclick="b2cToggleOpvolgingGedaan(${l.id},${idx})"
+        style="width:22px;height:22px;border-radius:5px;border:2px solid rgba(99,153,34,.5);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s"
+        onmouseover="this.style.background='rgba(99,153,34,.12)'" onmouseout="this.style.background='none'"
+        title="Afvinken">
+        <i class="ti ti-check" style="font-size:12px;color:#639922"></i>
+      </button>
+      <div style="flex:1;min-width:0;cursor:pointer" onclick="b2cOpenDetail(${l.id})">
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b2cNaam(l)}</div>
+        <div style="font-size:11px;color:${kleur}">${lbl}${op.uur?' '+op.uur:''}</div>
+        <div style="font-size:11px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${op.tekst}</div>
       </div>
     </div>`;
   }).join('');
@@ -3575,14 +3638,55 @@ function b2cSaveOpvolging(id){
   l.acties.push({datum:today(),tekst:'Opvolging ingepland: '+tekst+' op '+datum});
 }
 
-function b2cToggleOpvolgingGedaan(id,idx){
-  const l=b2cLeads.find(x=>x.id===id);if(!l||!l.opvolgingen)return;
-  l.opvolgingen[idx].gedaan=!l.opvolgingen[idx].gedaan;
-  document.getElementById('b2c-opvolging-list').innerHTML=b2cRenderOpvolgingen(l);
-  if(l.opvolgingen[idx].gedaan){
+function b2cToggleOpvolgingGedaan(leadId,idx){
+  const l=b2cLeads.find(x=>x.id===leadId);if(!l||!l.opvolgingen)return;
+  const op=l.opvolgingen[idx];
+  if(op.gedaan){
+    // Heractiveren — geen popup nodig
+    op.gedaan=false;op.opmerking='';
     l.acties=l.acties||[];
-    l.acties.push({datum:today(),tekst:'Opvolging afgevinkt: '+l.opvolgingen[idx].tekst});
+    l.acties.push({datum:today(),tekst:'Opvolging heractiveerd: '+op.tekst});
+    const listEl=document.getElementById('b2c-opvolging-list');
+    if(listEl)listEl.innerHTML=b2cRenderOpvolgingen(l);
+    b2cRenderDashOpvolgingen();
+    showToast('Opvolging heractiveerd.');
+  } else {
+    // Open opmerking popup
+    b2cAfvinkLeadId=leadId;b2cAfvinkOpIdx=idx;
+    const omEl=document.getElementById('b2c-afvink-omschrijving');
+    if(omEl)omEl.textContent=`"${op.tekst}" — ${op.datum}${op.uur?' om '+op.uur:''}`;
+    document.getElementById('b2c-afvink-opmerking').value='';
+    document.querySelectorAll('#b2c-afvink-quick .btn').forEach(b=>b.classList.remove('primary'));
+    document.getElementById('b2c-afvink-overlay').classList.add('open');
+    setTimeout(()=>document.getElementById('b2c-afvink-opmerking').focus(),100);
   }
+}
+function b2cAfvinkKies(btn,tekst){
+  document.querySelectorAll('#b2c-afvink-quick .btn').forEach(b=>b.classList.remove('primary'));
+  btn.classList.add('primary');
+  document.getElementById('b2c-afvink-opmerking').value=tekst;
+}
+function b2cBevestigAfvink(){
+  const l=b2cLeads.find(x=>x.id===b2cAfvinkLeadId);
+  if(!l||!l.opvolgingen){b2cSluitAfvink();return;}
+  const op=l.opvolgingen[b2cAfvinkOpIdx];
+  const opmerking=document.getElementById('b2c-afvink-opmerking').value.trim();
+  op.gedaan=true;op.opmerking=opmerking;
+  l.acties=l.acties||[];
+  l.acties.push({datum:today(),tekst:`✓ Opvolging gedaan: ${op.tekst}${opmerking?' — '+opmerking:''}`});
+  b2cSluitAfvink();
+  // Refresh detail modal als open
+  const listEl=document.getElementById('b2c-opvolging-list');
+  if(listEl)listEl.innerHTML=b2cRenderOpvolgingen(l);
+  // Refresh activiteit log als open
+  const tl=document.querySelector('.b2c-tl');
+  if(tl)tl.innerHTML=(l.acties||[]).slice().reverse().map(a=>`<div class="b2c-tl-item"><span class="b2c-tl-date">${a.datum}</span><span class="b2c-tl-text">${a.tekst}</span></div>`).join('');
+  b2cRenderDashOpvolgingen();
+  showToast('Opvolging afgevinkt ✓');
+}
+function b2cSluitAfvink(){
+  document.getElementById('b2c-afvink-overlay').classList.remove('open');
+  b2cAfvinkLeadId=null;b2cAfvinkOpIdx=null;
 }
 
 function b2cDeleteOpvolging(id,idx){
