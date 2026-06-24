@@ -1136,6 +1136,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       </div>
       <div class="field"><label>Volgende actie</label><input id="bn-actie" value="Eerste contact opnemen"></div>
     </div>
+    <div class="field" style="max-width:200px"><label><i class="ti ti-calendar" style="color:var(--green);margin-right:4px"></i>Aanmaakdatum lead</label><input type="date" id="bn-aanmaakdatum"></div>
     <div class="field"><label>Notities</label><textarea id="bn-notities" rows="2" placeholder="Eerste indruk, wensen..."></textarea></div>
     <div id="bn-visit-blok" style="display:none">
       <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:var(--tx2);margin:10px 0 8px;padding-top:10px;border-top:1px solid var(--bd)"><i class="ti ti-map-pin" style="margin-right:5px;color:var(--green)"></i>Visit plannen</div>
@@ -3828,6 +3829,7 @@ function b2cRenderInfo(l){
         </select>
       </div>
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Visit</div><div class="b2c-summary-val">${l.visitDatum?(l.visitDatum+(l.visitUur?' om '+l.visitUur:'')):'Niet gepland'}</div></div>
+      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Aanmaakdatum</div><div class="b2c-summary-val">${l.aanmaakdatum||'—'}</div></div>
       ${l.installatiepartner?`<div class="b2c-summary-item"><div class="b2c-summary-lbl">Installatiepartner</div><div class="b2c-summary-val" style="font-weight:600;color:var(--green)"><i class="ti ti-tools" style="font-size:11px;margin-right:3px"></i>${l.installatiepartner}</div></div>`:''}
     </div>
 
@@ -4492,6 +4494,7 @@ function b2cOpenNieuw(visitMode){
   ['bn-voornaam','bn-achternaam','bn-tel','bn-email','bn-adres','bn-actie','bn-notities','bn-vdatum'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value=id==='bn-actie'?'Eerste contact opnemen':'';
   });
+  const aanmaakEl=document.getElementById('bn-aanmaakdatum');if(aanmaakEl)aanmaakEl.value=today();
   const vuur=document.getElementById('bn-vuur');if(vuur)vuur.value='10:00';
   const bron=document.getElementById('bn-bron');if(bron)bron.value='Website';
   const warmte=document.getElementById('bn-warmte');if(warmte)warmte.value=visitMode?'Warm':'Lauw';
@@ -4513,8 +4516,10 @@ function b2cSaveLead(){
   const vu=b2cIsVisitMode?document.getElementById('bn-vuur').value:null;
   const acties=[{datum:today(),tekst:'Lead aangemaakt'}];
   if(b2cIsVisitMode&&vd)acties.push({datum:today(),tekst:'Visit gepland op '+vd+' om '+vu});
+  const aanmaakDatum=document.getElementById('bn-aanmaakdatum')?.value||today();
   b2cLeads.unshift({
     id:b2cNextId++,voornaam:vn,achternaam:an,
+    aanmaakdatum:aanmaakDatum,
     tel:document.getElementById('bn-tel').value,email:document.getElementById('bn-email').value,
     adres:document.getElementById('bn-adres').value,bron:document.getElementById('bn-bron').value,
     warmte:document.getElementById('bn-warmte').value,
