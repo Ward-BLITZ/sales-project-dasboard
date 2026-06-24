@@ -1593,6 +1593,16 @@ async function loadAll(){
   setDbStatus('ok','verbonden');
   document.getElementById('db-setup-card').style.display='none';
   await loadKlanten();
+  // B2C leads laden
+  try{
+    const b2crows=await sbFetch('b2c_leads?order=created_at.asc');
+    if(b2crows&&b2crows.length>0){
+      b2cLeads=(b2crows||[]).map(r=>({id:r.id,...r.data}));
+      b2cNextId=Math.max(1,...b2cLeads.map(l=>l.id||0))+1;
+      try{localStorage.setItem('blitz_b2c',JSON.stringify(b2cLeads));}catch{}
+    }
+  }catch(e){console.warn('b2c_leads tabel niet gevonden:',e.message);}
+
   // Prospects laden
   try{
     const prows=await sbFetch('prospects?order=created_at.asc');
@@ -1637,6 +1647,24 @@ async function sbSaveClosed(p){
 
 async function sbDeleteClosed(id){if(sbUrl)await sbFetch('closed_projects?id=eq.'+id,{method:'DELETE'}).catch(()=>{});}
 
+async function sbSaveB2cLead(l){
+  if(!sbUrl){try{localStorage.setItem('blitz_b2c',JSON.stringify(b2cLeads));}catch{}return;}
+  const data={...l};const id=data.id;delete data.id;
+  data.updatedAt=new Date().toISOString();
+  try{
+    if(id){
+      await sbFetch('b2c_leads?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({data})});
+    } else {
+      const r=await sbFetch('b2c_leads',{method:'POST',body:JSON.stringify({data})});
+      return r&&r[0]?r[0].id:null;
+    }
+  }catch(e){console.warn('sbSaveB2cLead:',e.message);}
+  try{localStorage.setItem('blitz_b2c',JSON.stringify(b2cLeads));}catch{}
+}
+async function sbDeleteB2cLead(id){
+  if(sbUrl){try{await sbFetch('b2c_leads?id=eq.'+id,{method:'DELETE'});}catch(e){console.warn('sbDeleteB2cLead:',e.message);}}
+  try{localStorage.setItem('blitz_b2c',JSON.stringify(b2cLeads));}catch{}
+}
 async function sbSaveProspect(p){
   if(!sbUrl){try{localStorage.setItem('blitz_prospects',JSON.stringify(prospects));}catch{}return;}
   const data={...p};const id=data.id;delete data.id;
@@ -3345,6 +3373,7 @@ function agDelete(){
   // Herstel lokale backup
   try{const d=localStorage.getItem('blitz_klanten');if(d)klanten=JSON.parse(d);}catch{}
   try{const d=localStorage.getItem('blitz_ag');if(d){agAfspraken=JSON.parse(d);agNextId=Math.max(1,...agAfspraken.map(a=>a.id||0))+1;}}catch{}
+  try{const d=localStorage.getItem('blitz_b2c');if(d){b2cLeads=JSON.parse(d);b2cNextId=Math.max(1,...b2cLeads.map(l=>l.id||0))+1;}}catch{}
   try{const d=localStorage.getItem('blitz_prospects');if(d){prospects=JSON.parse(d);prospNextId=Math.max(1,...prospects.map(p=>p.id||0))+1;}}catch{}
 
   // Probeer bestaande sessie te herstellen
@@ -3689,6 +3718,7 @@ function b2cDrop(e,newStatus){
   l.status=newStatus;
   l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Status → '+newStatus});
   if(newStatus==='Gewonnen'&&!l.gewonnenOp){l.gewonnenOp=today();}
+  sbSaveB2cLead(l);
   b2cDragLeadId=null;
   b2cRenderLeads();
   if(newStatus==='Gewonnen'){b2cRenderGewonnen();showTab('b2c-gewonnen');showToast('🎉 Gewonnen: '+b2cNaam(l)+'!');}
@@ -3717,6 +3747,7 @@ function b2cBevestigVerlies(){
   const reden=document.getElementById('b2c-verlies-input').value.trim();
   l.status='Verloren';l.verliesReden=reden||'Niet opgegeven';l.verliesOp=today();
   l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Verloren'+(reden?' — '+reden:'')});
+  sbSaveB2cLead(l);
   b2cAnnuleerVerlies();b2cRenderLeads();b2cRenderVerloren();showTab('b2c-verloren');
   showToast('"'+b2cNaam(l)+'" als verloren gemarkeerd.');
 }
@@ -3734,6 +3765,7 @@ function b2cBevestigInstallateur(){
   l.installatiepartner=naam;
   l.acties=l.acties||[];
   l.acties.push({datum:today(),tekst:`Status → ${b2cInstallateurNewStatus} — Partner: ${naam}`});
+  sbSaveB2cLead(l);
   b2cSluitInstallateur();
   b2cRenderLeads();
   showToast(`Installatiepartner "${naam}" gekoppeld!`);
@@ -3764,6 +3796,7 @@ function b2cCloseDetail(){
 function b2cVerwijderLead(id){
   const l=b2cLeads.find(x=>x.id===id);if(!l)return;
   if(!confirm(`Lead "${b2cNaam(l)}" definitief verwijderen? Dit kan niet ongedaan gemaakt worden.`))return;
+  sbDeleteB2cLead(id);
   b2cLeads=b2cLeads.filter(x=>x.id!==id);
   b2cCloseDetail();
   b2cRenderLeads();b2cRenderGewonnen();b2cRenderVerloren();
@@ -3883,6 +3916,7 @@ function b2cSaveLeadEdit(){
   }
   document.getElementById('b2c-detail-titel').textContent=b2cNaam(l);
   b2cRenderLeads();
+  sbSaveB2cLead(l);
   b2cCloseDetail();
   showToast(changed.length?'Lead opgeslagen ✓':'Opgeslagen.');
 }
@@ -3963,27 +3997,28 @@ function b2cSaveOpvolging(id){
   const l=b2cLeads.find(x=>x.id===id);if(!l)return;
   l.opvolgingen=l.opvolgingen||[];
   l.opvolgingen.push({datum,uur:document.getElementById('bop-uur').value,tekst,gedaan:false});
-  document.getElementById('b2c-opvolging-form').style.display='none';
-  document.getElementById('b2c-opvolging-list').innerHTML=b2cRenderOpvolgingen(l);
-  showToast('Opvolging toegevoegd.');
   l.acties=l.acties||[];
   l.acties.push({datum:today(),tekst:'Opvolging ingepland: '+tekst+' op '+datum});
+  sbSaveB2cLead(l);
+  document.getElementById('b2c-opvolging-form').style.display='none';
+  document.getElementById('b2c-opvolging-list').innerHTML=b2cRenderOpvolgingen(l);
+  b2cRenderDashOpvolgingen();
+  showToast('Opvolging toegevoegd.');
 }
 
 function b2cToggleOpvolgingGedaan(leadId,idx){
   const l=b2cLeads.find(x=>x.id===leadId);if(!l||!l.opvolgingen)return;
   const op=l.opvolgingen[idx];
   if(op.gedaan){
-    // Heractiveren — geen popup nodig
     op.gedaan=false;op.opmerking='';
     l.acties=l.acties||[];
     l.acties.push({datum:today(),tekst:'Opvolging heractiveerd: '+op.tekst});
+    sbSaveB2cLead(l);
     const listEl=document.getElementById('b2c-opvolging-list');
     if(listEl)listEl.innerHTML=b2cRenderOpvolgingen(l);
     b2cRenderDashOpvolgingen();
     showToast('Opvolging heractiveerd.');
   } else {
-    // Open opmerking popup
     b2cAfvinkLeadId=leadId;b2cAfvinkOpIdx=idx;
     const omEl=document.getElementById('b2c-afvink-omschrijving');
     if(omEl)omEl.textContent=`"${op.tekst}" — ${op.datum}${op.uur?' om '+op.uur:''}`;
@@ -4006,11 +4041,10 @@ function b2cBevestigAfvink(){
   op.gedaan=true;op.opmerking=opmerking;
   l.acties=l.acties||[];
   l.acties.push({datum:today(),tekst:`✓ Opvolging gedaan: ${op.tekst}${opmerking?' — '+opmerking:''}`});
+  sbSaveB2cLead(l);
   b2cSluitAfvink();
-  // Refresh detail modal als open
   const listEl=document.getElementById('b2c-opvolging-list');
   if(listEl)listEl.innerHTML=b2cRenderOpvolgingen(l);
-  // Refresh activiteit log als open
   const tl=document.querySelector('.b2c-tl');
   if(tl)tl.innerHTML=(l.acties||[]).slice().reverse().map(a=>`<div class="b2c-tl-item"><span class="b2c-tl-date">${a.datum}</span><span class="b2c-tl-text">${a.tekst}</span></div>`).join('');
   b2cRenderDashOpvolgingen();
@@ -4025,7 +4059,9 @@ function b2cDeleteOpvolging(id,idx){
   const l=b2cLeads.find(x=>x.id===id);if(!l||!l.opvolgingen)return;
   if(!confirm('Opvolging verwijderen?'))return;
   l.opvolgingen.splice(idx,1);
+  sbSaveB2cLead(l);
   document.getElementById('b2c-opvolging-list').innerHTML=b2cRenderOpvolgingen(l);
+  b2cRenderDashOpvolgingen();
   showToast('Opvolging verwijderd.');
 }
 
@@ -4033,6 +4069,7 @@ function b2cChangeStatus(id,s){
   const l=b2cLeads.find(x=>x.id===id);if(!l)return;
   l.status=s;l.acties=l.acties||[];
   l.acties.push({datum:today(),tekst:'Status gewijzigd naar: '+s});
+  sbSaveB2cLead(l);
   showToast('Status: '+s);b2cShowDetailTab('info');
 }
 
@@ -4041,6 +4078,7 @@ function b2cLogActie(id){
   const tekst=inp.value.trim();if(!tekst)return;
   const l=b2cLeads.find(x=>x.id===id);if(!l)return;
   l.acties=l.acties||[];l.acties.push({datum:today(),tekst});
+  sbSaveB2cLead(l);
   inp.value='';b2cShowDetailTab('info');showToast('Actie gelogd');
 }
 
@@ -4235,6 +4273,7 @@ function b2cSaveScreening(){
   };
   if(l.status==='Visit gepland')l.status='Visit gedaan';
   l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Screeningsformulier ingevuld'});
+  sbSaveB2cLead(l);
   b2cCloseScModal();
   b2cOpenDetail(b2cScreeningLeadId);
   b2cShowDetailTab('screening');
@@ -4485,6 +4524,7 @@ function b2cSaveLead(){
     notities:document.getElementById('bn-notities').value,
     visitDatum:vd||null,visitUur:vu||null,screening:null,acties
   });
+  sbSaveB2cLead(b2cLeads[0]);
   b2cCloseNieuw();b2cRenderLeads();b2cRenderCalendar();b2cRenderAankomende();
   showToast('Lead aangemaakt!');
 }
@@ -4516,6 +4556,7 @@ function b2cSaveVisit(){
   l.notities=document.getElementById('bv-nota').value;
   if(l.status==='Nieuw'||l.status==='Gecontacteerd')l.status='Visit gepland';
   l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Visit gepland op '+l.visitDatum+' om '+l.visitUur});
+  sbSaveB2cLead(l);
   b2cCloseVisitModal();b2cRenderLeads();b2cRenderCalendar();b2cRenderAankomende();
   showToast('Visit ingepland!');
 }
