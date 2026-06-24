@@ -386,6 +386,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
   <span style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px;align-self:center;border-left:1px solid var(--bd);margin-left:4px;white-space:nowrap">B2B</span>
   <button class="tab-btn" id="tab-dashboard" onclick="showTab('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
   <button class="tab-btn" id="tab-lopend" onclick="showTab('lopend')"><i class="ti ti-briefcase"></i> Projecten</button>
+  <button class="tab-btn" id="tab-prospects" onclick="showTab('prospects')"><i class="ti ti-target"></i> Prospects</button>
   <button class="tab-btn" id="tab-verkocht" onclick="showTab('verkocht')"><i class="ti ti-trophy"></i> Verkocht</button>
   <button class="tab-btn" id="tab-verloren" onclick="showTab('verloren')"><i class="ti ti-x"></i> Verloren</button>
   <span style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px;align-self:center;border-left:1px solid var(--bd);margin-left:4px;white-space:nowrap">Beheer</span>
@@ -443,6 +444,84 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
       </div>
       <div class="cal-grid" id="cal-grid"></div>
       <div class="cal-ev-section" id="cal-events" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROSPECTS -->
+<div id="pane-prospects" class="page" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
+    <div>
+      <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">B2B Prospects</div>
+      <div style="font-size:12px;color:var(--tx2)">Potentiële klanten in de pipeline</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <!-- Sortering -->
+      <div class="filter-bar" style="margin:0;padding:6px 12px">
+        <span class="filter-label"><i class="ti ti-arrows-sort" style="margin-right:4px"></i>Sortering:</span>
+        <div class="pills" id="pills-prospects-sort">
+          <button class="pill active" onclick="prospSetSort('naam')">Naam</button>
+          <button class="pill" onclick="prospSetSort('kans-hoog')">Kans ↓</button>
+          <button class="pill" onclick="prospSetSort('kans-laag')">Kans ↑</button>
+          <button class="pill" onclick="prospSetSort('postcode')">Postcode</button>
+        </div>
+      </div>
+      <!-- Filter verantwoordelijke -->
+      <div class="filter-bar" style="margin:0;padding:6px 12px">
+        <span class="filter-label"><i class="ti ti-user-circle" style="margin-right:4px"></i>Resp:</span>
+        <div class="pills" id="pills-prospects-resp"></div>
+      </div>
+      <button class="btn primary" onclick="prospOpenNieuw()"><i class="ti ti-plus"></i> Nieuw prospect</button>
+    </div>
+  </div>
+  <div id="prosp-list"></div>
+</div>
+
+<!-- PROSPECT NIEUW/BEWERK MODAL -->
+<div class="modal-overlay" id="prosp-modal-overlay">
+  <div class="modal-box" style="max-width:680px;max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-header">
+      <span class="modal-title" id="prosp-modal-titel">Nieuw prospect</span>
+      <button class="modal-close" onclick="prospCloseModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:0 2px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label>Naam prospect *</label><input id="prosp-naam" placeholder="bv. Parking Leuven NV"></div>
+        <div class="field"><label>Project / omschrijving</label><input id="prosp-project" placeholder="bv. 20 laadpalen parking centrum"></div>
+        <div class="field"><label>Postcode</label><input id="prosp-postcode" placeholder="bv. 3000" style="max-width:120px"></div>
+        <div class="field"><label>Verantwoordelijke</label>
+          <select id="prosp-resp">
+            <option value="">— Kies —</option>
+          </select>
+        </div>
+        <div class="field"><label>Kans op succes</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="range" id="prosp-kans" min="0" max="100" step="10" value="50" oninput="document.getElementById('prosp-kans-lbl').textContent=this.value+'%'" style="flex:1">
+            <span id="prosp-kans-lbl" style="font-size:14px;font-weight:700;color:var(--green);min-width:38px">50%</span>
+          </div>
+        </div>
+        <div class="field"><label>Bedrijf achter bedrijf</label><input id="prosp-moeder" placeholder="bv. Holding XYZ, Mgmt. vennootschap..."></div>
+      </div>
+
+      <!-- Contactpersonen -->
+      <div style="margin-top:16px;border-top:1px solid var(--bd);padding-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px"><i class="ti ti-user" style="margin-right:5px;color:var(--green)"></i>Contactpersonen</div>
+          <button class="btn sm" onclick="prospAddContact()"><i class="ti ti-plus"></i> Contactpersoon toevoegen</button>
+        </div>
+        <div id="prosp-contacts-list"></div>
+      </div>
+
+      <!-- Notities -->
+      <div style="margin-top:14px;border-top:1px solid var(--bd);padding-top:14px">
+        <div class="field" style="margin-bottom:0"><label>Notities</label><textarea id="prosp-notities" rows="3" placeholder="Extra info, context..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer" style="border-top:1px solid var(--bd);padding-top:12px;margin-top:10px">
+      <button class="btn danger" id="prosp-delete-btn" style="display:none;margin-right:auto" onclick="prospDelete()"><i class="ti ti-trash"></i> Verwijderen</button>
+      <button class="btn" style="border-color:rgba(83,74,183,.4);color:#534AB7" onclick="prospNaarProject()" id="prosp-naar-project-btn" style="display:none"><i class="ti ti-arrow-right"></i> Omzetten naar B2B project</button>
+      <button class="btn" onclick="prospCloseModal()">Annuleren</button>
+      <button class="btn primary" onclick="prospSave()"><i class="ti ti-check"></i> Opslaan</button>
     </div>
   </div>
 </div>
@@ -1218,7 +1297,12 @@ let b2cVlMaandFilter     = '';
 let b2cAfvinkLeadId      = null;
 let b2cAfvinkOpIdx       = null;
 
-// ── AGENDA STATE (bovenaan zodat geen temporal dead zone) ──
+// ── PROSPECTS STATE ──
+let prospects        = [];
+let prospNextId      = 1;
+let prospSort        = 'naam';
+let prospRespFilter  = 'alle';
+let prospEditId      = null;
 let agAfspraken  = [];
 let agNextId     = 1;
 let agCalYear    = new Date().getFullYear();
@@ -1256,7 +1340,214 @@ function showTab(name){
   if(name==='agenda'){agUpdateRespDropdown();agRenderCalendar();agRenderAankomende();}
 }
 
-// ── DB STATUS ─────────────────────────────────────────
+function showTab(name){
+  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects'].forEach(id=>{
+    const pane=document.getElementById('pane-'+id);
+    if(pane)pane.style.display=(id===name)?'block':'none';
+    const tb=document.getElementById('tab-'+id);
+    if(tb)tb.classList.toggle('active',id===name);
+  });
+  if(name==='verkocht')renderVerkocht();
+  if(name==='verloren')renderVerloren();
+  if(name==='crm'){loadKlanten().then(renderCrm);}
+  if(name==='instellingen'){loadServiceRoleKeyField();}
+  if(name==='gebruikers')loadGebruikers();
+  if(name==='b2c')b2cRenderLeads();
+  if(name==='b2c-gewonnen')b2cRenderGewonnen();
+  if(name==='b2c-verloren')b2cRenderVerloren();
+  if(name==='agenda'){agUpdateRespDropdown();agRenderCalendar();agRenderAankomende();}
+  if(name==='prospects'){prospRenderRespPills();prospRender();}
+}
+
+// ── PROSPECTS ─────────────────────────────────────────
+function prospRender(){
+  const el=document.getElementById('prosp-list');if(!el)return;
+  let list=prospects.filter(p=>prospRespFilter==='alle'||p.resp===prospRespFilter);
+  list=[...list].sort((a,b)=>{
+    if(prospSort==='kans-hoog')return(b.kans||0)-(a.kans||0);
+    if(prospSort==='kans-laag')return(a.kans||0)-(b.kans||0);
+    if(prospSort==='postcode')return(a.postcode||'').localeCompare(b.postcode||'');
+    return(a.naam||'').localeCompare(b.naam||'');
+  });
+  if(!list.length){
+    el.innerHTML=`<div style="text-align:center;padding:4rem 1rem;color:var(--tx3)">
+      <i class="ti ti-target" style="font-size:48px;display:block;margin-bottom:12px;color:var(--bd2)"></i>
+      <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:var(--tx);margin-bottom:6px">Geen prospects</div>
+      <div style="font-size:13px;margin-bottom:1.5rem">Voeg je eerste prospect toe.</div>
+      <button class="btn primary" onclick="prospOpenNieuw()"><i class="ti ti-plus"></i> Nieuw prospect</button>
+    </div>`;return;
+  }
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">`+list.map(p=>{
+    const kansKleur=p.kans>=70?'#639922':p.kans>=40?'#854f0b':'#a32d2d';
+    const kansBg=p.kans>=70?'rgba(99,153,34,.12)':p.kans>=40?'rgba(133,79,11,.10)':'rgba(163,45,45,.10)';
+    const contacts=(p.contacts||[]);
+    return`<div onclick="prospOpenEdit(${p.id})" style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);padding:13px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s;display:flex;align-items:center;gap:16px"
+        onmouseover="this.style.borderColor='var(--green)';this.style.boxShadow='0 2px 8px rgba(0,223,163,.12)'" onmouseout="this.style.borderColor='var(--bd)';this.style.boxShadow=''">
+      <!-- Links: naam + info -->
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.naam}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:3px;flex-wrap:wrap">
+          ${p.project?`<span style="font-size:11px;color:var(--tx2)">${p.project}</span>`:''}
+          ${p.resp?`<span style="font-size:11px;background:var(--bg2);padding:1px 7px;border-radius:10px;color:var(--tx2)">${p.resp}</span>`:''}
+          ${contacts.length?`<span style="font-size:10px;color:var(--tx3)"><i class="ti ti-users" style="font-size:10px"></i> ${contacts.length} contact${contacts.length>1?'s':''}</span>`:''}
+          ${p.moeder?`<span style="font-size:10px;color:var(--tx3)"><i class="ti ti-building" style="font-size:10px"></i> ${p.moeder}</span>`:''}
+        </div>
+      </div>
+      <!-- Midden: kans -->
+      <div style="flex-shrink:0;text-align:center;min-width:70px">
+        <div style="font-size:20px;font-weight:800;color:${kansKleur}">${p.kans||0}%</div>
+        <div style="height:4px;border-radius:2px;background:var(--bd2);margin-top:4px;width:60px">
+          <div style="height:100%;border-radius:2px;background:${kansKleur};width:${p.kans||0}%"></div>
+        </div>
+      </div>
+      <!-- Rechts: postcode -->
+      <div style="flex-shrink:0;text-align:right;min-width:56px">
+        <div style="font-size:15px;font-weight:700;color:var(--tx2)">${p.postcode||'—'}</div>
+        <div style="font-size:10px;color:var(--tx3)">postcode</div>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function prospRenderRespPills(){
+  const el=document.getElementById('pills-prospects-resp');if(!el)return;
+  const namen=['alle',...respNames()];
+  el.innerHTML=namen.map(r=>`<button class="pill${prospRespFilter===r?' active':''}" onclick="prospSetResp('${r}')">${r==='alle'?'Iedereen':r}</button>`).join('');
+}
+function prospSetSort(s){
+  prospSort=s;
+  document.querySelectorAll('#pills-prospects-sort .pill').forEach(b=>{
+    b.classList.toggle('active',b.textContent.toLowerCase().includes(s.replace('-hoog','').replace('-laag','')));
+  });
+  prospRender();
+}
+function prospSetResp(r){prospRespFilter=r;prospRenderRespPills();prospRender();}
+
+function prospOpenNieuw(){
+  prospEditId=null;
+  document.getElementById('prosp-modal-titel').textContent='Nieuw prospect';
+  document.getElementById('prosp-naam').value='';
+  document.getElementById('prosp-project').value='';
+  document.getElementById('prosp-postcode').value='';
+  document.getElementById('prosp-kans').value=50;
+  document.getElementById('prosp-kans-lbl').textContent='50%';
+  document.getElementById('prosp-moeder').value='';
+  document.getElementById('prosp-notities').value='';
+  document.getElementById('prosp-delete-btn').style.display='none';
+  document.getElementById('prosp-naar-project-btn').style.display='none';
+  // Resp dropdown
+  const rsel=document.getElementById('prosp-resp');
+  rsel.innerHTML='<option value="">— Kies —</option>'+respNames().map(r=>`<option>${r}</option>`).join('');
+  rsel.value='';
+  // Contacts
+  prospRenderContacts([{naam:'',tel:'',email:'',rol:''}]);
+  document.getElementById('prosp-modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('prosp-naam').focus(),100);
+}
+
+function prospOpenEdit(id){
+  const p=prospects.find(x=>x.id===id);if(!p)return;
+  prospEditId=id;
+  document.getElementById('prosp-modal-titel').textContent=p.naam;
+  document.getElementById('prosp-naam').value=p.naam||'';
+  document.getElementById('prosp-project').value=p.project||'';
+  document.getElementById('prosp-postcode').value=p.postcode||'';
+  document.getElementById('prosp-kans').value=p.kans||50;
+  document.getElementById('prosp-kans-lbl').textContent=(p.kans||50)+'%';
+  document.getElementById('prosp-moeder').value=p.moeder||'';
+  document.getElementById('prosp-notities').value=p.notities||'';
+  document.getElementById('prosp-delete-btn').style.display='';
+  document.getElementById('prosp-naar-project-btn').style.display='';
+  const rsel=document.getElementById('prosp-resp');
+  rsel.innerHTML='<option value="">— Kies —</option>'+respNames().map(r=>`<option>${r}</option>`).join('');
+  rsel.value=p.resp||'';
+  prospRenderContacts(p.contacts&&p.contacts.length?p.contacts:[{naam:'',tel:'',email:'',rol:''}]);
+  document.getElementById('prosp-modal-overlay').classList.add('open');
+}
+
+function prospRenderContacts(list){
+  const el=document.getElementById('prosp-contacts-list');if(!el)return;
+  el.innerHTML=list.map((c,i)=>`
+    <div class="prosp-contact-row" data-idx="${i}" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:end;background:var(--bg2);padding:10px;border-radius:var(--r)">
+      <div class="field" style="margin:0"><label style="font-size:11px">Naam</label><input class="pc-naam" value="${c.naam||''}" placeholder="Naam contactpersoon" style="font-size:12px"></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Telefoon</label><input class="pc-tel" value="${c.tel||''}" placeholder="04xx xx xx xx" type="tel" style="font-size:12px"></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">E-mail</label><input class="pc-email" value="${c.email||''}" placeholder="naam@bedrijf.be" type="email" style="font-size:12px"></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Rol</label><input class="pc-rol" value="${c.rol||''}" placeholder="bv. CEO, Facility..." style="font-size:12px"></div>
+      <button class="btn sm danger" onclick="prospRemoveContact(${i})" title="Verwijder contact" style="flex-shrink:0;margin-bottom:1px"><i class="ti ti-trash"></i></button>
+    </div>`).join('');
+}
+
+function prospAddContact(){
+  const rows=prospGetContacts();
+  rows.push({naam:'',tel:'',email:'',rol:''});
+  prospRenderContacts(rows);
+}
+function prospRemoveContact(idx){
+  const rows=prospGetContacts();
+  if(rows.length<=1){showToast('Minstens 1 contactpersoon vereist.');return;}
+  rows.splice(idx,1);prospRenderContacts(rows);
+}
+function prospGetContacts(){
+  return Array.from(document.querySelectorAll('.prosp-contact-row')).map(row=>({
+    naam:row.querySelector('.pc-naam').value.trim(),
+    tel:row.querySelector('.pc-tel').value.trim(),
+    email:row.querySelector('.pc-email').value.trim(),
+    rol:row.querySelector('.pc-rol').value.trim()
+  }));
+}
+
+function prospSave(){
+  const naam=document.getElementById('prosp-naam').value.trim();
+  if(!naam){showToast('Naam is verplicht.');document.getElementById('prosp-naam').focus();return;}
+  const data={
+    naam,
+    project:document.getElementById('prosp-project').value.trim(),
+    postcode:document.getElementById('prosp-postcode').value.trim(),
+    kans:parseInt(document.getElementById('prosp-kans').value)||0,
+    resp:document.getElementById('prosp-resp').value,
+    moeder:document.getElementById('prosp-moeder').value.trim(),
+    notities:document.getElementById('prosp-notities').value.trim(),
+    contacts:prospGetContacts().filter(c=>c.naam||c.tel||c.email),
+    aangemaakt:today()
+  };
+  if(prospEditId){
+    const idx=prospects.findIndex(x=>x.id===prospEditId);
+    if(idx>=0)prospects[idx]={...prospects[idx],...data};
+  } else {
+    data.id=prospNextId++;
+    prospects.push(data);
+  }
+  prospCloseModal();prospRender();
+  showToast(prospEditId?'Prospect opgeslagen ✓':'Prospect aangemaakt ✓');
+}
+
+function prospDelete(){
+  const p=prospects.find(x=>x.id===prospEditId);
+  if(!p||!confirm(`Prospect "${p.naam}" verwijderen?`))return;
+  prospects=prospects.filter(x=>x.id!==prospEditId);
+  prospCloseModal();prospRender();showToast('Prospect verwijderd.');
+}
+
+function prospNaarProject(){
+  const p=prospects.find(x=>x.id===prospEditId);if(!p)return;
+  if(!confirm(`Prospect "${p.naam}" omzetten naar een B2B project? De prospect wordt dan verwijderd.`))return;
+  // Pre-fill the B2B project modal
+  prospCloseModal();
+  openModal(null);
+  setTimeout(()=>{
+    const nEl=document.getElementById('m-naam');if(nEl)nEl.value=p.naam+(p.project?' — '+p.project:'');
+    const kEl=document.getElementById('m-klant');if(kEl)kEl.value=p.naam;
+    const rEl=document.getElementById('m-resp');if(rEl)rEl.value=p.resp||'';
+    const pcEl=document.getElementById('m-postcode');if(pcEl)pcEl.value=p.postcode||'';
+  },150);
+  prospects=prospects.filter(x=>x.id!==prospEditId);
+  prospRender();showTab('lopend');
+}
+
+function prospCloseModal(){
+  document.getElementById('prosp-modal-overlay').classList.remove('open');
+  prospEditId=null;
+}
 function setDbStatus(state,msg){
   const el=document.getElementById('db-indicator');
   const icon=state==='ok'?'ti-cloud':state==='connecting'?'ti-cloud':'ti-cloud-off';
@@ -3014,6 +3305,7 @@ function agDelete(){
   document.getElementById('ag-nieuw-overlay').addEventListener('click',function(e){if(e.target===this)agCloseNieuw();});
   document.getElementById('b2c-installateur-overlay').addEventListener('click',function(e){if(e.target===this)b2cSluitInstallateur();});
   document.getElementById('b2c-afvink-overlay').addEventListener('click',function(e){if(e.target===this)b2cSluitAfvink();});
+  document.getElementById('prosp-modal-overlay').addEventListener('click',function(e){if(e.target===this)prospCloseModal();});
 
   // Probeer bestaande sessie te herstellen
   initSupabaseClient();
@@ -3550,9 +3842,9 @@ function b2cSaveLeadEdit(){
     l.acties.push({datum:today(),tekst:'Bewerkt: '+changed.join(', ')});
   }
   document.getElementById('b2c-detail-titel').textContent=b2cNaam(l);
-  b2cRenderInfo(l);
   b2cRenderLeads();
-  showToast(changed.length?'Lead opgeslagen ✓':'Geen wijzigingen.');
+  b2cCloseDetail();
+  showToast(changed.length?'Lead opgeslagen ✓':'Opgeslagen.');
 }
 
 // ── B2C OPVOLGINGSAGENDA ──────────────────────────────
