@@ -3829,7 +3829,7 @@ function b2cRenderInfo(l){
         </select>
       </div>
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Visit</div><div class="b2c-summary-val">${l.visitDatum?(l.visitDatum+(l.visitUur?' om '+l.visitUur:'')):'Niet gepland'}</div></div>
-      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Aanmaakdatum</div><div class="b2c-summary-val">${l.aanmaakdatum||'—'}</div></div>
+      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Aanmaakdatum</div><div><input type="date" id="bi-aanmaakdatum" value="${l.aanmaakdatum||today()}" style="font-size:12px;padding:3px 6px;width:auto"></div></div>
       ${l.installatiepartner?`<div class="b2c-summary-item"><div class="b2c-summary-lbl">Installatiepartner</div><div class="b2c-summary-val" style="font-weight:600;color:var(--green)"><i class="ti ti-tools" style="font-size:11px;margin-right:3px"></i>${l.installatiepartner}</div></div>`:''}
     </div>
 
@@ -3912,6 +3912,7 @@ function b2cSaveLeadEdit(){
   const nnotities=get('bi-notities');if(nnotities!==null&&nnotities!==l.notities){l.notities=nnotities;changed.push('notities');}
   const nresp=get('bi-resp');if(nresp!==null&&nresp!==l.resp){l.resp=nresp;changed.push('verantwoordelijke');}
   const nactie=get('bi-actie');if(nactie!==null&&nactie!==l.actie){l.actie=nactie;changed.push('volgende actie');}
+  const naanmaak=get('bi-aanmaakdatum');if(naanmaak!==null&&naanmaak!==l.aanmaakdatum){l.aanmaakdatum=naanmaak;changed.push('aanmaakdatum');}
   if(changed.length){
     l.acties=l.acties||[];
     l.acties.push({datum:today(),tekst:'Bewerkt: '+changed.join(', ')});
