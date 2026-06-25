@@ -2247,25 +2247,14 @@ async function sbFetch(path,opts={}){
 }
 
 async function loadAll(){
-  try{
-    // Skip project reload als we net een save doen (race condition)
-    if(!_savingProject){
-      const rows=await sbFetch('projects?order=created_at.asc');
-      const incoming=(rows||[]).map(r=>({id:r.id,...r.data}));
-      const nowSold=new Set(incoming.filter(p=>p.pct===100).map(p=>p.naam));
-      nowSold.forEach(naam=>{if(!prevSoldSet.has(naam))fireConfetti(incoming.find(x=>x.naam===naam));});
-      prevSoldSet=nowSold;
-      if(incoming.length>0){
-        projects=incoming;
-      } else if(incoming.length===0&&projects.length===0){
-        projects=[];
-      }
-      try{localStorage.setItem('blitz_projects',JSON.stringify(projects));}catch{}
-    }
-  }catch(e){
-    console.warn('loadAll projects fout:',e.message);
-    try{const d=localStorage.getItem('blitz_projects');if(d)projects=JSON.parse(d);}catch{}
-  }
+  // Lopende projecten
+  const rows=await sbFetch('projects?order=created_at.asc');
+  const incoming=(rows||[]).map(r=>({id:r.id,...r.data}));
+  const nowSold=new Set(incoming.filter(p=>p.pct===100).map(p=>p.naam));
+  nowSold.forEach(naam=>{if(!prevSoldSet.has(naam))fireConfetti(incoming.find(x=>x.naam===naam));});
+  prevSoldSet=nowSold;
+  if(incoming.length>0||projects.length===0)projects=incoming;
+  try{localStorage.setItem('blitz_projects',JSON.stringify(projects));}catch{}
 
   // Gesloten projecten
   const crow=await sbFetch('closed_projects?order=closed_at.desc');
@@ -2280,64 +2269,57 @@ async function loadAll(){
 
   setDbStatus('ok','verbonden');
   document.getElementById('db-setup-card').style.display='none';
-  // Service role key automatisch herstellen als die nog niet lokaal staat
+
+  // Service role key automatisch herstellen
   try{
     const savedSb=JSON.parse(localStorage.getItem('blitz_sb')||'null');
     if(!savedSb?.key||savedSb.key===SUPABASE_ANON_KEY){
       const srkRows=await sbFetch('settings?key=eq.service_role_key');
       const srk=srkRows&&srkRows[0]?srkRows[0].data?.srk:null;
-      if(srk){
-        localStorage.setItem('blitz_sb',JSON.stringify({url:SUPABASE_URL,key:srk}));
-        supabaseClient=null;initSupabaseClient();
-        console.log('Service role key automatisch hersteld.');
-      }
+      if(srk){localStorage.setItem('blitz_sb',JSON.stringify({url:SUPABASE_URL,key:srk}));supabaseClient=null;initSupabaseClient();}
     }
-  }catch(e){console.warn('Auto-herstel service role key mislukt:',e.message);}
+  }catch(e){console.warn('Auto-herstel srk:',e.message);}
+
   await loadKlanten();
-  // B2C leads laden
+
+  // B2C leads
   try{
     const b2crows=await sbFetch('b2c_leads?order=created_at.asc');
     if(b2crows&&b2crows.length>0){
-      b2cLeads=b2crows.map(r=>({...r.data, _sbid:r.id}));
-      b2cNextId=b2cLeads.length?Math.max(...b2cLeads.map(l=>l.id||0))+1:1;
+      b2cLeads=b2crows.map(r=>({...r.data,_sbid:r.id}));
+      b2cNextId=Math.max(1,...b2cLeads.map(l=>l.id||0))+1;
       try{localStorage.setItem('blitz_b2c',JSON.stringify(b2cLeads));}catch{}
     } else if(b2crows&&b2crows.length===0&&b2cLeads.length>0){
-      // Remote is leeg maar we hebben lokale data → upload alles naar Supabase
-      console.log('Remote b2c_leads leeg, uploading lokale leads...');
       for(const l of b2cLeads){await sbSaveB2cLead(l);}
     }
-    // Als b2crows===null (fout) → behoud lokale data
-  }catch(e){console.warn('b2c_leads laden mislukt:',e.message);}
+  }catch(e){console.warn('b2c_leads:',e.message);}
 
-  // Prospects laden
+  // Prospects
   try{
     const prows=await sbFetch('prospects?order=created_at.asc');
     if(prows&&prows.length>0){
       prospects=prows.map(r=>({...r.data,_sbid:r.id}));
-      prospNextId=prospects.length?Math.max(...prospects.map(p=>p.id||0))+1:1;
+      prospNextId=Math.max(1,...prospects.map(p=>p.id||0))+1;
       try{localStorage.setItem('blitz_prospects',JSON.stringify(prospects));}catch{}
     } else if(prows&&prows.length===0&&prospects.length>0){
       for(const p of prospects){await sbSaveProspect(p);}
     }
-  }catch(e){console.warn('Prospects tabel niet gevonden:',e.message);}
+  }catch(e){console.warn('prospects:',e.message);}
 
-  // Installaties laden
+  // Installaties
   try{
     const irows=await sbFetch('installaties?order=created_at.asc');
     if(irows&&irows.length>0){
       installaties=irows.map(r=>({...r.data,_sbid:r.id}));
-      instNextId=installaties.length?Math.max(...installaties.map(i=>typeof i.id==='number'?i.id:0))+1:1;
+      instNextId=Math.max(1,...installaties.map(i=>typeof i.id==='number'?i.id:0))+1;
       instSaveToStorage();
     } else if(irows&&irows.length===0&&installaties.length>0){
-      // Remote leeg maar lokaal hebben we data → upload
       for(const inst of installaties){await sbSaveInstallatie(inst);}
     }
-  }catch(e){
-    instLoadFromStorage();
-  }
+  }catch(e){instLoadFromStorage();}
+
   renderAll();renderResps();pushToTV();
 
-  // Koppel ingelogde gebruiker aan verantwoordelijke na data laden
   if(window._pendingUserLink){
     const {naam,email}=window._pendingUserLink;
     window._pendingUserLink=null;
@@ -2345,24 +2327,13 @@ async function loadAll(){
   }
 }
 
-let _savingProject=false; // lock to prevent poll race condition
-
+let _savingProject=false;
 async function sbSaveProject(p){
   if(!sbUrl){lsSave();return null;}
-  _savingProject=true;
   const data={...p};const id=data.id;delete data.id;
   data.updatedAt=new Date().toISOString();
-  try{
-    if(id){
-      await sbFetch('projects?id=eq.'+id,{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({data})});
-      return id;
-    } else {
-      const r=await sbFetch('projects',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({data})});
-      return r&&r[0]?r[0].id:null;
-    }
-  }finally{
-    setTimeout(()=>{_savingProject=false;},2000); // release lock after 2s
-  }
+  if(id){await sbFetch('projects?id=eq.'+id,{method:'PATCH',body:JSON.stringify({data})});return id;}
+  else{const r=await sbFetch('projects',{method:'POST',body:JSON.stringify({data})});return r&&r[0]?r[0].id:null;}
 }
 
 async function sbDeleteProject(id){if(sbUrl)await sbFetch('projects?id=eq.'+id,{method:'DELETE'});}
@@ -2891,38 +2862,24 @@ async function saveProject(){
     sold_at:(pct===100&&!wasSold)?today():(oldSoldAt||'')
   };
   if(editingId)project.id=editingId;
-
-  // Sla editingIdx op vóór closeModal() die het reset
   const savedEditingIdx=editingIdx;
   const isNieuwVerkocht=pct===100&&!wasSold;
-
-  // ALTIJD lokale array bijwerken en renderen — ongeacht Supabase
-  if(savedEditingIdx!==null){
-    projects[savedEditingIdx]=project;
-  } else {
-    projects.push(project);
-  }
-  lsSave();
-  closeModal();
-  renderAll();
-  showToast('Project opgeslagen.');
+  closeModal();showToast('Project opgeslagen.');
   if(isNieuwVerkocht){prevSoldSet.add(naam);fireConfetti(project);}
-
-  // Supabase op achtergrond synchroniseren
   try{
     const newId=await sbSaveProject(project);
-    if(newId&&!project.id){
-      project.id=newId;
-      // Update in array met echte Supabase id
-      const idx=projects.indexOf(project);
-      if(idx>=0)projects[idx]=project;
-      lsSave();
+    if(newId&&!project.id)project.id=newId;
+    if(!sbUrl){
+      if(savedEditingIdx!==null)projects[savedEditingIdx]=project;
+      else projects.push(project);
+      lsSave();renderAll();
     }
-  }catch(e){
-    console.warn('sbSaveProject fout:',e.message);
-    showToast('Lokaal opgeslagen — sync mislukt.');
+  }catch{
+    if(savedEditingIdx!==null)projects[savedEditingIdx]=project;
+    else projects.push(project);
+    lsSave();renderAll();
+    showToast('Lokaal opgeslagen.');
   }
-
   if(isNieuwVerkocht){
     setTimeout(()=>b2bTriggerGewonnenFlow(project),400);
   }
@@ -2930,11 +2887,9 @@ async function saveProject(){
 
 async function deleteProject(){
   if(!confirm('Project verwijderen?'))return;
-  const idx=editingIdx,id=editingId;
-  closeModal();
-  if(idx!==null)projects.splice(idx,1);
-  lsSave();renderAll();
-  if(sbUrl&&id)sbDeleteProject(id).catch(e=>console.warn('sbDeleteProject:',e));
+  const idx=editingIdx,id=editingId;closeModal();
+  if(sbUrl&&id)sbDeleteProject(id);
+  else{if(idx!==null)projects.splice(idx,1);lsSave();renderAll();}
 }
 
 // ── RESPS ─────────────────────────────────────────────
