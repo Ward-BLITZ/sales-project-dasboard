@@ -5042,14 +5042,8 @@ function doorstuurNaarInstallatie(bron, id){
   };
   installaties.push(nieuwInst);
   sbSaveInstallatie(nieuwInst);
-
-  // Navigeer direct naar installatiedashboard en open het dossier
-  showTab('installaties');
-  setTimeout(()=>{
-    instRenderBoard();
-    instDossierOpen(nieuwId);
-    showToast('Installatie aangemaakt'+(leadObj&&leadObj.status==='Gewonnen'?' — lead op Gewonnen gezet ✓':' ✓'));
-  },100);
+  instRenderBoard();
+  showToast('✓ Installatie aangemaakt — dossier staat klaar voor service.');
 }
 
 // ── SI OPVOLGING RENDER ──
@@ -5551,11 +5545,12 @@ function b2cRenderLeads(){
   }).join('');
   b2cAttachBoardEvents();
 }function b2cBevestigGewonnenEigen(){
-  // Eigen installatie: lead op gewonnen, doorsturen naar installatiedashboard
   const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
   b2cSluitGewonnenKeuze();
   if(!l)return;
   doorstuurNaarInstallatie('b2c', l.id);
+  b2cRenderGewonnen();
+  showTab('b2c-gewonnen');
 }
 
 function b2cBevestigGewonnenPartner(){
