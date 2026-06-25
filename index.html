@@ -2730,12 +2730,16 @@ async function onDrop(e,newStatus){
   if(dragSourceIdx===null)return;
   const p=projects[dragSourceIdx];const oldStat=parseInt(p.status);
   if(oldStat===newStatus){dragSourceIdx=null;return;}
+  const wasAlreadySold=p.pct===100;
   didDrag=true;p.status=String(newStatus);p.pct=DEFAULT_PCT[newStatus];
   if(p.pct===100&&!(prevSoldSet&&prevSoldSet.has(p.naam))){if(prevSoldSet)prevSoldSet.add(p.naam);fireConfetti(p);}
-  // Auto datum verkoop bij 100%
   if(p.pct===100&&!p.sold_at)p.sold_at=today();
   renderAll();showToast(`"${p.naam}" → ${STATUSES[newStatus]}`);
   try{await sbSaveProject(p);}catch{lsSave();}
+  // Gewonnen flow triggeren als nieuw op 100%
+  if(p.pct===100&&!wasAlreadySold){
+    setTimeout(()=>b2bTriggerGewonnenFlow(p),400);
+  }
   dragSourceIdx=null;
 }
 
@@ -5240,12 +5244,10 @@ function mPartnerClear(){
 }
 
 function b2bDoorstuurInstallatie(){
-  // Haal het huidig geopend project op via editingIdx of editingId
   let p=null;
   if(editingIdx!==null&&editingIdx>=0)p=projects[editingIdx];
   else if(editingId)p=projects.find(x=>x.id===editingId||x._rowid===editingId);
   if(!p){showToast('Sla het project eerst op voor je doorstuurt.');return;}
-  // Sluit de modal stilletjes (zonder save-check want we sturen door)
   closeModal();
   doorstuurNaarInstallatie('b2b', p.id||p._rowid);
 }
@@ -5270,8 +5272,8 @@ function doorstuurNaarInstallatie(bron, id){
   // Check of er al een installatieticket bestaat voor deze lead/project
   const bestaand=installaties.find(i=>i.linkId===linkId);
   if(bestaand){
-    showToast(`Installatieticket bestaat al: "${bestaand.naam||bestaand.linkLabel}" (fase: ${bestaand.fase})`);
-    if(confirm(`Er is al een installatieticket aangemaakt voor "${linkLabel}".\n\nWil je het bestaande ticket openen?`)){
+    showToast(`Installatieticket bestaat al voor "${linkLabel}"`);
+    if(confirm(`Er is al een installatieticket voor "${linkLabel}".\n\nWil je het bestaande ticket openen?`)){
       showTab('installaties');
       setTimeout(()=>instDossierOpen(bestaand.id),200);
     }
