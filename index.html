@@ -5469,8 +5469,7 @@ function b2cRenderLeads(){
     });
   }
 
-  board.innerHTML=B2C_KANBAN_COLS.map(status=>{
-    const isGewonnen=status==='Gewonnen';
+  board.innerHTML=B2C_KANBAN_COLS.map(status=>{    const isGewonnen=status==='Gewonnen';
     const cols=sorteerLeads(list.filter(l=>l.status===status));
     const tiles=cols.map(l=>{
       const warmteDot={Koud:'#8a9ba3',Lauw:'#f59e0b',Warm:'#f97316',Hot:'#ef4444'}[l.warmte]||'var(--tx3)';
@@ -5485,9 +5484,7 @@ function b2cRenderLeads(){
         const opLbl=diff<0?`${Math.abs(diff)}d te laat`:diff===0?'Vandaag':diff===1?'Morgen':nextOp.datum.slice(5).replace('-','/');
         opBadge=`<div style="font-size:9px;color:${opKleur};margin-top:3px;display:flex;align-items:center;gap:2px"><i class="ti ti-phone" style="font-size:9px"></i>${opLbl}${nextOp.uur?' '+nextOp.uur:''}</div>`;
       }
-      return`<div draggable="true" data-id="${l.id}"
-          ondragstart="b2cDragStart(event,${l.id})" ondragend="b2cDragEnd(event)"
-          onclick="if(!b2cDidDrag)b2cOpenDetail(${l.id})"
+      return`<div draggable="true" data-b2c-id="${l.id}"
           style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:8px;padding:10px 11px;cursor:pointer;user-select:none;transition:border-color .15s">
         <div style="font-size:12px;font-weight:700;margin-bottom:2px">${b2cNaam(l)}</div>
         <div style="font-size:10px;color:var(--tx3);margin-bottom:6px">${l.adres||l.tel||'—'}</div>
@@ -5508,60 +5505,104 @@ function b2cRenderLeads(){
         <span style="display:inline-block;background:var(--bg3);color:var(--tx3);font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;margin-left:6px">${cols.length}</span>
       </div>
       <div style="flex:1;overflow-y:auto;padding-top:4px;padding-right:2px;scrollbar-width:thin"
-           ondragover="b2cDragOver(event)" ondragleave="b2cDragLeave(event)" ondrop="b2cDrop(event,'${status}')">${tiles}</div>
+           data-b2c-status="${status}">${tiles}</div>
     </div>`;
   }).join('');
+  b2cAttachBoardEvents();
+}function b2cSluitGewonnenKeuze(){
+  document.getElementById('b2c-gewonnen-keuze-overlay').classList.remove('open');
 }
 
+let _b2cDragging=false;
+let _b2cDragId=null;
 
+function b2cAttachBoardEvents(){
+  const board=document.getElementById('b2c-kanban-board');
+  if(!board||board._eventsAttached)return;
+  board._eventsAttached=true;
 
+  // Drag start — delegated
+  board.addEventListener('dragstart',e=>{
+    const tile=e.target.closest('[data-b2c-id]');
+    if(!tile)return;
+    _b2cDragging=false;
+    _b2cDragId=parseInt(tile.dataset.b2cId);
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain',String(_b2cDragId));
+    setTimeout(()=>tile.style.opacity='.3',0);
+    const tz=document.getElementById('b2c-trash-zone');if(tz)tz.style.display='flex';
+  });
 
-function b2cDragStart(e,id){
-  b2cDragLeadId=id;b2cDidDrag=false;
-  e.dataTransfer.effectAllowed='move';
-  e.dataTransfer.setData('text/plain',String(id));
-  setTimeout(()=>{const el=document.querySelector('[data-id="'+id+'"]');if(el)el.style.opacity='.3';},0);
-  const tz=document.getElementById('b2c-trash-zone');if(tz)tz.style.display='flex';
+  // Drag end — delegated
+  board.addEventListener('dragend',e=>{
+    const tile=e.target.closest('[data-b2c-id]');
+    if(tile)tile.style.opacity='';
+    _b2cDragging=true;
+    const tz=document.getElementById('b2c-trash-zone');if(tz)tz.style.display='none';
+    // Reset after click timeout so click handler can read _b2cDragging
+    setTimeout(()=>{_b2cDragging=false;_b2cDragId=null;},200);
+  });
+
+  // Drag over columns — delegated
+  board.addEventListener('dragover',e=>{
+    const col=e.target.closest('[data-b2c-status]');
+    if(!col)return;
+    e.preventDefault();e.stopPropagation();
+    col.style.background='rgba(0,223,163,.06)';
+  });
+
+  // Drag leave columns — delegated
+  board.addEventListener('dragleave',e=>{
+    const col=e.target.closest('[data-b2c-status]');
+    if(!col)return;
+    if(!col.contains(e.relatedTarget))col.style.background='';
+  });
+
+  // Drop on columns — delegated
+  board.addEventListener('drop',e=>{
+    const col=e.target.closest('[data-b2c-status]');
+    if(!col)return;
+    e.preventDefault();e.stopPropagation();
+    col.style.background='';
+    const newStatus=col.dataset.b2cStatus;
+    const id=parseInt(e.dataTransfer.getData('text/plain')||_b2cDragId);
+    if(!id)return;
+    const l=b2cLeads.find(x=>x.id===id);
+    if(!l||l.status===newStatus){_b2cDragId=null;return;}
+    if(newStatus==='Offerte installateur'){
+      b2cInstallateurLeadId=id;b2cInstallateurNewStatus=newStatus;_b2cDragId=null;
+      document.getElementById('b2c-installateur-input').value=l.installatiepartner||'';
+      document.getElementById('b2c-installateur-overlay').classList.add('open');
+      setTimeout(()=>document.getElementById('b2c-installateur-input').focus(),100);
+      return;
+    }
+    if(newStatus==='Gewonnen'){
+      b2cOpenLeadId=id;_b2cDragId=null;
+      document.getElementById('b2c-gewonnen-keuze-naam').textContent=b2cNaam(l);
+      document.getElementById('b2c-gewonnen-keuze-overlay').classList.add('open');
+      return;
+    }
+    l.status=newStatus;
+    l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Status → '+newStatus});
+    sbSaveB2cLead(l);_b2cDragId=null;
+    b2cRenderLeads();
+    showToast('"'+b2cNaam(l)+'" → '+newStatus);
+  });
+
+  // Click — delegated (only if not a drag)
+  board.addEventListener('click',e=>{
+    if(_b2cDragging)return;
+    const tile=e.target.closest('[data-b2c-id]');
+    if(!tile)return;
+    b2cOpenDetail(parseInt(tile.dataset.b2cId));
+  });
 }
-function b2cDragEnd(e){
-  b2cDidDrag=true;
-  document.querySelectorAll('[data-id]').forEach(el=>el.style.opacity='');
-  const tz=document.getElementById('b2c-trash-zone');if(tz)tz.style.display='none';
-  setTimeout(()=>{b2cDidDrag=false;},150);
-}
-function b2cDragOver(e){e.preventDefault();e.stopPropagation();e.currentTarget.style.background='rgba(0,223,163,.06)';}
-function b2cDragLeave(e){if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.style.background='';}
-function b2cDrop(e,newStatus){
-  e.preventDefault();e.stopPropagation();e.currentTarget.style.background='';
-  const id=parseInt(e.dataTransfer.getData('text/plain')||b2cDragLeadId);
-  if(!id)return;
-  const l=b2cLeads.find(x=>x.id===id);
-  if(!l||l.status===newStatus){b2cDragLeadId=null;return;}
-  // Installatiepartner popup bij 'Offerte installateur'
-  if(newStatus==='Offerte installateur'){
-    b2cInstallateurLeadId=id;
-    b2cInstallateurNewStatus=newStatus;
-    b2cDragLeadId=null;
-    document.getElementById('b2c-installateur-input').value=l.installatiepartner||'';
-    document.getElementById('b2c-installateur-overlay').classList.add('open');
-    setTimeout(()=>document.getElementById('b2c-installateur-input').focus(),100);
-    return;
-  }
-  // Gewonnen → keuze-popup eigen of partner
-  if(newStatus==='Gewonnen'){
-    b2cOpenLeadId=id;
-    b2cDragLeadId=null;
-    document.getElementById('b2c-gewonnen-keuze-naam').textContent=b2cNaam(l);
-    document.getElementById('b2c-gewonnen-keuze-overlay').classList.add('open');
-    return;
-  }
-  l.status=newStatus;
-  l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Status → '+newStatus});
-  sbSaveB2cLead(l);
-  b2cDragLeadId=null;
-  b2cRenderLeads();
-  showToast('"'+b2cNaam(l)+'" → '+newStatus);
-}
+
+function b2cDragStart(e,id){} // legacy stub
+function b2cDragEnd(e){}      // legacy stub
+function b2cDragOver(e){e.preventDefault();}
+function b2cDragLeave(e){}
+function b2cDrop(e,newStatus){e.preventDefault();}  // handled by delegation
 function b2cTrashOver(e){e.preventDefault();const tz=document.getElementById('b2c-trash-zone');if(tz){tz.style.background='#fcebeb';tz.style.transform='scale(1.15)';}}
 function b2cTrashLeave(e){const tz=document.getElementById('b2c-trash-zone');if(tz){tz.style.background='';tz.style.transform='';}}
 function b2cTrashDrop(e){
