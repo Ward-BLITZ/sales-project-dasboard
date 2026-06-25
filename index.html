@@ -5176,16 +5176,14 @@ function b2bTriggerGewonnenFlow(project){
   if(!project)return;
   const partner=project.installatiepartner;
   if(partner){
-    // Partner al gekend → direct bevestigen en doorsturen
-    if(confirm(`Project "${project.naam}" is verkocht!\n\nInstallatiepartner "${partner}" staat al ingesteld.\nDossier doorsturen naar installaties?`)){
-      doorstuurNaarInstallatie('b2b', project.id||project._rowid);
-    }
-  } else {
-    // Geen partner → toon keuze eigen of partner
-    window._b2bGewonnenProject=project;
-    document.getElementById('b2c-gewonnen-keuze-naam').textContent=project.naam||project.klant||'';
-    document.getElementById('b2c-gewonnen-keuze-overlay').classList.add('open');
+    // Partner al gekend → stil opslaan, geen popup nodig
+    // Project blijft gewoon in gewonnen staan en gaat na 7 dagen naar verkocht
+    return;
   }
+  // Geen partner → keuze eigen of partner
+  window._b2bGewonnenProject=project;
+  document.getElementById('b2c-gewonnen-keuze-naam').textContent=project.naam||project.klant||'';
+  document.getElementById('b2c-gewonnen-keuze-overlay').classList.add('open');
 }
 
 // B2B modal installatiepartner zoekfunctie
