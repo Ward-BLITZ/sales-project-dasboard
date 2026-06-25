@@ -2916,7 +2916,18 @@ async function saveProject(){
 
 async function deleteProject(){
   if(!confirm('Project verwijderen?'))return;
-  const idx=editingIdx,id=editingId;closeModal();
+  const idx=editingIdx,id=editingId;
+  // Verwijder ook gelinkte installatietickets
+  if(id){
+    const linkId='b2b-'+id;
+    const gelinkt=installaties.filter(i=>i.linkId===linkId);
+    gelinkt.forEach(i=>sbDeleteInstallatie(i.id));
+    if(gelinkt.length>0){
+      installaties=installaties.filter(i=>i.linkId!==linkId);
+      instSaveToStorage();
+    }
+  }
+  closeModal();
   if(sbUrl&&id)sbDeleteProject(id);
   else{if(idx!==null)projects.splice(idx,1);lsSave();renderAll();}
 }
@@ -5176,85 +5187,16 @@ function b2bTriggerGewonnenFlow(project){
   if(!project)return;
   const partner=project.installatiepartner;
   if(partner){
-    // Partner al gekend → direct naar partner flow
+    // Partner al gekend → direct bevestigen en doorsturen
     if(confirm(`Project "${project.naam}" is verkocht!\n\nInstallatiepartner "${partner}" staat al ingesteld.\nDossier doorsturen naar installaties?`)){
       doorstuurNaarInstallatie('b2b', project.id||project._rowid);
     }
   } else {
-    // Geen partner → keuze eigen of partner
-    // Hergebruik b2c-gewonnen-keuze-overlay maar sla project id op
+    // Geen partner → toon keuze eigen of partner
     window._b2bGewonnenProject=project;
     document.getElementById('b2c-gewonnen-keuze-naam').textContent=project.naam||project.klant||'';
     document.getElementById('b2c-gewonnen-keuze-overlay').classList.add('open');
   }
-}
-
-// Override de gewonnen keuze functies om ook B2B te ondersteunen
-const _origB2cEigen=window.b2cBevestigGewonnenEigen;
-const _origB2cPartner=window.b2cBevestigGewonnenPartner;
-
-function b2cBevestigGewonnenEigen(){
-  if(window._b2bGewonnenProject){
-    const p=window._b2bGewonnenProject;window._b2bGewonnenProject=null;
-    b2cSluitGewonnenKeuze();
-    doorstuurNaarInstallatie('b2b',p.id||p._rowid);
-    return;
-  }
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
-  b2cSluitGewonnenKeuze();
-  if(!l)return;
-  doorstuurNaarInstallatie('b2c', l.id);
-  b2cRenderGewonnen();showTab('b2c-gewonnen');
-}
-
-function b2cBevestigGewonnenPartner(){
-  if(window._b2bGewonnenProject){
-    const p=window._b2bGewonnenProject;window._b2bGewonnenProject=null;
-    b2cSluitGewonnenKeuze();
-    // Toon partner overlay voor B2B
-    document.getElementById('b2c-gw-partner-naam').textContent=p.naam||p.klant||'';
-    window._b2bGwProject=p;
-    document.getElementById('b2c-gw-partner-input').value=p.installatiepartner||'';
-    const chip=document.getElementById('b2c-gw-partner-chip');
-    chip.style.display=p.installatiepartner?'flex':'none';
-    if(p.installatiepartner)chip.innerHTML=`<i class="ti ti-building" style="font-size:12px"></i> ${p.installatiepartner}`;
-    document.getElementById('b2c-gw-partner-overlay').classList.add('open');
-    return;
-  }
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
-  if(!l){b2cSluitGewonnenKeuze();return;}
-  b2cSluitGewonnenKeuze();
-  document.getElementById('b2c-gw-partner-naam').textContent=b2cNaam(l);
-  window._b2bGwProject=null;
-  document.getElementById('b2c-gw-partner-input').value=l.installatiepartner||'';
-  const chip=document.getElementById('b2c-gw-partner-chip');
-  chip.style.display=l.installatiepartner?'flex':'none';
-  if(l.installatiepartner)chip.innerHTML=`<i class="ti ti-building" style="font-size:12px"></i> ${l.installatiepartner}`;
-  document.getElementById('b2c-gw-partner-overlay').classList.add('open');
-  setTimeout(()=>document.getElementById('b2c-gw-partner-input').focus(),100);
-}
-
-function b2cBevestigGwPartner(){
-  const naam=(document.getElementById('b2c-gw-partner-input').value||'').trim();
-  if(!naam){showToast('Vul een installatiepartner in.');return;}
-  if(window._b2bGwProject){
-    const p=window._b2bGwProject;window._b2bGwProject=null;
-    p.installatiepartner=naam;
-    sbSaveProject(p);
-    b2cSluitGwPartner();
-    doorstuurNaarInstallatie('b2b',p.id||p._rowid);
-    showToast(`🎉 Verkocht! Partner: ${naam}`);
-    return;
-  }
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
-  if(!l){b2cSluitGwPartner();return;}
-  l.status='Gewonnen';
-  if(!l.gewonnenOp)l.gewonnenOp=today();
-  l.installatieType='partner';l.installatiepartner=naam;
-  l.acties=l.acties||[];l.acties.push({datum:today(),tekst:`✓ Gewonnen — partner: ${naam}`});
-  sbSaveB2cLead(l);
-  b2cSluitGwPartner();b2cRenderGewonnen();showTab('b2c-gewonnen');
-  showToast(`🎉 Gewonnen! Partner: ${naam}`);
 }
 
 // B2B modal installatiepartner zoekfunctie
@@ -5325,6 +5267,17 @@ function doorstuurNaarInstallatie(bron, id){
     linkId='b2b-'+(p.id||p._rowid);linkLabel=p.naam||'';
   }
 
+  // Check of er al een installatieticket bestaat voor deze lead/project
+  const bestaand=installaties.find(i=>i.linkId===linkId);
+  if(bestaand){
+    showToast(`Installatieticket bestaat al: "${bestaand.naam||bestaand.linkLabel}" (fase: ${bestaand.fase})`);
+    if(confirm(`Er is al een installatieticket aangemaakt voor "${linkLabel}".\n\nWil je het bestaande ticket openen?`)){
+      showTab('installaties');
+      setTimeout(()=>instDossierOpen(bestaand.id),200);
+    }
+    return;
+  }
+
   // Sluit eventueel open dossier/modal
   document.getElementById('b2c-detail-overlay').classList.remove('open');
   document.getElementById('modal-overlay').classList.remove('open');
@@ -5349,13 +5302,13 @@ function doorstuurNaarInstallatie(bron, id){
     projObj.tijdlijn=projObj.tijdlijn||[];
     projObj.tijdlijn.push({datum:today(),tekst:'Gewonnen — doorgestuurd naar installatiedashboard.'});
     if(projIdx>=0)projects[projIdx]=projObj;
-    prevSoldSet.add(projObj.naam||'');
+    if(prevSoldSet)prevSoldSet.add(projObj.naam||'');
     lsSave();
     sbSaveProject(projObj).catch(()=>{});
     renderAll();
   }
 
-  // Maak installatie-dossier aan en sla DIRECT op
+  // Maak installatie-dossier aan
   const nieuwId=instNextId++;
   const nieuwInst={
     id: nieuwId,
@@ -6011,7 +5964,14 @@ function b2cRenderLeads(){
     </div>`;
   }).join('');
   b2cAttachBoardEvents();
-}function b2cBevestigGewonnenEigen(){
+}
+function b2cBevestigGewonnenEigen(){
+  if(window._b2bGewonnenProject){
+    const p=window._b2bGewonnenProject;window._b2bGewonnenProject=null;
+    b2cSluitGewonnenKeuze();
+    doorstuurNaarInstallatie('b2b',p.id||p._rowid);
+    return;
+  }
   const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
   b2cSluitGewonnenKeuze();
   if(!l)return;
@@ -6021,13 +5981,25 @@ function b2cRenderLeads(){
 }
 
 function b2cBevestigGewonnenPartner(){
+  if(window._b2bGewonnenProject){
+    const p=window._b2bGewonnenProject;window._b2bGewonnenProject=null;
+    b2cSluitGewonnenKeuze();
+    document.getElementById('b2c-gw-partner-naam').textContent=p.naam||p.klant||'';
+    window._b2bGwProject=p;
+    document.getElementById('b2c-gw-partner-input').value=p.installatiepartner||'';
+    const chip=document.getElementById('b2c-gw-partner-chip');
+    chip.style.display=p.installatiepartner?'flex':'none';
+    if(p.installatiepartner)chip.innerHTML=`<i class="ti ti-building" style="font-size:12px"></i> ${p.installatiepartner}`;
+    document.getElementById('b2c-gw-partner-overlay').classList.add('open');
+    return;
+  }
   // Partner installeert: toon partner-zoek overlay
   const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
   if(!l){b2cSluitGewonnenKeuze();return;}
   b2cSluitGewonnenKeuze();
-  // Pre-fill met eerder ingevoerde partner
   const vooraf=l.installatiepartner||'';
   document.getElementById('b2c-gw-partner-naam').textContent=b2cNaam(l);
+  window._b2bGwProject=null;
   document.getElementById('b2c-gw-partner-input').value=vooraf;
   document.getElementById('b2c-gw-partner-dd').style.display='none';
   const chip=document.getElementById('b2c-gw-partner-chip');
@@ -6326,6 +6298,16 @@ function b2cCloseDetail(){
 function b2cVerwijderLead(id){
   const l=b2cLeads.find(x=>x.id===id);if(!l)return;
   if(!confirm(`Lead "${b2cNaam(l)}" definitief verwijderen? Dit kan niet ongedaan gemaakt worden.`))return;
+  // Verwijder ook gelinkte installatietickets
+  const linkId='b2c-'+id;
+  const gelinkt=installaties.filter(i=>i.linkId===linkId);
+  gelinkt.forEach(i=>{
+    sbDeleteInstallatie(i.id);
+  });
+  if(gelinkt.length>0){
+    installaties=installaties.filter(i=>i.linkId!==linkId);
+    instSaveToStorage();
+  }
   sbDeleteB2cLead(id);
   b2cLeads=b2cLeads.filter(x=>x.id!==id);
   b2cCloseDetail();
