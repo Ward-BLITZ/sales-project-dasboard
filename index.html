@@ -2837,7 +2837,6 @@ function openModal(idx){
     const pchip=document.getElementById('m-partner-chip');
     if(partnerNaam){pchip.style.display='flex';pchip.innerHTML=`<i class="ti ti-tools" style="font-size:11px"></i> ${partnerNaam}<button onclick="mPartnerClear()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;font-size:13px" title="Verwijderen"><i class="ti ti-x"></i></button>`;}
     else{pchip.style.display='none';}
-    document.getElementById('m-notitie').value='';
     const pct=p.pct!=null?p.pct:DEFAULT_PCT[parseInt(p.status)||0];
     document.getElementById('m-pct').value=pct;
     document.getElementById('m-pct-label').textContent=pct+'%';
