@@ -5253,6 +5253,21 @@ function doorstuurNaarInstallatie(bron, id){
     b2cRenderGewonnen();
   }
 
+  // Zet B2B project op Gewonnen (pct=100) als nog niet verkocht
+  if(projObj && projObj.pct !== 100){
+    const projIdx=projects.findIndex(x=>x===projObj);
+    projObj.pct=100;
+    projObj.status=String(STATUSES.length-1);
+    if(!projObj.sold_at)projObj.sold_at=today();
+    projObj.tijdlijn=projObj.tijdlijn||[];
+    projObj.tijdlijn.push({datum:today(),tekst:'Gewonnen — doorgestuurd naar installatiedashboard.'});
+    if(projIdx>=0)projects[projIdx]=projObj;
+    prevSoldSet.add(projObj.naam||'');
+    lsSave();
+    sbSaveProject(projObj).catch(()=>{});
+    renderAll();
+  }
+
   // Maak installatie-dossier aan en sla DIRECT op
   const nieuwId=instNextId++;
   const nieuwInst={
