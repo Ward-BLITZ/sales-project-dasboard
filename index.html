@@ -2011,23 +2011,7 @@ function respNames(afdeling){
 }
 
 // ── TABS ──────────────────────────────────────────────
-function showTab(name){
-  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda'].forEach(id=>{
-    const pane=document.getElementById('pane-'+id);
-    if(pane)pane.style.display=(id===name)?'block':'none';
-    const tb=document.getElementById('tab-'+id);
-    if(tb)tb.classList.toggle('active',id===name);
-  });
-  if(name==='verkocht')renderVerkocht();
-  if(name==='verloren')renderVerloren();
-  if(name==='crm'){loadKlanten().then(renderCrm);}
-  if(name==='instellingen'){loadServiceRoleKeyField();}
-  if(name==='gebruikers')loadGebruikers();
-  if(name==='b2c')b2cRenderLeads();
-  if(name==='b2c-gewonnen')b2cRenderGewonnen();
-  if(name==='b2c-verloren')b2cRenderVerloren();
-  if(name==='agenda'){agUpdateRespDropdown();agRenderCalendar();agRenderAankomende();}
-}
+// showTab defined below after prospects/installaties code
 
 function showTab(name){
   ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda'].forEach(id=>{
@@ -2263,16 +2247,25 @@ async function sbFetch(path,opts={}){
 }
 
 async function loadAll(){
-  // Lopende projecten — Supabase is source of truth
-  const rows=await sbFetch('projects?order=created_at.asc');
-  const incoming=(rows||[]).map(r=>({id:r.id,...r.data}));
-  // Check nieuwe 100% voor confetti
-  const nowSold=new Set(incoming.filter(p=>p.pct===100).map(p=>p.naam));
-  nowSold.forEach(naam=>{if(!prevSoldSet.has(naam))fireConfetti(incoming.find(x=>x.naam===naam));});
-  prevSoldSet=nowSold;
-  // Altijd bijwerken — Supabase is bron van waarheid
-  projects=incoming;
-  try{localStorage.setItem('blitz_projects',JSON.stringify(projects));}catch{}
+  try{
+    // Skip project reload als we net een save doen (race condition)
+    if(!_savingProject){
+      const rows=await sbFetch('projects?order=created_at.asc');
+      const incoming=(rows||[]).map(r=>({id:r.id,...r.data}));
+      const nowSold=new Set(incoming.filter(p=>p.pct===100).map(p=>p.naam));
+      nowSold.forEach(naam=>{if(!prevSoldSet.has(naam))fireConfetti(incoming.find(x=>x.naam===naam));});
+      prevSoldSet=nowSold;
+      if(incoming.length>0){
+        projects=incoming;
+      } else if(incoming.length===0&&projects.length===0){
+        projects=[];
+      }
+      try{localStorage.setItem('blitz_projects',JSON.stringify(projects));}catch{}
+    }
+  }catch(e){
+    console.warn('loadAll projects fout:',e.message);
+    try{const d=localStorage.getItem('blitz_projects');if(d)projects=JSON.parse(d);}catch{}
+  }
 
   // Gesloten projecten
   const crow=await sbFetch('closed_projects?order=closed_at.desc');
@@ -2352,16 +2345,23 @@ async function loadAll(){
   }
 }
 
+let _savingProject=false; // lock to prevent poll race condition
+
 async function sbSaveProject(p){
   if(!sbUrl){lsSave();return null;}
+  _savingProject=true;
   const data={...p};const id=data.id;delete data.id;
   data.updatedAt=new Date().toISOString();
-  if(id){
-    await sbFetch('projects?id=eq.'+id,{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({data})});
-    return id;
-  } else {
-    const r=await sbFetch('projects',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({data})});
-    return r&&r[0]?r[0].id:null;
+  try{
+    if(id){
+      await sbFetch('projects?id=eq.'+id,{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({data})});
+      return id;
+    } else {
+      const r=await sbFetch('projects',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({data})});
+      return r&&r[0]?r[0].id:null;
+    }
+  }finally{
+    setTimeout(()=>{_savingProject=false;},2000); // release lock after 2s
   }
 }
 
