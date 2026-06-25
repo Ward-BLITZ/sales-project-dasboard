@@ -1657,7 +1657,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="bn-resp"><option value="">— kies —</option></select>
       </div>
-      <div class="field"><label>Volgende actie</label><input id="bn-actie" value="Eerste contact opnemen"></div>
+
     </div>
     <div class="field" style="max-width:200px"><label><i class="ti ti-calendar" style="color:var(--green);margin-right:4px"></i>Aanmaakdatum lead</label><input type="date" id="bn-aanmaakdatum"></div>
     <div class="field" style="max-width:220px"><label><i class="ti ti-file-invoice" style="color:var(--green);margin-right:4px"></i>Offertenummer</label><input id="bn-offertenr" placeholder="bv. OFF-2026-001"></div>
@@ -5785,7 +5785,6 @@ function b2cRenderLeads(){
           </div>
           <div style="display:flex;gap:4px">${visitBadge}${dagBadge}</div>
         </div>
-        ${l.actie?`<div style="font-size:10px;color:var(--tx3);margin-top:5px;border-top:1px solid var(--bd);padding-top:4px"><i class="ti ti-arrow-right" style="font-size:9px"></i> ${l.actie}</div>`:''}
         ${opBadge}
       </div>`;
     }).join('')||`<div style="text-align:center;padding:16px 8px;color:var(--tx3);font-size:11px"><i class="ti ti-inbox" style="font-size:18px;display:block;margin-bottom:4px"></i>Leeg</div>`;
@@ -6174,7 +6173,7 @@ function b2cRenderInfo(l){
       <div>
         <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Pipeline</div>
         <div class="b2c-status-steps">${B2C_STATUSSEN.map(s=>`<button class="b2c-status-step${l.status===s?' current':''}" onclick="b2cChangeStatus(${l.id},'${s}')">${s}</button>`).join('')}</div>
-        <div class="field" style="margin-bottom:8px"><label>Volgende actie</label><input id="bi-actie" type="text" value="${l.actie||''}" style="font-size:12px"></div>
+
         ${!l.visitDatum
           ?`<button class="btn primary" style="width:100%;justify-content:center" onclick="b2cOpenVisitModal(${l.id})"><i class="ti ti-calendar-plus"></i> Visit inplannen</button>`
           :`<div style="background:rgba(0,223,163,.08);border:1px solid rgba(0,223,163,.3);border-radius:var(--r);padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between"><span><i class="ti ti-calendar-event" style="color:var(--green);margin-right:6px"></i><strong>${l.visitDatum}</strong>${l.visitUur?' om <strong>'+l.visitUur+'</strong>':''}</span><button class="btn sm" onclick="b2cOpenVisitModal(${l.id})"><i class="ti ti-edit"></i></button></div>`}
@@ -6229,7 +6228,6 @@ function b2cSaveLeadEdit(){
   const nwarmte=get('bi-warmte');if(nwarmte!==null&&nwarmte!==l.warmte){l.warmte=nwarmte;changed.push('warmte');}
   const nnotities=get('bi-notities');if(nnotities!==null&&nnotities!==l.notities){l.notities=nnotities;changed.push('notities');}
   const nresp=get('bi-resp');if(nresp!==null&&nresp!==l.resp){l.resp=nresp;changed.push('verantwoordelijke');}
-  const nactie=get('bi-actie');if(nactie!==null&&nactie!==l.actie){l.actie=nactie;changed.push('volgende actie');}
   const naanmaak=get('bi-aanmaakdatum');if(naanmaak!==null&&naanmaak!==l.aanmaakdatum){l.aanmaakdatum=naanmaak;changed.push('aanmaakdatum');}
   const noffertenr=get('bi-offertenr');if(noffertenr!==null&&noffertenr!==l.offertenr){l.offertenr=noffertenr;changed.push('offertenummer');}
   if(changed.length){
@@ -6850,8 +6848,8 @@ function b2cOpenNieuw(visitMode){
   document.getElementById('bn-visit-blok').style.display=visitMode?'block':'none';
   document.getElementById('bn-save-btn').innerHTML=visitMode?'<i class="ti ti-map-pin"></i> Lead + visit aanmaken':'<i class="ti ti-check"></i> Lead aanmaken';
   // Reset alle velden
-  ['bn-voornaam','bn-achternaam','bn-tel','bn-email','bn-adres','bn-actie','bn-notities','bn-vdatum'].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.value=id==='bn-actie'?'Eerste contact opnemen':'';
+  ['bn-voornaam','bn-achternaam','bn-tel','bn-email','bn-adres','bn-notities','bn-vdatum'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
   });
   const aanmaakEl=document.getElementById('bn-aanmaakdatum');if(aanmaakEl)aanmaakEl.value=today();
   const offEl=document.getElementById('bn-offertenr');if(offEl)offEl.value='';
@@ -6886,7 +6884,7 @@ function b2cSaveLead(){
     warmte:document.getElementById('bn-warmte').value,
     status:b2cIsVisitMode&&vd?'Visit gepland':'Nieuw',
     resp:document.getElementById('bn-resp').value,
-    actie:document.getElementById('bn-actie').value||'Opvolgen',
+    actie:'',
     notities:document.getElementById('bn-notities').value,
     visitDatum:vd||null,visitUur:vu||null,screening:null,acties
   });
