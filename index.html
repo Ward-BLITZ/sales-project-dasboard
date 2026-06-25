@@ -1487,7 +1487,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
               <option value="3">2e gesprek</option>
               <option value="4">Opvolging</option>
               <option value="5">Wachten op akkoord</option>
-              <option value="6">Akkoord / project verkocht</option>
+              <option value="6">Gewonnen</option>
             </select>
             <div class="slider-wrap">
               <input type="range" id="m-pct" min="0" max="100" step="1" value="5" oninput="onPctChange(this.value)">
@@ -1767,7 +1767,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 // Supabase collections: projects, closed_projects, settings
 // ══════════════════════════════════════════════════════
 
-const STATUSES = ['Kennismaking','Installateur/partner zoeken','Offerte opstellen','2e gesprek','Opvolging','Wachten op akkoord','Akkoord / project verkocht'];
+const STATUSES = ['Kennismaking','Installateur/partner zoeken','Offerte opstellen','2e gesprek','Opvolging','Wachten op akkoord','Gewonnen'];
 const VISIBLE_STATUSES = [0,1,3,4,5,6];
 const DEFAULT_PCT = [5,25,38,50,65,80,100];
 const MONTHS_NL = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
@@ -2794,6 +2794,8 @@ async function saveProject(){
     sold_at:(pct===100&&!wasSold)?today():(oldSoldAt||'')
   };
   if(editingId)project.id=editingId;
+  // Sla editingIdx op vóór closeModal() die het reset
+  const savedEditingIdx=editingIdx;
   // Bij nieuw verkocht (pct=100) → gewonnen flow tonen
   const isNieuwVerkocht=pct===100&&!wasSold;
   closeModal();showToast('Project opgeslagen.');
@@ -2802,20 +2804,19 @@ async function saveProject(){
     const newId=await sbSaveProject(project);
     if(newId&&!project.id)project.id=newId;
     if(!sbUrl){
-      if(editingIdx!==null)projects[editingIdx]=project;
+      if(savedEditingIdx!==null)projects[savedEditingIdx]=project;
       else projects.push(project);
       lsSave();renderAll();
     }
   }catch{
-    if(editingIdx!==null)projects[editingIdx]=project;
+    if(savedEditingIdx!==null)projects[savedEditingIdx]=project;
     else projects.push(project);
     lsSave();renderAll();
     showToast('Lokaal opgeslagen.');
   }
   // Gewonnen flow triggeren als nieuw verkocht
   if(isNieuwVerkocht){
-    const savedProject=editingIdx!==null?projects[editingIdx]:project;
-    setTimeout(()=>b2bTriggerGewonnenFlow(savedProject),300);
+    setTimeout(()=>b2bTriggerGewonnenFlow(project),400);
   }
 }
 
@@ -2988,15 +2989,24 @@ function renderAttachList(){
 function fireConfetti(p){
   const vn=(p&&p.resp)?p.resp.split(' ')[0]:'';
   const pn=(p&&p.naam)?p.naam:'';
-  const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:hidden';document.body.appendChild(o);
-  const bg=document.createElement('div');bg.style.cssText='position:absolute;inset:0;background:#00DFA3';o.appendChild(bg);
-  const m=document.createElement('div');m.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;animation:popIn .5s ease;white-space:nowrap';
-  m.innerHTML=`<div style="font-size:80px;margin-bottom:16px">🎉</div><div style="font-family:'Poppins',sans-serif;font-size:64px;font-weight:900;color:#1D252D;letter-spacing:-1px;margin-bottom:20px">Proficiat!</div><div style="font-family:'Inter',sans-serif;font-size:28px;color:#1D252D;font-weight:500;line-height:1.5;opacity:.85">Proficiat ${vn} met de verkoop van<br><strong style="font-family:'Poppins',sans-serif;font-weight:800;font-size:32px">${pn}</strong></div>`;
-  o.appendChild(m);
-  const cls=['#1D252D','#fff','#00b882','#D9D9D6','#fff','#1D252D','#00DFA3'];
-  for(let i=0;i<150;i++){const c=document.createElement('div');const sz=Math.random()*14+5;const rect=Math.random()>.4;c.style.cssText=`position:absolute;width:${sz}px;height:${rect?sz*.4:sz}px;background:${cls[Math.floor(Math.random()*cls.length)]};left:${Math.random()*100}%;top:-30px;border-radius:${rect?3:50}%;animation:fall ${1.5+Math.random()*2.5}s ${Math.random()*1.8}s linear forwards`;o.appendChild(c);}
+
+  // TV-scherm: grote felicitatie
   if(dashWindow&&!dashWindow.closed){try{dashWindow.triggerSale&&dashWindow.triggerSale(vn,pn);}catch{}}
-  setTimeout(()=>o.remove(),8000);
+
+  // Werkblad: klein confettikanon (geen overlay)
+  const o=document.createElement('div');
+  o.style.cssText='position:fixed;inset:0;z-index:9998;pointer-events:none;overflow:hidden';
+  document.body.appendChild(o);
+  const cls=['#1D252D','#fff','#00b882','#D9D9D6','#00DFA3','#f59e0b','#e85d04'];
+  for(let i=0;i<80;i++){
+    const c=document.createElement('div');
+    const sz=Math.random()*10+4;
+    const rect=Math.random()>.4;
+    const startX=Math.random()*100;
+    c.style.cssText=`position:absolute;width:${sz}px;height:${rect?sz*.4:sz}px;background:${cls[Math.floor(Math.random()*cls.length)]};left:${startX}%;top:${40+Math.random()*20}%;border-radius:${rect?3:50}%;animation:fall ${1+Math.random()*2}s ${Math.random()*.5}s linear forwards`;
+    o.appendChild(c);
+  }
+  setTimeout(()=>o.remove(),3500);
 }
 
 // ── CALENDAR ──────────────────────────────────────────
