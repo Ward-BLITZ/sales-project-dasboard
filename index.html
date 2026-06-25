@@ -2736,6 +2736,7 @@ function onDragEnd(e){
   document.querySelectorAll('.kol-body.drag-over').forEach(el=>el.classList.remove('drag-over'));
   document.getElementById('trash-zone').classList.add('hidden');
   document.getElementById('trash-zone').classList.remove('drag-over-trash');
+  setTimeout(()=>{didDrag=false;},0);
 }
 function onDragOver(e){e.preventDefault();e.stopPropagation();e.currentTarget.classList.add('drag-over');}
 function onDragLeave(e){if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.classList.remove('drag-over');}
