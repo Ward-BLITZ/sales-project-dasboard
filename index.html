@@ -1269,6 +1269,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   </div>
   <div class="crm-search">
     <input id="crm-search" type="text" placeholder="Zoek op naam, BTW, contactpersoon..." oninput="renderCrm()" style="max-width:400px">
+    <button id="crm-partner-filter" class="btn sm" onclick="crmTogglePartnerFilter()" title="Toon enkel installatiepartners"><i class="ti ti-tools"></i> Partners</button>
   </div>
   <div class="crm-hdr">
     <span>Bedrijf</span><span>BTW-nummer</span><span>Contactpersoon</span><span>Tel / E-mail</span><span></span>
@@ -1305,6 +1306,10 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>E-mail contactpersoon</label><input id="crm-contactemail" type="email" placeholder="jan@bedrijf.be"></div>
     </div>
     <div class="field"><label>Notities</label><textarea id="crm-notities" rows="2" placeholder="Extra informatie over deze klant..."></textarea></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:4px;padding:10px 12px;background:var(--bg2);border-radius:var(--r)">
+      <input type="checkbox" id="crm-is-partner" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer">
+      <label for="crm-is-partner" style="cursor:pointer;font-size:13px;font-weight:600"><i class="ti ti-tools" style="color:var(--green);margin-right:4px"></i>Dit bedrijf is een installatiepartner</label>
+    </div>
     <div class="modal-footer">
       <button class="btn danger" id="crm-del-btn" style="display:none;margin-right:auto" onclick="deleteCrmKlant()"><i class="ti ti-trash"></i> Verwijderen</button>
       <button class="btn" onclick="closeCrmModal()">Annuleren</button>
@@ -1546,10 +1551,22 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
         <div id="m-tijdlijn" style="max-height:320px;overflow-y:auto"></div>
       </div>
     </div>
+
+    <!-- Installatiepartner sectie -->
+    <div style="border-top:1px solid var(--bd);padding-top:14px;margin-top:4px">
+      <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px"><i class="ti ti-tools" style="color:#e85d04;margin-right:5px"></i>Installatiepartner</div>
+      <div style="position:relative">
+        <input id="m-partner-search" placeholder="Zoek installatiepartner in CRM…" autocomplete="off" oninput="mPartnerZoek(this.value)" style="width:100%;font-size:13px">
+        <div id="m-partner-dd" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:160px;overflow-y:auto;margin-top:2px"></div>
+      </div>
+      <div id="m-partner-chip" style="display:none;margin-top:6px;align-items:center;gap:6px;background:rgba(232,93,4,.08);border:1px solid rgba(232,93,4,.25);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;color:#e85d04">
+      </div>
+      <input type="hidden" id="m-partner-naam">
+    </div>
     <div class="modal-footer">
       <button class="btn danger" id="m-delete-btn" style="display:none;margin-right:auto" onclick="deleteProject()"><i class="ti ti-trash"></i> Verwijderen</button>
       <button class="btn" style="border-color:rgba(232,93,4,.4);color:#e85d04" id="m-naar-inst-btn" onclick="b2bDoorstuurInstallatie()"><i class="ti ti-tool"></i> → Installatie</button>
-      <button class="btn" onclick="closeModal()">Annuleren</button>
+      <button class="btn" onclick="closeModalSafe()">Annuleren</button>
       <button class="btn primary" onclick="saveProject()"><i class="ti ti-check"></i> Opslaan</button>
     </div>
   </div>
@@ -2700,6 +2717,13 @@ function openModal(idx){
     document.getElementById('m-lp').value=p.lp||'';
     document.getElementById('m-offertenr').value=p.offertenr||'';
     document.getElementById('m-datum').value=p.datum||'';
+    // Installatiepartner
+    const partnerNaam=p.installatiepartner||'';
+    document.getElementById('m-partner-naam').value=partnerNaam;
+    document.getElementById('m-partner-search').value=partnerNaam;
+    const pchip=document.getElementById('m-partner-chip');
+    if(partnerNaam){pchip.style.display='flex';pchip.innerHTML=`<i class="ti ti-tools" style="font-size:11px"></i> ${partnerNaam}<button onclick="mPartnerClear()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;font-size:13px" title="Verwijderen"><i class="ti ti-x"></i></button>`;}
+    else{pchip.style.display='none';}
     document.getElementById('m-notitie').value=p.notitie||'';
     const pct=p.pct!=null?p.pct:DEFAULT_PCT[parseInt(p.status)||0];
     document.getElementById('m-pct').value=pct;
@@ -2712,7 +2736,8 @@ function openModal(idx){
     renderTijdlijn();
   } else {
     document.getElementById('modal-title').textContent='Nieuw project';
-    ['m-naam','m-klant','m-btw','m-contact','m-contactgsm','m-contactemail','m-adres','m-product','m-info','m-omzet','m-lp','m-offertenr','m-datum','m-notitie'].forEach(id=>document.getElementById(id).value='');
+    ['m-naam','m-klant','m-btw','m-contact','m-contactgsm','m-contactemail','m-adres','m-product','m-info','m-omzet','m-lp','m-offertenr','m-datum','m-notitie','m-partner-search','m-partner-naam'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('m-partner-chip').style.display='none';
     document.getElementById('m-status').value='0';
     document.getElementById('m-pct').value=5;document.getElementById('m-pct-label').textContent='5%';
     document.getElementById('m-resp').value='';
@@ -2765,9 +2790,12 @@ async function saveProject(){
     notitie:document.getElementById('m-notitie').value.trim()||'',
     attachments:[...currentAttachments],
     tijdlijn:[...currentTijdlijn],
+    installatiepartner:document.getElementById('m-partner-naam').value.trim()||'',
     sold_at:(pct===100&&!wasSold)?today():(oldSoldAt||'')
   };
   if(editingId)project.id=editingId;
+  // Bij nieuw verkocht (pct=100) → gewonnen flow tonen
+  const isNieuwVerkocht=pct===100&&!wasSold;
   closeModal();showToast('Project opgeslagen.');
   if(pct===100&&!wasSold){prevSoldSet.add(naam);fireConfetti(project);}
   try{
@@ -2783,6 +2811,11 @@ async function saveProject(){
     else projects.push(project);
     lsSave();renderAll();
     showToast('Lokaal opgeslagen.');
+  }
+  // Gewonnen flow triggeren als nieuw verkocht
+  if(isNieuwVerkocht){
+    const savedProject=editingIdx!==null?projects[editingIdx]:project;
+    setTimeout(()=>b2bTriggerGewonnenFlow(savedProject),300);
   }
 }
 
@@ -3188,20 +3221,30 @@ async function sbDeleteKlant(id){
   if(sbUrl)await sbFetch('klanten?id=eq.'+id,{method:'DELETE'});
 }
 
+let crmPartnerFilter=false;
+function crmTogglePartnerFilter(){
+  crmPartnerFilter=!crmPartnerFilter;
+  const btn=document.getElementById('crm-partner-filter');
+  if(btn){btn.style.background=crmPartnerFilter?'var(--green)':'';btn.style.color=crmPartnerFilter?'#fff':'';}
+  renderCrm();
+}
+
 function renderCrm(){
   const el=document.getElementById('crm-list');if(!el)return;
   const q=(document.getElementById('crm-search')?.value||'').toLowerCase();
-  const list=klanten.filter(k=>{
+  let list=klanten.filter(k=>{
+    if(crmPartnerFilter&&!k.isInstallatiepartner)return false;
     if(!q)return true;
     return(k.naam||'').toLowerCase().includes(q)||(k.btw||'').toLowerCase().includes(q)||(k.contact||'').toLowerCase().includes(q);
   });
   if(!list.length){
     el.innerHTML='<div class="empty-state"><i class="ti ti-building"></i>Geen klanten gevonden.</div>';return;
   }
-  el.innerHTML=list.map((k,i)=>{
+  el.innerHTML=list.map((k)=>{
     const idx=klanten.indexOf(k);
+    const partnerBadge=k.isInstallatiepartner?`<span style="font-size:10px;background:rgba(232,93,4,.12);color:#e85d04;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:4px"><i class="ti ti-tools" style="font-size:9px"></i> Partner</span>`:'';
     return`<div class="crm-row" onclick="openCrmModal(${idx})">
-      <div><div class="crm-naam">${k.naam||''}</div><div class="crm-sub">${k.btw||''}</div></div>
+      <div><div class="crm-naam">${k.naam||''}${partnerBadge}</div><div class="crm-sub">${k.btw||''}</div></div>
       <div class="crm-cell">${k.adres||''}</div>
       <div><div class="crm-cell" style="font-weight:500">${k.contact||''}</div><div class="crm-sub">${k.functie||''}</div></div>
       <div><div class="crm-cell">${k.contactgsm||k.tel||''}</div><div class="crm-sub">${k.contactemail||k.email||''}</div></div>
@@ -3225,10 +3268,12 @@ function openCrmModal(idx){
     document.getElementById('crm-contactgsm').value=k.contactgsm||'';
     document.getElementById('crm-contactemail').value=k.contactemail||'';
     document.getElementById('crm-notities').value=k.notities||'';
+    document.getElementById('crm-is-partner').checked=!!k.isInstallatiepartner;
     document.getElementById('crm-del-btn').style.display='inline-flex';
   }else{
     document.getElementById('crm-modal-title').textContent='Nieuwe klant';
     ['crm-naam','crm-btw','crm-tel','crm-email','crm-adres','crm-contact','crm-functie','crm-contactgsm','crm-contactemail','crm-notities'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('crm-is-partner').checked=false;
     document.getElementById('crm-del-btn').style.display='none';
   }
   document.getElementById('crm-modal').classList.add('open');
@@ -3252,7 +3297,8 @@ async function saveCrmKlant(){
     functie:document.getElementById('crm-functie').value.trim(),
     contactgsm:document.getElementById('crm-contactgsm').value.trim(),
     contactemail:document.getElementById('crm-contactemail').value.trim(),
-    notities:document.getElementById('crm-notities').value.trim()
+    notities:document.getElementById('crm-notities').value.trim(),
+    isInstallatiepartner:document.getElementById('crm-is-partner').checked
   };
   if(editingCrmId)k.id=editingCrmId;
   closeCrmModal();
@@ -4999,6 +5045,131 @@ function instLinkSearch(q){
 }
 
 // ── DOORSTUREN NAAR INSTALLATIES ──
+function b2bTriggerGewonnenFlow(project){
+  if(!project)return;
+  const partner=project.installatiepartner;
+  if(partner){
+    // Partner al gekend → direct naar partner flow
+    if(confirm(`Project "${project.naam}" is verkocht!\n\nInstallatiepartner "${partner}" staat al ingesteld.\nDossier doorsturen naar installaties?`)){
+      doorstuurNaarInstallatie('b2b', project.id||project._rowid);
+    }
+  } else {
+    // Geen partner → keuze eigen of partner
+    // Hergebruik b2c-gewonnen-keuze-overlay maar sla project id op
+    window._b2bGewonnenProject=project;
+    document.getElementById('b2c-gewonnen-keuze-naam').textContent=project.naam||project.klant||'';
+    document.getElementById('b2c-gewonnen-keuze-overlay').classList.add('open');
+  }
+}
+
+// Override de gewonnen keuze functies om ook B2B te ondersteunen
+const _origB2cEigen=window.b2cBevestigGewonnenEigen;
+const _origB2cPartner=window.b2cBevestigGewonnenPartner;
+
+function b2cBevestigGewonnenEigen(){
+  if(window._b2bGewonnenProject){
+    const p=window._b2bGewonnenProject;window._b2bGewonnenProject=null;
+    b2cSluitGewonnenKeuze();
+    doorstuurNaarInstallatie('b2b',p.id||p._rowid);
+    return;
+  }
+  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
+  b2cSluitGewonnenKeuze();
+  if(!l)return;
+  doorstuurNaarInstallatie('b2c', l.id);
+  b2cRenderGewonnen();showTab('b2c-gewonnen');
+}
+
+function b2cBevestigGewonnenPartner(){
+  if(window._b2bGewonnenProject){
+    const p=window._b2bGewonnenProject;window._b2bGewonnenProject=null;
+    b2cSluitGewonnenKeuze();
+    // Toon partner overlay voor B2B
+    document.getElementById('b2c-gw-partner-naam').textContent=p.naam||p.klant||'';
+    window._b2bGwProject=p;
+    document.getElementById('b2c-gw-partner-input').value=p.installatiepartner||'';
+    const chip=document.getElementById('b2c-gw-partner-chip');
+    chip.style.display=p.installatiepartner?'flex':'none';
+    if(p.installatiepartner)chip.innerHTML=`<i class="ti ti-building" style="font-size:12px"></i> ${p.installatiepartner}`;
+    document.getElementById('b2c-gw-partner-overlay').classList.add('open');
+    return;
+  }
+  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
+  if(!l){b2cSluitGewonnenKeuze();return;}
+  b2cSluitGewonnenKeuze();
+  document.getElementById('b2c-gw-partner-naam').textContent=b2cNaam(l);
+  window._b2bGwProject=null;
+  document.getElementById('b2c-gw-partner-input').value=l.installatiepartner||'';
+  const chip=document.getElementById('b2c-gw-partner-chip');
+  chip.style.display=l.installatiepartner?'flex':'none';
+  if(l.installatiepartner)chip.innerHTML=`<i class="ti ti-building" style="font-size:12px"></i> ${l.installatiepartner}`;
+  document.getElementById('b2c-gw-partner-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('b2c-gw-partner-input').focus(),100);
+}
+
+function b2cBevestigGwPartner(){
+  const naam=(document.getElementById('b2c-gw-partner-input').value||'').trim();
+  if(!naam){showToast('Vul een installatiepartner in.');return;}
+  if(window._b2bGwProject){
+    const p=window._b2bGwProject;window._b2bGwProject=null;
+    p.installatiepartner=naam;
+    sbSaveProject(p);
+    b2cSluitGwPartner();
+    doorstuurNaarInstallatie('b2b',p.id||p._rowid);
+    showToast(`🎉 Verkocht! Partner: ${naam}`);
+    return;
+  }
+  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
+  if(!l){b2cSluitGwPartner();return;}
+  l.status='Gewonnen';
+  if(!l.gewonnenOp)l.gewonnenOp=today();
+  l.installatieType='partner';l.installatiepartner=naam;
+  l.acties=l.acties||[];l.acties.push({datum:today(),tekst:`✓ Gewonnen — partner: ${naam}`});
+  sbSaveB2cLead(l);
+  b2cSluitGwPartner();b2cRenderGewonnen();showTab('b2c-gewonnen');
+  showToast(`🎉 Gewonnen! Partner: ${naam}`);
+}
+
+// B2B modal installatiepartner zoekfunctie
+function mPartnerZoek(q){
+  const dd=document.getElementById('m-partner-dd');
+  if(!q||q.length<1){dd.style.display='none';return;}
+  const ql=q.toLowerCase();
+  const crmPartners=klanten.filter(k=>k.isInstallatiepartner&&((k.naam||'').toLowerCase().includes(ql)));
+  const allePartners=klanten.filter(k=>!k.isInstallatiepartner&&((k.naam||'').toLowerCase().includes(ql))).slice(0,3);
+  const eerder=[...new Set(b2cLeads.filter(l=>l.installatiepartner).map(l=>l.installatiepartner))].filter(p=>p.toLowerCase().includes(ql));
+  const results=[];
+  crmPartners.forEach(k=>results.push({label:k.naam,sub:'✓ Installatiepartner',icon:'ti-tools',color:'#e85d04'}));
+  allePartners.forEach(k=>results.push({label:k.naam,sub:k.contact||'CRM klant',icon:'ti-building',color:'var(--tx2)'}));
+  eerder.filter(p=>!results.find(r=>r.label===p)).forEach(p=>results.push({label:p,sub:'Eerder gebruikt',icon:'ti-history',color:'var(--tx3)'}));
+  if(!results.length){dd.style.display='none';return;}
+  dd.innerHTML=results.map((r,i)=>`<div data-mpi="${i}" style="padding:7px 12px;cursor:pointer;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+    <i class="ti ${r.icon}" style="color:${r.color};font-size:12px;flex-shrink:0"></i>
+    <div><div style="font-size:12px;font-weight:600">${r.label}</div><div style="font-size:10px;color:var(--tx3)">${r.sub}</div></div>
+  </div>`).join('');
+  dd._results=results;
+  dd.querySelectorAll('[data-mpi]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const r=dd._results[parseInt(el.dataset.mpi)];
+      mPartnerSelect(r.label);
+    });
+  });
+  dd.style.display='block';
+}
+function mPartnerSelect(naam){
+  document.getElementById('m-partner-search').value=naam;
+  document.getElementById('m-partner-naam').value=naam;
+  document.getElementById('m-partner-dd').style.display='none';
+  const chip=document.getElementById('m-partner-chip');
+  chip.style.display='flex';
+  chip.innerHTML=`<i class="ti ti-tools" style="font-size:11px"></i> ${naam}<button onclick="mPartnerClear()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;font-size:13px"><i class="ti ti-x"></i></button>`;
+}
+function mPartnerClear(){
+  document.getElementById('m-partner-search').value='';
+  document.getElementById('m-partner-naam').value='';
+  document.getElementById('m-partner-chip').style.display='none';
+}
+
 function b2bDoorstuurInstallatie(){
   // Haal het huidig geopend project op via editingIdx of editingId
   let p=null;
