@@ -1824,7 +1824,7 @@ let didDrag          = false;
 let currentAttachments = [];
 let currentTijdlijn = [];
 let dashWindow       = null;
-let prevSoldSet      = new Set();
+let prevSoldSet      = null; // null = nog niet geïnitialiseerd, eerste loadAll vult het zonder confetti
 let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 
@@ -2204,7 +2204,10 @@ async function loadAll(){
   const incoming=(rows||[]).map(r=>({id:r.id,...r.data}));
   // Check nieuwe 100% voor confetti
   const nowSold=new Set(incoming.filter(p=>p.pct===100).map(p=>p.naam));
-  nowSold.forEach(naam=>{if(!prevSoldSet.has(naam))fireConfetti(incoming.find(x=>x.naam===naam));});
+  // Confetti enkel als prevSoldSet al gevuld is (niet bij eerste paginaoplading)
+  if(prevSoldSet!==null){
+    nowSold.forEach(naam=>{if(!prevSoldSet.has(naam))fireConfetti(incoming.find(x=>x.naam===naam));});
+  }
   prevSoldSet=nowSold;
   if(incoming.length>0||projects.length===0)projects=incoming;
   try{localStorage.setItem('blitz_projects',JSON.stringify(projects));}catch{}
@@ -2664,7 +2667,7 @@ async function onDrop(e,newStatus){
   const p=projects[dragSourceIdx];const oldStat=parseInt(p.status);
   if(oldStat===newStatus){dragSourceIdx=null;return;}
   didDrag=true;p.status=String(newStatus);p.pct=DEFAULT_PCT[newStatus];
-  if(p.pct===100&&!prevSoldSet.has(p.naam)){prevSoldSet.add(p.naam);fireConfetti(p);}
+  if(p.pct===100&&!(prevSoldSet&&prevSoldSet.has(p.naam))){if(prevSoldSet)prevSoldSet.add(p.naam);fireConfetti(p);}
   // Auto datum verkoop bij 100%
   if(p.pct===100&&!p.sold_at)p.sold_at=today();
   renderAll();showToast(`"${p.naam}" → ${STATUSES[newStatus]}`);
@@ -5441,7 +5444,6 @@ function startAppAfterLogin(userNaam='', userEmail=''){
     try{const d=localStorage.getItem('blitz_resps');if(d){const r=JSON.parse(d);resps=r.map(x=>typeof x==='string'?{naam:x,rol:''}:x);}}catch{}
   }
   prevSoldSet=new Set(projects.filter(p=>p.pct===100).map(p=>p.naam));
-
   // Sla userNaam op voor gebruik na data laden
   window._pendingUserLink={naam:userNaam,email:userEmail};
 
