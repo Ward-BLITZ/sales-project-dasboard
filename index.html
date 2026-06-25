@@ -4999,6 +4999,17 @@ function instLinkSearch(q){
 }
 
 // ── DOORSTUREN NAAR INSTALLATIES ──
+function b2bDoorstuurInstallatie(){
+  // Haal het huidig geopend project op via editingIdx of editingId
+  let p=null;
+  if(editingIdx!==null&&editingIdx>=0)p=projects[editingIdx];
+  else if(editingId)p=projects.find(x=>x.id===editingId||x._rowid===editingId);
+  if(!p){showToast('Sla het project eerst op voor je doorstuurt.');return;}
+  // Sluit de modal stilletjes (zonder save-check want we sturen door)
+  closeModal();
+  doorstuurNaarInstallatie('b2b', p.id||p._rowid);
+}
+
 function doorstuurNaarInstallatie(bron, id){
   let voornaam='',achternaam='',adres='',tel='',email='',resp='',linkId='',linkLabel='',project='';
   let leadObj=null, projObj=null;
