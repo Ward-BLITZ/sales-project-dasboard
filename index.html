@@ -5085,6 +5085,11 @@ function instLinkSearch(q){
 }
 
 // ── DOORSTUREN NAAR INSTALLATIES ──
+function b2cSluitGewonnenKeuze(){
+  document.getElementById('b2c-gewonnen-keuze-overlay').classList.remove('open');
+  window._b2bGewonnenProject=null;
+}
+
 function b2bTriggerGewonnenFlow(project){
   if(!project)return;
   const partner=project.installatiepartner;
