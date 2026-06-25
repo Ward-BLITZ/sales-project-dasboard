@@ -4921,7 +4921,7 @@ function instDossierSave(){
     docs: [...instCurrentDocs],
     acties: existing?existing.acties||[]:[]
   };
-  if(existing){Object.assign(existing,data);}
+  if(existing){if(existing._sbid)data._sbid=existing._sbid;Object.assign(existing,data);}
   else{installaties.push(data);}
 
   // Agenda: installatie
