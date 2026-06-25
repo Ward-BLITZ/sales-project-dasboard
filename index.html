@@ -1644,7 +1644,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <div style="border-top:1px solid var(--bd);padding-top:14px;margin-top:4px">
       <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px"><i class="ti ti-tools" style="color:#e85d04;margin-right:5px"></i>Installatiepartner</div>
       <div style="position:relative">
-        <input id="m-partner-search" placeholder="Zoek installatiepartner in CRM…" autocomplete="off" oninput="mPartnerZoek(this.value)" style="width:100%;font-size:13px">
+        <input id="m-partner-search" placeholder="Zoek installatiepartner in CRM…" autocomplete="off" oninput="mPartnerZoek(this.value);document.getElementById('m-partner-naam').value=this.value.trim();" style="width:100%;font-size:13px">
         <div id="m-partner-dd" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:160px;overflow-y:auto;margin-top:2px"></div>
       </div>
       <div id="m-partner-chip" style="display:none;margin-top:6px;align-items:center;gap:6px;background:rgba(232,93,4,.08);border:1px solid rgba(232,93,4,.25);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;color:#e85d04">
@@ -2849,6 +2849,7 @@ function openModal(idx){
 }
 
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');editingIdx=null;editingId=null;}
+function closeModalSafe(){closeModal();}
 
 function onStatusChange(){
   const si=parseInt(document.getElementById('m-status').value);
@@ -3098,24 +3099,8 @@ function renderAttachList(){
 function fireConfetti(p){
   const vn=(p&&p.resp)?p.resp.split(' ')[0]:'';
   const pn=(p&&p.naam)?p.naam:'';
-
-  // TV-scherm: grote felicitatie
+  // Enkel TV-scherm: grote felicitatie — geen confetti op het werkblad
   if(dashWindow&&!dashWindow.closed){try{dashWindow.triggerSale&&dashWindow.triggerSale(vn,pn);}catch{}}
-
-  // Werkblad: klein confettikanon (geen overlay)
-  const o=document.createElement('div');
-  o.style.cssText='position:fixed;inset:0;z-index:9998;pointer-events:none;overflow:hidden';
-  document.body.appendChild(o);
-  const cls=['#1D252D','#fff','#00b882','#D9D9D6','#00DFA3','#f59e0b','#e85d04'];
-  for(let i=0;i<80;i++){
-    const c=document.createElement('div');
-    const sz=Math.random()*10+4;
-    const rect=Math.random()>.4;
-    const startX=Math.random()*100;
-    c.style.cssText=`position:absolute;width:${sz}px;height:${rect?sz*.4:sz}px;background:${cls[Math.floor(Math.random()*cls.length)]};left:${startX}%;top:${40+Math.random()*20}%;border-radius:${rect?3:50}%;animation:fall ${1+Math.random()*2}s ${Math.random()*.5}s linear forwards`;
-    o.appendChild(c);
-  }
-  setTimeout(()=>o.remove(),3500);
 }
 
 // ── CALENDAR ──────────────────────────────────────────
