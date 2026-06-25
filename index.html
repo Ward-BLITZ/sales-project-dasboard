@@ -983,13 +983,40 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 
 <!-- B2C INSTALLATIEPARTNER POPUP -->
 <div class="modal-overlay" id="b2c-installateur-overlay">
-  <div class="modal-box" style="max-width:420px">
+  <div class="modal-box" style="max-width:480px">
     <div class="modal-header">
       <span class="modal-title"><i class="ti ti-tools" style="color:var(--green);margin-right:6px"></i>Installatiepartner koppelen</span>
       <button class="modal-close" onclick="b2cSluitInstallateur()"><i class="ti ti-x"></i></button>
     </div>
-    <p style="font-size:13px;color:var(--tx2);margin-bottom:14px">Welke installatiepartner wordt gekoppeld aan deze offerte?</p>
-    <div class="field"><label>Naam installatiepartner *</label><input id="b2c-installateur-input" placeholder="bv. Elektro Janssen, TechInstall NV..." autocomplete="off"></div>
+    <p style="font-size:13px;color:var(--tx2);margin-bottom:12px">Welke installatiepartner wordt gekoppeld aan deze offerte?</p>
+
+    <!-- Zoek in CRM -->
+    <div class="field" style="position:relative;margin-bottom:6px">
+      <label>Zoek in CRM of typ een naam</label>
+      <input id="b2c-inst-search" placeholder="Zoek installatiepartner…" autocomplete="off" oninput="b2cInstZoek(this.value)" style="width:100%">
+      <div id="b2c-inst-dd" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:180px;overflow-y:auto;margin-top:2px"></div>
+    </div>
+    <div id="b2c-inst-chip" style="display:none;margin-bottom:10px;align-items:center;gap:6px;background:rgba(0,223,163,.10);border:1px solid rgba(0,223,163,.3);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;color:#00805e"></div>
+    <input type="hidden" id="b2c-installateur-input">
+
+    <!-- Snelle aanmaak CRM -->
+    <div id="b2c-inst-nieuw-toggle" style="margin-bottom:8px">
+      <button class="btn sm" onclick="b2cInstToggleNieuw()" style="font-size:11px;color:var(--tx3)"><i class="ti ti-plus"></i> Partner staat niet in CRM — snel aanmaken</button>
+    </div>
+    <div id="b2c-inst-nieuw-form" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Nieuwe installatiepartner aanmaken in CRM</div>
+      <div class="grid2" style="gap:8px;margin-bottom:8px">
+        <div class="field" style="margin:0"><label style="font-size:11px">Bedrijfsnaam *</label><input id="b2c-inst-n-naam" placeholder="TechInstall NV" style="font-size:12px"></div>
+        <div class="field" style="margin:0"><label style="font-size:11px">BTW-nummer</label><input id="b2c-inst-n-btw" placeholder="BE 0123.456.789" style="font-size:12px"></div>
+      </div>
+      <div class="grid2" style="gap:8px;margin-bottom:8px">
+        <div class="field" style="margin:0"><label style="font-size:11px">Contactpersoon</label><input id="b2c-inst-n-contact" placeholder="Jan Janssen" style="font-size:12px"></div>
+        <div class="field" style="margin:0"><label style="font-size:11px">GSM</label><input id="b2c-inst-n-gsm" type="tel" placeholder="0499 123 456" style="font-size:12px"></div>
+      </div>
+      <div class="field" style="margin-bottom:6px"><label style="font-size:11px">E-mail</label><input id="b2c-inst-n-email" type="email" placeholder="info@partner.be" style="font-size:12px"></div>
+      <button class="btn sm primary" onclick="b2cInstAanmaken()"><i class="ti ti-plus"></i> Aanmaken in CRM &amp; koppelen</button>
+    </div>
+
     <div class="modal-footer">
       <button class="btn" onclick="b2cSluitInstallateur()">Annuleren</button>
       <button class="btn primary" onclick="b2cBevestigInstallateur()"><i class="ti ti-check"></i> Koppelen &amp; opslaan</button>
@@ -3279,7 +3306,7 @@ function openCrmModal(idx){
     document.getElementById('crm-contactemail').value=k.contactemail||'';
     document.getElementById('crm-notities').value=k.notities||'';
     document.getElementById('crm-is-partner').checked=!!k.isInstallatiepartner;
-    document.getElementById('crm-del-btn').style.display='inline-flex';
+    document.getElementById('crm-del-btn').style.display=heeftRecht('crm_bewerken')?'inline-flex':'none';
   }else{
     document.getElementById('crm-modal-title').textContent='Nieuwe klant';
     ['crm-naam','crm-btw','crm-tel','crm-email','crm-adres','crm-contact','crm-functie','crm-contactgsm','crm-contactemail','crm-notities'].forEach(id=>document.getElementById(id).value='');
@@ -3577,6 +3604,10 @@ async function onLoggedIn(user){
   const kanGebruikersBeheer=currentRole==='admin'||rol==='manager';
   document.getElementById('tab-gebruikers').style.display=kanGebruikersBeheer?'inline-flex':'none';
 
+  // CRM tab: iedereen met crm_lezen recht
+  const crmTab=document.getElementById('tab-crm');
+  if(crmTab)crmTab.style.display=heeftRecht('crm_lezen')?'':'none';
+
   // Naam tonen
   const userNaam=user.user_metadata?.naam||(user.user_metadata?.voornaam?(user.user_metadata.voornaam+' '+(user.user_metadata.achternaam||'')).trim():'')||'';
   document.getElementById('current-user-name').textContent=userNaam||user.email;
@@ -3599,15 +3630,14 @@ function scheduleMidnightLogout(){
 // ── GEBRUIKERSBEHEER ───────────────────────────────────
 // Rechten-matrix
 const RECHTEN = {
-  // [afdeling][rol] → array van permissies
   hoofdadmin: { operator: ['alles'], manager: ['alles'] },
   sales: {
-    operator: ['b2c_lezen','b2c_bewerken','b2b_lezen','b2b_bewerken','agenda_sales','installaties_lezen'],
-    manager:  ['b2c_lezen','b2c_bewerken','b2b_lezen','b2b_bewerken','agenda_sales','installaties_lezen','sales_beheer']
+    operator: ['b2c_lezen','b2c_bewerken','b2b_lezen','b2b_bewerken','agenda_sales','installaties_lezen','crm_lezen','crm_bewerken'],
+    manager:  ['b2c_lezen','b2c_bewerken','b2b_lezen','b2b_bewerken','agenda_sales','installaties_lezen','sales_beheer','crm_lezen','crm_bewerken']
   },
   service: {
-    operator: ['b2c_lezen','b2b_lezen','installaties_lezen','installaties_bewerken','agenda_service'],
-    manager:  ['b2c_lezen','b2b_lezen','installaties_lezen','installaties_bewerken','agenda_service','service_beheer']
+    operator: ['b2c_lezen','b2b_lezen','installaties_lezen','installaties_bewerken','agenda_service','crm_lezen','crm_bewerken'],
+    manager:  ['b2c_lezen','b2b_lezen','installaties_lezen','installaties_bewerken','agenda_service','service_beheer','crm_lezen','crm_bewerken']
   }
 };
 
@@ -5055,6 +5085,11 @@ function instLinkSearch(q){
 }
 
 // ── DOORSTUREN NAAR INSTALLATIES ──
+function b2cSluitGewonnenKeuze(){
+  document.getElementById('b2c-gewonnen-keuze-overlay').classList.remove('open');
+  window._b2bGewonnenProject=null;
+}
+
 function b2bTriggerGewonnenFlow(project){
   if(!project)return;
   const partner=project.installatiepartner;
@@ -5221,6 +5256,21 @@ function doorstuurNaarInstallatie(bron, id){
     leadObj.acties.push({datum:today(),tekst:'✓ Gewonnen — doorgestuurd naar installatiedashboard.'});
     sbSaveB2cLead(leadObj);
     b2cRenderGewonnen();
+  }
+
+  // Zet B2B project op Gewonnen (pct=100) als nog niet verkocht
+  if(projObj && projObj.pct !== 100){
+    const projIdx=projects.findIndex(x=>x===projObj);
+    projObj.pct=100;
+    projObj.status=String(STATUSES.length-1);
+    if(!projObj.sold_at)projObj.sold_at=today();
+    projObj.tijdlijn=projObj.tijdlijn||[];
+    projObj.tijdlijn.push({datum:today(),tekst:'Gewonnen — doorgestuurd naar installatiedashboard.'});
+    if(projIdx>=0)projects[projIdx]=projObj;
+    prevSoldSet.add(projObj.naam||'');
+    lsSave();
+    sbSaveProject(projObj).catch(()=>{});
+    renderAll();
   }
 
   // Maak installatie-dossier aan en sla DIRECT op
@@ -5878,10 +5928,9 @@ function b2cAttachBoardEvents(){
     const l=b2cLeads.find(x=>x.id===id);
     if(!l||l.status===newStatus){_b2cDragId=null;return;}
     if(newStatus==='Offerte installateur'){
-      b2cInstallateurLeadId=id;b2cInstallateurNewStatus=newStatus;_b2cDragId=null;
-      document.getElementById('b2c-installateur-input').value=l.installatiepartner||'';
-      document.getElementById('b2c-installateur-overlay').classList.add('open');
-      setTimeout(()=>document.getElementById('b2c-installateur-input').focus(),100);
+      _b2cDragId=null;
+      const huidig=l.installatiepartner||'';
+      b2cInstOpenOverlay(id,newStatus,huidig);
       return;
     }
     if(newStatus==='Gewonnen'){
@@ -5945,7 +5994,7 @@ function b2cAnnuleerVerlies(){
 
 function b2cBevestigInstallateur(){
   const naam=document.getElementById('b2c-installateur-input').value.trim();
-  if(!naam){showToast('Vul een installatiepartner in.');return;}
+  if(!naam){showToast('Selecteer of typ een installatiepartner.');return;}
   const l=b2cLeads.find(x=>x.id===b2cInstallateurLeadId);
   if(!l){b2cSluitInstallateur();return;}
   l.status=b2cInstallateurNewStatus;
@@ -5959,8 +6008,84 @@ function b2cBevestigInstallateur(){
 }
 function b2cSluitInstallateur(){
   document.getElementById('b2c-installateur-overlay').classList.remove('open');
+  document.getElementById('b2c-inst-dd').style.display='none';
+  document.getElementById('b2c-inst-nieuw-form').style.display='none';
   b2cInstallateurLeadId=null;
   b2cInstallateurNewStatus=null;
+}
+function b2cInstOpenOverlay(leadId, status, huidigPartner){
+  b2cInstallateurLeadId=leadId;
+  b2cInstallateurNewStatus=status;
+  // Reset form
+  document.getElementById('b2c-inst-search').value=huidigPartner||'';
+  document.getElementById('b2c-installateur-input').value=huidigPartner||'';
+  document.getElementById('b2c-inst-dd').style.display='none';
+  document.getElementById('b2c-inst-nieuw-form').style.display='none';
+  const chip=document.getElementById('b2c-inst-chip');
+  chip.style.display=huidigPartner?'flex':'none';
+  if(huidigPartner)chip.innerHTML=`<i class="ti ti-tools" style="font-size:11px"></i> ${huidigPartner}`;
+  document.getElementById('b2c-installateur-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('b2c-inst-search').focus(),100);
+}
+function b2cInstZoek(q){
+  const dd=document.getElementById('b2c-inst-dd');
+  if(!q||q.length<1){dd.style.display='none';return;}
+  const ql=q.toLowerCase();
+  const partners=klanten.filter(k=>k.isInstallatiepartner&&(k.naam||'').toLowerCase().includes(ql));
+  const anderen=klanten.filter(k=>!k.isInstallatiepartner&&(k.naam||'').toLowerCase().includes(ql)).slice(0,3);
+  const eerder=[...new Set(b2cLeads.filter(l=>l.installatiepartner).map(l=>l.installatiepartner))].filter(p=>p.toLowerCase().includes(ql)&&!klanten.find(k=>k.naam===p));
+  const results=[];
+  partners.forEach(k=>results.push({label:k.naam,sub:'✓ Installatiepartner',icon:'ti-tools',color:'#e85d04'}));
+  anderen.forEach(k=>results.push({label:k.naam,sub:k.contact||'CRM klant',icon:'ti-building',color:'var(--tx2)'}));
+  eerder.forEach(p=>results.push({label:p,sub:'Eerder gebruikt',icon:'ti-history',color:'var(--tx3)'}));
+  if(!results.length){dd.style.display='none';return;}
+  dd.innerHTML=results.map((r,i)=>`<div data-ii="${i}" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+    <i class="ti ${r.icon}" style="color:${r.color};font-size:12px;flex-shrink:0"></i>
+    <div><div style="font-size:12px;font-weight:600">${r.label}</div><div style="font-size:10px;color:var(--tx3)">${r.sub}</div></div>
+  </div>`).join('');
+  dd._results=results;
+  dd.querySelectorAll('[data-ii]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const r=dd._results[parseInt(el.dataset.ii)];
+      document.getElementById('b2c-inst-search').value=r.label;
+      document.getElementById('b2c-installateur-input').value=r.label;
+      dd.style.display='none';
+      const chip=document.getElementById('b2c-inst-chip');
+      chip.style.display='flex';
+      chip.innerHTML=`<i class="ti ti-tools" style="font-size:11px"></i> ${r.label}`;
+    });
+  });
+  dd.style.display='block';
+}
+function b2cInstToggleNieuw(){
+  const f=document.getElementById('b2c-inst-nieuw-form');
+  f.style.display=f.style.display==='none'?'block':'none';
+  if(f.style.display==='block')document.getElementById('b2c-inst-n-naam').focus();
+}
+async function b2cInstAanmaken(){
+  const naam=document.getElementById('b2c-inst-n-naam').value.trim();
+  if(!naam){showToast('Bedrijfsnaam is verplicht.');return;}
+  const nieuw={
+    naam,
+    btw:document.getElementById('b2c-inst-n-btw').value.trim(),
+    contact:document.getElementById('b2c-inst-n-contact').value.trim(),
+    contactgsm:document.getElementById('b2c-inst-n-gsm').value.trim(),
+    contactemail:document.getElementById('b2c-inst-n-email').value.trim(),
+    isInstallatiepartner:true
+  };
+  try{
+    const newId=await sbSaveKlant(nieuw);
+    if(newId)nieuw.id=newId;
+    klanten.push(nieuw);
+  }catch{klanten.push(nieuw);}
+  // Koppel automatisch
+  document.getElementById('b2c-inst-search').value=naam;
+  document.getElementById('b2c-installateur-input').value=naam;
+  document.getElementById('b2c-inst-nieuw-form').style.display='none';
+  const chip=document.getElementById('b2c-inst-chip');
+  chip.style.display='flex';
+  chip.innerHTML=`<i class="ti ti-tools" style="font-size:11px"></i> ${naam} <span style="font-size:10px;opacity:.7;margin-left:4px">(nieuw in CRM)</span>`;
+  showToast(`"${naam}" aangemaakt in CRM en geselecteerd.`);
 }
 
 // ─── DETAIL MODAL ───────────────────────────────────
