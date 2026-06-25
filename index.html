@@ -524,7 +524,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
       </div>
       <div class="cal-grid" id="cal-grid"></div>
       <div class="cal-ev-section" id="cal-events" style="display:none"></div>
-      <!-- B2B OPVOLGINGEN SIDEBAR -->
+      <!-- B2B OPVOLGINGEN SIDEBAR (nieuw systeem) -->
       <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px">
         <div style="font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:5px"><i class="ti ti-calendar-check" style="color:var(--green)"></i> Opvolgingen</div>
         <div id="b2b-dash-opvolgingen"></div>
@@ -1596,11 +1596,6 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
           <div class="field"><label><i class="ti ti-bolt" style="color:var(--green);margin-right:4px"></i>Aantal laadpunten</label><input type="number" id="m-lp" placeholder="0" min="0"></div>
           <div class="field"><label><i class="ti ti-file-invoice" style="color:var(--green);margin-right:4px"></i>Offertenummer</label><input id="m-offertenr" placeholder="bv. OFF-2026-001"></div>
         </div>
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin:14px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--bd)"><i class="ti ti-calendar-event" style="margin-right:5px"></i>Opvolging</div>
-        <div class="grid2">
-          <div class="field"><label>Opvolgdatum</label><input type="date" id="m-datum"></div>
-          <div class="field"><label>Notitie opvolging</label><input id="m-notitie" placeholder="bv. offerte bespreken..."></div>
-        </div>
         <div class="field">
           <label><i class="ti ti-paperclip" style="margin-right:4px;color:var(--green)"></i>Bijlagen</label>
           <div class="attach-drop" id="attach-drop"
@@ -2637,7 +2632,6 @@ function renderKanban(){
           <div class="tile-klant">${p.klant||''}</div>
           <div class="tile-bar-wrap"><div class="tile-bar" style="width:${pct}%;background:${col}"></div></div>
           <div class="tile-footer"><span class="tile-pct" style="color:${col}">${pct}%</span><div class="tile-right">${lpH}${rH}</div></div>
-          ${dtb}
         </div>
       </div>`;
     }).join('')||`<div class="kol-empty"><i class="ti ti-inbox" style="font-size:20px;display:block;margin-bottom:4px"></i>Leeg</div>`;
@@ -2835,7 +2829,6 @@ function openModal(idx){
     document.getElementById('m-omzet').value=p.omzet||'';
     document.getElementById('m-lp').value=p.lp||'';
     document.getElementById('m-offertenr').value=p.offertenr||'';
-    document.getElementById('m-datum').value=p.datum||'';
     // Installatiepartner
     const partnerNaam=p.installatiepartner||'';
     document.getElementById('m-partner-naam').value=partnerNaam;
@@ -2843,7 +2836,7 @@ function openModal(idx){
     const pchip=document.getElementById('m-partner-chip');
     if(partnerNaam){pchip.style.display='flex';pchip.innerHTML=`<i class="ti ti-tools" style="font-size:11px"></i> ${partnerNaam}<button onclick="mPartnerClear()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;font-size:13px" title="Verwijderen"><i class="ti ti-x"></i></button>`;}
     else{pchip.style.display='none';}
-    document.getElementById('m-notitie').value=p.notitie||'';
+    document.getElementById('m-notitie').value='';
     const pct=p.pct!=null?p.pct:DEFAULT_PCT[parseInt(p.status)||0];
     document.getElementById('m-pct').value=pct;
     document.getElementById('m-pct-label').textContent=pct+'%';
@@ -2857,7 +2850,7 @@ function openModal(idx){
     b2bRenderOpvolgingen();
   } else {
     document.getElementById('modal-title').textContent='Nieuw project';
-    ['m-naam','m-klant','m-btw','m-contact','m-contactgsm','m-contactemail','m-adres','m-product','m-info','m-omzet','m-lp','m-offertenr','m-datum','m-notitie','m-partner-search','m-partner-naam'].forEach(id=>document.getElementById(id).value='');
+    ['m-naam','m-klant','m-btw','m-contact','m-contactgsm','m-contactemail','m-adres','m-product','m-info','m-omzet','m-lp','m-offertenr','m-partner-search','m-partner-naam'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('m-partner-chip').style.display='none';
     document.getElementById('m-status').value='0';
     document.getElementById('m-pct').value=5;document.getElementById('m-pct-label').textContent='5%';
@@ -2910,8 +2903,8 @@ async function saveProject(){
     lp:document.getElementById('m-lp').value||'',
     offertenr:document.getElementById('m-offertenr').value.trim()||'',
     omzet:(()=>{const v=document.getElementById('m-omzet').value.trim();if(v)return v;const lp=parseInt(document.getElementById('m-lp').value)||0;return lp>0?String(lp*1200):'';})(),
-    datum:document.getElementById('m-datum').value||'',
-    notitie:document.getElementById('m-notitie').value.trim()||'',
+    datum:'',
+    notitie:'',
     attachments:[...currentAttachments],
     tijdlijn:[...currentTijdlijn],
     opvolgingen:[...currentB2bOpvolgingen],
@@ -3173,18 +3166,8 @@ function renderCalendar(){
     byDay[key].items.push(item);
   });
 
-  evEl.innerHTML=`<div class="cal-ev-title"><i class="ti ti-phone" style="margin-right:4px"></i>Opvolgingen</div>`
-    +Object.entries(byDay).map(([dateStr,{diff,items}])=>`
-      <div style="font-size:11px;font-weight:700;color:var(--tx2);margin:10px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--bd)">${fmtDayHeader(diff)}</div>
-      ${items.map(({p})=>`<div class="cal-ev-item" onclick="openModal(${projects.indexOf(p)})">
-        <div class="cal-ev-dot" style="background:${pctColor(p.pct!=null?p.pct:DEFAULT_PCT[parseInt(p.status)]||5)}"></div>
-        <div class="cal-ev-info">
-          <div class="cal-ev-naam">${p.naam||''}</div>
-          <div class="cal-ev-date">${p.resp?' · '+p.resp:''}</div>
-          ${p.notitie?`<div class="cal-ev-note">${p.notitie}</div>`:''}
-        </div>
-      </div>`).join('')}
-    `).join('');
+  // Oude opvolgdatum sectie verborgen — wordt vervangen door het nieuwe opvolgingensysteem
+  document.getElementById('cal-events').style.display='none';
 }
 
 // ── EXCEL EXPORT ──────────────────────────────────────
