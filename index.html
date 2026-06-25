@@ -4861,10 +4861,16 @@ function instDossierSave(){
 
 function instDossierDelete(){
   if(!instDossierOpenId||!confirm('Installatie-dossier verwijderen?'))return;
+  const inst=installaties.find(x=>x.id===instDossierOpenId);
+  const sbid=inst?inst._sbid||null:null;
   installaties=installaties.filter(x=>x.id!==instDossierOpenId);
   agAfspraken=agAfspraken.filter(a=>a.id!=='inst-'+instDossierOpenId&&a.id!=='keur-'+instDossierOpenId);
   try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
-  sbDeleteInstallatie(instDossierOpenId);
+  // Verwijder via Supabase row id (_sbid), niet interne id
+  if(sbUrl&&sbid){
+    sbFetch('installaties?id=eq.'+sbid,{method:'DELETE'}).catch(e=>console.warn('sbDeleteInstallatie:',e.message));
+  }
+  instSaveToStorage();
   instDossierClose();
   instRenderBoard();
   siOpvRender();
