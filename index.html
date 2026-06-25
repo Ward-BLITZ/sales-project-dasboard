@@ -2263,14 +2263,15 @@ async function sbFetch(path,opts={}){
 }
 
 async function loadAll(){
-  // Lopende projecten
+  // Lopende projecten — Supabase is source of truth
   const rows=await sbFetch('projects?order=created_at.asc');
   const incoming=(rows||[]).map(r=>({id:r.id,...r.data}));
   // Check nieuwe 100% voor confetti
   const nowSold=new Set(incoming.filter(p=>p.pct===100).map(p=>p.naam));
   nowSold.forEach(naam=>{if(!prevSoldSet.has(naam))fireConfetti(incoming.find(x=>x.naam===naam));});
   prevSoldSet=nowSold;
-  if(incoming.length>0||projects.length===0)projects=incoming;
+  // Altijd bijwerken — Supabase is bron van waarheid
+  projects=incoming;
   try{localStorage.setItem('blitz_projects',JSON.stringify(projects));}catch{}
 
   // Gesloten projecten
@@ -2355,8 +2356,13 @@ async function sbSaveProject(p){
   if(!sbUrl){lsSave();return null;}
   const data={...p};const id=data.id;delete data.id;
   data.updatedAt=new Date().toISOString();
-  if(id){await sbFetch('projects?id=eq.'+id,{method:'PATCH',body:JSON.stringify({data})});return id;}
-  else{const r=await sbFetch('projects',{method:'POST',body:JSON.stringify({data})});return r&&r[0]?r[0].id:null;}
+  if(id){
+    await sbFetch('projects?id=eq.'+id,{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({data})});
+    return id;
+  } else {
+    const r=await sbFetch('projects',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({data})});
+    return r&&r[0]?r[0].id:null;
+  }
 }
 
 async function sbDeleteProject(id){if(sbUrl)await sbFetch('projects?id=eq.'+id,{method:'DELETE'});}
@@ -2885,27 +2891,38 @@ async function saveProject(){
     sold_at:(pct===100&&!wasSold)?today():(oldSoldAt||'')
   };
   if(editingId)project.id=editingId;
+
   // Sla editingIdx op vóór closeModal() die het reset
   const savedEditingIdx=editingIdx;
-  // Bij nieuw verkocht (pct=100) → gewonnen flow tonen
   const isNieuwVerkocht=pct===100&&!wasSold;
-  closeModal();showToast('Project opgeslagen.');
-  if(pct===100&&!wasSold){prevSoldSet.add(naam);fireConfetti(project);}
+
+  // ALTIJD lokale array bijwerken en renderen — ongeacht Supabase
+  if(savedEditingIdx!==null){
+    projects[savedEditingIdx]=project;
+  } else {
+    projects.push(project);
+  }
+  lsSave();
+  closeModal();
+  renderAll();
+  showToast('Project opgeslagen.');
+  if(isNieuwVerkocht){prevSoldSet.add(naam);fireConfetti(project);}
+
+  // Supabase op achtergrond synchroniseren
   try{
     const newId=await sbSaveProject(project);
-    if(newId&&!project.id)project.id=newId;
-    if(!sbUrl){
-      if(savedEditingIdx!==null)projects[savedEditingIdx]=project;
-      else projects.push(project);
-      lsSave();renderAll();
+    if(newId&&!project.id){
+      project.id=newId;
+      // Update in array met echte Supabase id
+      const idx=projects.indexOf(project);
+      if(idx>=0)projects[idx]=project;
+      lsSave();
     }
-  }catch{
-    if(savedEditingIdx!==null)projects[savedEditingIdx]=project;
-    else projects.push(project);
-    lsSave();renderAll();
-    showToast('Lokaal opgeslagen.');
+  }catch(e){
+    console.warn('sbSaveProject fout:',e.message);
+    showToast('Lokaal opgeslagen — sync mislukt.');
   }
-  // Gewonnen flow triggeren als nieuw verkocht
+
   if(isNieuwVerkocht){
     setTimeout(()=>b2bTriggerGewonnenFlow(project),400);
   }
@@ -2913,9 +2930,11 @@ async function saveProject(){
 
 async function deleteProject(){
   if(!confirm('Project verwijderen?'))return;
-  const idx=editingIdx,id=editingId;closeModal();
-  if(sbUrl&&id)sbDeleteProject(id);
-  else{if(idx!==null)projects.splice(idx,1);lsSave();renderAll();}
+  const idx=editingIdx,id=editingId;
+  closeModal();
+  if(idx!==null)projects.splice(idx,1);
+  lsSave();renderAll();
+  if(sbUrl&&id)sbDeleteProject(id).catch(e=>console.warn('sbDeleteProject:',e));
 }
 
 // ── RESPS ─────────────────────────────────────────────
