@@ -2222,11 +2222,15 @@ async function loadAll(){
   // Installaties laden
   try{
     const irows=await sbFetch('installaties?order=created_at.asc');
-    installaties=(irows||[]).map(r=>({id:r.id,...r.data}));
-    instNextId=installaties.length?Math.max(...installaties.map(i=>typeof i.id==='number'?i.id:0))+1:1;
-    try{localStorage.setItem('blitz_installaties',JSON.stringify(installaties));}catch{}
+    if(irows&&irows.length>0){
+      installaties=irows.map(r=>({...r.data,_sbid:r.id}));
+      instNextId=installaties.length?Math.max(...installaties.map(i=>typeof i.id==='number'?i.id:0))+1:1;
+      instSaveToStorage();
+    } else if(irows&&irows.length===0&&installaties.length>0){
+      // Remote leeg maar lokaal hebben we data → upload
+      for(const inst of installaties){await sbSaveInstallatie(inst);}
+    }
   }catch(e){
-    // Tabel bestaat nog niet — gebruik localStorage als fallback
     instLoadFromStorage();
   }
   renderAll();renderResps();pushToTV();
@@ -4468,20 +4472,23 @@ function instSaveToStorage(){
 }
 async function sbSaveInstallatie(inst){
   if(!sbUrl){instSaveToStorage();return;}
-  const data={...inst};const id=data.id;delete data.id;
+  const data={...inst};
+  delete data._sbid;
   data.updatedAt=new Date().toISOString();
   try{
-    if(id){
-      await sbFetch('installaties?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({data})});
+    if(inst._sbid){
+      await sbFetch('installaties?id=eq.'+inst._sbid,{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({data})});
     } else {
-      const r=await sbFetch('installaties',{method:'POST',body:JSON.stringify({data})});
-      return r&&r[0]?r[0].id:null;
+      const r=await sbFetch('installaties',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({data})});
+      if(r&&r[0]){inst._sbid=r[0].id;}
     }
-  }catch(e){console.warn('sbSaveInstallatie:',e.message);instSaveToStorage();}
+  }catch(e){console.warn('sbSaveInstallatie:',e.message);}
   instSaveToStorage();
 }
 async function sbDeleteInstallatie(id){
-  if(sbUrl){try{await sbFetch('installaties?id=eq.'+id,{method:'DELETE'});}catch(e){console.warn('sbDeleteInstallatie:',e.message);}}
+  const inst=installaties.find(x=>x.id===id)||{};
+  const sbid=inst._sbid||id;
+  if(sbUrl){try{await sbFetch('installaties?id=eq.'+sbid,{method:'DELETE'});}catch(e){console.warn('sbDeleteInstallatie:',e.message);}}
   instSaveToStorage();
 }
 
