@@ -391,6 +391,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
     <div id="auth-login">
       <div class="auth-subtitle">Meld je aan om verder te gaan</div>
       <div class="auth-error" id="login-error"></div>
+      <div id="login-db-status" style="font-size:11px;color:#4a5760;background:#f2f4f3;border-radius:6px;padding:8px 12px;margin-bottom:12px;display:none"></div>
       <div id="auth-key-section" style="display:none;margin-bottom:14px;padding:12px;background:#f2f4f3;border-radius:8px;border:1px solid rgba(0,223,163,.3)">
         <div style="font-size:12px;font-weight:600;color:#1D252D;margin-bottom:6px"><i class="ti ti-plug" style="margin-right:4px;color:#00DFA3"></i>Eerste keer op dit toestel</div>
         <div style="font-size:11px;color:#4a5760;margin-bottom:8px">Vul éénmalig de Supabase API key in. Vraag deze aan je admin.</div>
@@ -479,6 +480,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
       <i class="ti ti-settings"></i> Beheer <i class="ti ti-chevron-down" style="font-size:10px;margin-left:2px"></i>
     </button>
     <div class="nav-dd-menu" id="dd-beheer-menu">
+      <button class="nav-dd-item" id="tab-rapportage" onclick="showTab('rapportage');closeAllNavDd()"><i class="ti ti-chart-bar"></i> Rapportage</button>
       <button class="nav-dd-item" id="tab-crm" onclick="showTab('crm');closeAllNavDd()"><i class="ti ti-building"></i> CRM</button>
       <button class="nav-dd-item" id="tab-instellingen" onclick="showTab('instellingen');closeAllNavDd()"><i class="ti ti-settings"></i> Instellingen</button>
       <button class="nav-dd-item" id="tab-gebruikers" onclick="showTab('gebruikers');closeAllNavDd()" style="display:none"><i class="ti ti-users"></i> Gebruikers</button>
@@ -770,7 +772,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 
 <!-- INSTALLATIE DOSSIER MODAL (volledig) -->
 <div class="modal-overlay" id="inst-dossier-overlay">
-  <div class="modal-box" style="max-width:900px;width:98vw;max-height:92vh;display:flex;flex-direction:column">
+  <div class="modal-box" style="max-width:1100px;width:98vw;max-height:92vh;display:flex;flex-direction:column">
     <div class="modal-header" style="flex-shrink:0">
       <span class="modal-title" id="inst-dossier-titel">Installatie dossier</span>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
@@ -793,18 +795,9 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
     <div style="flex:1;overflow-y:auto;padding:0 2px">
       <!-- TAB: INSTALLATIE -->
       <div id="inst-dtab-content-installatie">
-        <div style="display:grid;grid-template-columns:240px 1fr;gap:0;min-height:380px">
-          <!-- LINKS: Activiteitenlog -->
-          <div style="border-right:1px solid var(--bd);padding:14px 12px;display:flex;flex-direction:column;background:var(--bg2)">
-            <div class="act-log-panel-hdr"><i class="ti ti-timeline" style="color:var(--green)"></i>Activiteitenlog</div>
-            <div class="act-log-feed" id="id-log-list" style="max-height:none;flex:1"></div>
-            <div class="act-log-input-row">
-              <input id="id-log-tekst" placeholder="Actie loggen..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')instLogAdd()">
-              <button class="btn sm primary" onclick="instLogAdd()" title="Loggen"><i class="ti ti-plus"></i></button>
-            </div>
-          </div>
-          <!-- RECHTS: Formulier -->
-          <div style="padding:14px 16px;overflow-y:auto">
+        <div style="display:grid;grid-template-columns:5fr 3fr;gap:0;min-height:380px">
+          <!-- LINKS: Formulier -->
+          <div style="padding:14px 16px;overflow-y:auto;border-right:1px solid var(--bd)">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
               <div class="field"><label>Voornaam *</label><input id="id-voornaam" placeholder="Jan"></div>
               <div class="field"><label>Achternaam *</label><input id="id-achternaam" placeholder="Vermeersch"></div>
@@ -828,6 +821,17 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
                 <input type="hidden" id="id-link-id"><input type="hidden" id="id-link-label">
                 <div id="id-link-dd" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.14);max-height:180px;overflow-y:auto"></div>
               </div>
+            </div>
+          </div>
+          <!-- RECHTS: Activiteitenlog -->
+          <div style="padding:14px 12px;display:flex;flex-direction:column;background:var(--bg2)">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx2);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+              <i class="ti ti-timeline" style="color:var(--green)"></i>Activiteitenlog
+            </div>
+            <div class="act-log-feed" id="id-log-list" style="flex:1;overflow-y:auto;max-height:none"></div>
+            <div class="act-log-input-row">
+              <input id="id-log-tekst" placeholder="Actie loggen..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')instLogAdd()">
+              <button class="btn sm primary" onclick="instLogAdd()" title="Loggen"><i class="ti ti-plus"></i></button>
             </div>
           </div>
         </div>
@@ -1873,6 +1877,34 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 
+<!-- RAPPORTAGE -->
+<div id="pane-rapportage" class="page" style="display:none;max-width:1400px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1.5rem">
+    <div>
+      <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700">Rapportage</div>
+      <div style="font-size:12px;color:var(--tx2)">Overzicht per verantwoordelijke — B2C & B2B</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="rap-periode" onchange="renderRapportage()" style="font-size:13px;padding:7px 12px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)">
+        <option value="all">Alle tijd</option>
+        <option value="month">Deze maand</option>
+        <option value="quarter">Dit kwartaal</option>
+        <option value="year">Dit jaar</option>
+      </select>
+      <button class="btn sm" onclick="renderRapportage()"><i class="ti ti-refresh"></i> Vernieuwen</button>
+    </div>
+  </div>
+
+  <!-- Tabs B2C / B2B -->
+  <div class="inner-tabs" style="margin-bottom:1.5rem">
+    <button class="inner-tab active" id="rap-tab-b2c" onclick="rapShowTab('b2c')"><i class="ti ti-users" style="margin-right:5px"></i>B2C Leads</button>
+    <button class="inner-tab" id="rap-tab-b2b" onclick="rapShowTab('b2b')"><i class="ti ti-briefcase" style="margin-right:5px"></i>B2B Projecten</button>
+  </div>
+
+  <div id="rap-content-b2c"></div>
+  <div id="rap-content-b2b" style="display:none"></div>
+</div>
+
 <!-- TRASH ZONE (fixed bottom right) -->
 <div class="trash-zone hidden" id="trash-zone"
      ondragover="onTrashOver(event)"
@@ -2071,7 +2103,7 @@ function showTab(name){
 }
 
 function showTab(name){
-  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda'].forEach(id=>{
+  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda','rapportage'].forEach(id=>{
     const pane=document.getElementById('pane-'+id);
     if(pane)pane.style.display=(id===name)?'block':'none';
     const tb=document.getElementById('tab-'+id);
@@ -2091,6 +2123,7 @@ function showTab(name){
   if(name==='si-opvolging'){siOpvRender();}
   if(name==='si-afgerond'){siAfgerondRender();}
   if(name==='si-agenda'){siAgRender();}
+  if(name==='rapportage'){renderRapportage();}
   updateNavDdActive(name);
 }
 
@@ -3629,24 +3662,44 @@ async function doLogin(){
   const errEl=document.getElementById('login-error');
   errEl.classList.remove('show');
   if(!email||!pw){errEl.textContent='Vul e-mail en wachtwoord in.';errEl.classList.add('show');return;}
+
+  // Check of supabase library geladen is
+  if(typeof supabase==='undefined'){
+    errEl.textContent='❌ Supabase library niet geladen. Controleer je internetverbinding en herlaad de pagina.';
+    errEl.classList.add('show');return;
+  }
+
   if(!supabaseClient){
     const ok=initSupabaseClient();
     if(!ok){
-      errEl.textContent='Database niet geconfigureerd. Contacteer de beheerder.';
+      errEl.textContent='❌ Kon geen verbinding maken met de database. Controleer of je online bent.';
       errEl.classList.add('show');
       return;
     }
   }
+
+  // Visuele feedback
+  const btn=document.querySelector('.auth-btn');
+  const origTxt=btn.textContent;
+  btn.textContent='Bezig...';btn.disabled=true;
+
   try{
     const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:pw});
+    btn.textContent=origTxt;btn.disabled=false;
     if(error){
-      errEl.textContent=error.message==='Invalid login credentials'?'Verkeerd e-mail of wachtwoord.':error.message;
+      const msg={
+        'Invalid login credentials':'Verkeerd e-mailadres of wachtwoord.',
+        'Email not confirmed':'E-mail nog niet bevestigd. Check je inbox.',
+        'Too many requests':'Te veel pogingen. Wacht even en probeer opnieuw.',
+      }[error.message]||('Fout: '+error.message);
+      errEl.textContent='❌ '+msg;
       errEl.classList.add('show');
       return;
     }
     await onLoggedIn(data.user);
   }catch(e){
-    errEl.textContent='Verbindingsfout: '+e.message;
+    btn.textContent=origTxt;btn.disabled=false;
+    errEl.textContent='❌ Verbindingsfout: '+e.message+'. Controleer je internetverbinding.';
     errEl.classList.add('show');
   }
 }
@@ -5583,6 +5636,27 @@ function agGetInstAfspraken(){
   instLoadFromStorage();
   try{const d=localStorage.getItem('blitz_b2c');if(d){b2cLeads=JSON.parse(d);b2cNextId=Math.max(1,...b2cLeads.map(l=>l.id||0))+1;}}catch{}
   try{const d=localStorage.getItem('blitz_prospects');if(d){prospects=JSON.parse(d);prospNextId=Math.max(1,...prospects.map(p=>p.id||0))+1;}}catch{}
+
+  // Toon verbindingsstatus op loginscherm
+  setTimeout(()=>{
+    const statusEl=document.getElementById('login-db-status');
+    if(!statusEl)return;
+    if(typeof supabase==='undefined'){
+      statusEl.style.display='block';
+      statusEl.style.background='#fcebeb';statusEl.style.color='#a32d2d';
+      statusEl.textContent='⚠ Supabase library kon niet laden. Controleer je internetverbinding.';
+      return;
+    }
+    const ok=initSupabaseClient();
+    if(ok){
+      statusEl.style.display='block';
+      statusEl.textContent='✓ Verbonden met database — vul je gegevens in.';
+    } else {
+      statusEl.style.display='block';
+      statusEl.style.background='#fcebeb';statusEl.style.color='#a32d2d';
+      statusEl.textContent='⚠ Geen databaseverbinding. Controleer je internetverbinding.';
+    }
+  },800);
 
   // Probeer bestaande sessie te herstellen
   initSupabaseClient();
@@ -7708,6 +7782,444 @@ function tlAddActie(){
 function tlDeleteActie(idx){currentTijdlijn.splice(idx,1);renderTijdlijn();}
 function tlChangeDatum(idx,val){if(currentTijdlijn[idx])currentTijdlijn[idx].datum=val;renderTijdlijn();}
 
+
+// ── RAPPORTAGE ────────────────────────────────────────
+let rapActiveTab = 'b2c';
+
+function rapShowTab(tab){
+  rapActiveTab = tab;
+  ['b2c','b2b'].forEach(t=>{
+    document.getElementById('rap-tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('rap-content-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+}
+
+function rapPeriodeFilter(datum){
+  const periode = document.getElementById('rap-periode')?.value || 'all';
+  if(periode === 'all') return true;
+  if(!datum) return false;
+  const d = new Date(datum); const now = new Date();
+  if(periode === 'month') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  if(periode === 'year')  return d.getFullYear()===now.getFullYear();
+  if(periode === 'quarter'){
+    const q = Math.floor(now.getMonth()/3);
+    return d.getFullYear()===now.getFullYear() && Math.floor(d.getMonth()/3)===q;
+  }
+  return true;
+}
+
+function rapStatCard(label, value, color='var(--tx)', bg='var(--bg2)', sub=''){
+  return `<div style="background:${bg};border-radius:var(--rl);padding:14px 18px;border:1px solid var(--bd)">
+    <div style="font-size:11px;color:var(--tx3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">${label}</div>
+    <div style="font-family:'Poppins',sans-serif;font-size:24px;font-weight:800;color:${color}">${value}</div>
+    ${sub?`<div style="font-size:11px;color:var(--tx3);margin-top:2px">${sub}</div>`:''}
+  </div>`;
+}
+
+function rapTableRow(label, counts, totals, highlight=false){
+  const cells = counts.map((c,i)=>{
+    const tot = totals[i]||0;
+    const pct = tot>0 ? (c/tot*100).toFixed(1)+'%' : '—';
+    const bar = tot>0 ? Math.round(c/tot*100) : 0;
+    return `<td style="text-align:right;padding:7px 12px;font-weight:${highlight?700:500};color:${highlight?'var(--green)':'var(--tx)'}">${c}</td>
+            <td style="padding:7px 8px 7px 0;width:80px">
+              <div style="display:flex;align-items:center;gap:4px">
+                <div style="flex:1;height:5px;background:var(--bd2);border-radius:3px;overflow:hidden">
+                  <div style="width:${bar}%;height:100%;background:${highlight?'var(--green)':'var(--tx3)'};border-radius:3px"></div>
+                </div>
+                <span style="font-size:10px;color:var(--tx3);min-width:34px;text-align:right">${pct}</span>
+              </div>
+            </td>`;
+  }).join('');
+  return `<tr style="background:${highlight?'rgba(0,223,163,.06)':''}; border-bottom:1px solid var(--bd)">
+    <td style="padding:7px 12px;font-size:13px;color:var(--tx);font-weight:${highlight?700:400}">${label}</td>
+    ${cells}
+  </tr>`;
+}
+
+function renderRapportage(){
+  renderRapB2c();
+  renderRapB2b();
+}
+
+function renderRapB2c(){
+  const el = document.getElementById('rap-content-b2c'); if(!el) return;
+
+  // Collect all B2C leads filtered by periode
+  const allLeads = [...b2cLeads];
+  const filtered = allLeads.filter(l => rapPeriodeFilter(l.aanmaakdatum||l.acties?.[0]?.datum));
+
+  // Get unique resps (sorted)
+  const respSet = [...new Set(filtered.map(l=>l.resp).filter(Boolean))].sort();
+  if(!respSet.length && !filtered.length){
+    el.innerHTML='<div class="empty-state"><i class="ti ti-chart-bar"></i>Geen B2C leads gevonden voor deze periode.</div>';
+    return;
+  }
+
+  // Verloren leads (status = Verloren)
+  const verloren = filtered.filter(l=>l.status==='Verloren');
+  const gewonnen = filtered.filter(l=>l.status==='Gewonnen');
+
+  // Build per-resp stats
+  const stats = {}; // resp -> {counts by reden}
+  const verliesRedenen = ['Ander merk gekozen','Te duur','Geen interesse meer','Installateur zelf','Geen reactie meer','Project uitgesteld','Andere'];
+  const leadsPerResp = {};
+
+  respSet.forEach(r=>{
+    leadsPerResp[r] = filtered.filter(l=>l.resp===r);
+    const vl = verloren.filter(l=>l.resp===r);
+    const redenCounts = {};
+    verliesRedenen.forEach(rd=>redenCounts[rd]=0);
+    redenCounts['Niet opgegeven']=0;
+    vl.forEach(l=>{
+      const rd = l.verliesReden||'Niet opgegeven';
+      const match = verliesRedenen.find(v=>v.toLowerCase()===rd.toLowerCase());
+      if(match) redenCounts[match]++;
+      else redenCounts['Andere']=( redenCounts['Andere']||0)+1;
+    });
+    stats[r]={reden:redenCounts, verloren:vl.length, gewonnen:gewonnen.filter(l=>l.resp===r).length, total:leadsPerResp[r].length};
+  });
+
+  // Totalen kolom
+  const totR = {total:filtered.length, verloren:verloren.length, gewonnen:gewonnen.length};
+  const allResps = [...respSet, '__totaal__'];
+
+  // Status rows
+  const statusRows = [
+    {key:'Nieuw', label:'Nieuw'},
+    {key:'1e contactpoging gedaan', label:'1e contact gedaan'},
+    {key:'2e contactpoging gedaan', label:'2e contact gedaan'},
+    {key:'Visit gepland', label:'Visit gepland'},
+    {key:'Opvolgen', label:'Opvolgen'},
+    {key:'Offerte eindklant', label:'Offerte eindklant'},
+    {key:'Offerte installateur', label:'Offerte installateur'},
+    {key:'Gewonnen', label:'GEWONNEN', highlight:true},
+    {key:'Verloren', label:'VERLOREN', highlight:false, red:true},
+    {key:'Afkoeling', label:'Afkoeling'},
+  ];
+
+  const totals = allResps.map(r=> r==='__totaal__' ? filtered.length : (leadsPerResp[r]||[]).length);
+
+  // Verlies redenen rows
+  const verliesRows = [...verliesRedenen,'Niet opgegeven'].map(rd=>({
+    label: rd,
+    counts: allResps.map(r=>{
+      if(r==='__totaal__') return verloren.filter(l=>{
+        const lrd=l.verliesReden||'Niet opgegeven';
+        const match=verliesRedenen.find(v=>v.toLowerCase()===lrd.toLowerCase());
+        return rd==='Andere'?(match?false:lrd!=='Niet opgegeven'):(match===rd||(rd==='Niet opgegeven'&&!match&&lrd==='Niet opgegeven'));
+      }).length;
+      const vl=verloren.filter(l=>l.resp===r);
+      return vl.filter(l=>{
+        const lrd=l.verliesReden||'Niet opgegeven';
+        const match=verliesRedenen.find(v=>v.toLowerCase()===lrd.toLowerCase());
+        return rd==='Andere'?(match?false:lrd!=='Niet opgegeven'):(match===rd||(rd==='Niet opgegeven'&&!match&&lrd==='Niet opgegeven'));
+      }).length;
+    })
+  }));
+
+  const totVerloren = allResps.map(r=> r==='__totaal__' ? verloren.length : verloren.filter(l=>l.resp===r).length);
+
+  // Warmte stats
+  const warmteRows = ['Koud','Lauw','Warm','Hot'].map(w=>({
+    label:w,
+    counts: allResps.map(r=> r==='__totaal__' ? filtered.filter(l=>l.warmte===w).length : (leadsPerResp[r]||[]).filter(l=>l.warmte===w).length)
+  }));
+
+  // Bron stats
+  const bronnen = [...new Set(filtered.map(l=>l.bron).filter(Boolean))].sort();
+  const bronRows = bronnen.map(b=>({
+    label:b,
+    counts: allResps.map(r=> r==='__totaal__' ? filtered.filter(l=>l.bron===b).length : (leadsPerResp[r]||[]).filter(l=>l.bron===b).length)
+  }));
+
+  // Conversie KPIs per resp
+  const kpiRows = [
+    {label:'Offerte conversie %', fn: (leads,vl,gw,tot)=>{ const off=leads.filter(l=>l.status==='Offerte eindklant'||l.status==='Offerte installateur'||l.status==='Gewonnen').length; return tot>0?(off/tot*100).toFixed(1)+'%':'—';}},
+    {label:'Verkocht %',          fn: (leads,vl,gw,tot)=> tot>0?(gw/tot*100).toFixed(1)+'%':'—'},
+    {label:'Verloren %',          fn: (leads,vl,gw,tot)=> tot>0?(vl/tot*100).toFixed(1)+'%':'—'},
+    {label:'Geen contact %',      fn: (leads,vl,gw,tot)=>{ const nc=leads.filter(l=>l.status==='Nieuw'||l.status==='1e contactpoging gedaan'||l.status==='2e contactpoging gedaan').length; return tot>0?(nc/tot*100).toFixed(1)+'%':'—';}},
+    {label:'Nog op te volgen %',  fn: (leads,vl,gw,tot)=>{ const ntv=leads.filter(l=>l.status==='Opvolgen'||l.status==='Visit gepland').length; return tot>0?(ntv/tot*100).toFixed(1)+'%':'—';}},
+  ];
+
+  const headerCols = [...respSet.map(r=>`<th style="text-align:right;padding:8px 12px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--tx);border-bottom:2px solid var(--green)">${r}<br><span style="font-family:'Inter',sans-serif;font-weight:400;font-size:10px;color:var(--tx3)">${(leadsPerResp[r]||[]).length} leads</span></th><th></th>`),
+    `<th style="text-align:right;padding:8px 12px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--tx2);border-bottom:2px solid var(--bd2);background:var(--bg2)">TOTAAL<br><span style="font-family:'Inter',sans-serif;font-weight:400;font-size:10px;color:var(--tx3)">${filtered.length} leads</span></th><th style="background:var(--bg2)"></th>`].join('');
+
+  const sectionHeader = (icon, title, color='var(--green)') =>
+    `<tr><td colspan="${allResps.length*2+1}" style="padding:12px 12px 6px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${color};background:var(--bg3);border-top:2px solid var(--bd)"><i class="ti ${icon}" style="margin-right:6px"></i>${title}</td></tr>`;
+
+  const statusHtml = statusRows.map(({key,label,highlight,red})=>{
+    const counts = allResps.map(r=> r==='__totaal__' ? filtered.filter(l=>l.status===key).length : (leadsPerResp[r]||[]).filter(l=>l.status===key).length);
+    const color = red ? '#a32d2d' : highlight ? 'var(--green)' : 'var(--tx)';
+    const bg = red ? 'rgba(163,45,45,.04)' : highlight ? 'rgba(0,223,163,.06)' : '';
+    return `<tr style="background:${bg};border-bottom:1px solid var(--bd)">
+      <td style="padding:7px 12px;font-size:13px;font-weight:${highlight||red?700:400};color:${color}">${label}</td>
+      ${counts.map((c,i)=>{
+        const tot = totals[i]||0; const pct = tot>0?(c/tot*100).toFixed(1)+'%':'—'; const bar = tot>0?Math.round(c/tot*100):0;
+        const isLast = i===counts.length-1;
+        return `<td style="text-align:right;padding:7px 12px;font-weight:${highlight||red?700:500};color:${color};${isLast?'background:var(--bg2)':''}">${c}</td>
+                <td style="padding:7px 8px 7px 0;${isLast?'background:var(--bg2)':''}">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <div style="flex:1;height:5px;background:var(--bd2);border-radius:3px;overflow:hidden">
+                      <div style="width:${bar}%;height:100%;background:${red?'#e57373':highlight?'var(--green)':'var(--tx3)'};border-radius:3px"></div>
+                    </div>
+                    <span style="font-size:10px;color:var(--tx3);min-width:34px;text-align:right">${pct}</span>
+                  </div>
+                </td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+
+  const verliesHtml = verliesRows.map(({label,counts})=>{
+    return `<tr style="border-bottom:1px solid var(--bd)">
+      <td style="padding:7px 12px;font-size:12px;color:var(--tx2);padding-left:20px">↳ ${label}</td>
+      ${counts.map((c,i)=>{
+        const tot=totVerloren[i]||0; const pct=tot>0?(c/tot*100).toFixed(1)+'%':'—'; const bar=tot>0?Math.round(c/tot*100):0;
+        const isLast=i===counts.length-1;
+        return `<td style="text-align:right;padding:7px 12px;font-size:12px;color:var(--tx2);${isLast?'background:var(--bg2)':''}">${c}</td>
+                <td style="padding:7px 8px 7px 0;${isLast?'background:var(--bg2)':''}">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <div style="flex:1;height:4px;background:var(--bd2);border-radius:3px;overflow:hidden">
+                      <div style="width:${bar}%;height:100%;background:rgba(163,45,45,.5);border-radius:3px"></div>
+                    </div>
+                    <span style="font-size:10px;color:var(--tx3);min-width:34px;text-align:right">${pct}</span>
+                  </div>
+                </td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+
+  const warmteHtml = warmteRows.map(({label,counts})=>{
+    const wCol={Koud:'#185FA5',Lauw:'#854F0B',Warm:'#0F6E56',Hot:'#A32D2D'};
+    return `<tr style="border-bottom:1px solid var(--bd)">
+      <td style="padding:7px 12px;font-size:13px;color:${wCol[label]||'var(--tx)'}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${wCol[label]};margin-right:6px"></span>${label}</td>
+      ${counts.map((c,i)=>{
+        const tot=totals[i]||0; const pct=tot>0?(c/tot*100).toFixed(1)+'%':'—'; const bar=tot>0?Math.round(c/tot*100):0;
+        const isLast=i===counts.length-1;
+        return `<td style="text-align:right;padding:7px 12px;${isLast?'background:var(--bg2)':''}">${c}</td>
+                <td style="padding:7px 8px 7px 0;${isLast?'background:var(--bg2)':''}">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <div style="flex:1;height:5px;background:var(--bd2);border-radius:3px;overflow:hidden">
+                      <div style="width:${bar}%;height:100%;background:${wCol[label]};border-radius:3px;opacity:.6"></div>
+                    </div>
+                    <span style="font-size:10px;color:var(--tx3);min-width:34px;text-align:right">${pct}</span>
+                  </div>
+                </td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+
+  const bronHtml = bronRows.map(({label,counts})=>`<tr style="border-bottom:1px solid var(--bd)">
+    <td style="padding:7px 12px;font-size:13px;color:var(--tx)">${label}</td>
+    ${counts.map((c,i)=>{
+      const tot=totals[i]||0; const pct=tot>0?(c/tot*100).toFixed(1)+'%':'—'; const bar=tot>0?Math.round(c/tot*100):0;
+      const isLast=i===counts.length-1;
+      return `<td style="text-align:right;padding:7px 12px;${isLast?'background:var(--bg2)':''}">${c}</td>
+              <td style="padding:7px 8px 7px 0;${isLast?'background:var(--bg2)':''}">
+                <div style="display:flex;align-items:center;gap:4px">
+                  <div style="flex:1;height:5px;background:var(--bd2);border-radius:3px;overflow:hidden">
+                    <div style="width:${bar}%;height:100%;background:#534AB7;border-radius:3px;opacity:.5"></div>
+                  </div>
+                  <span style="font-size:10px;color:var(--tx3);min-width:34px;text-align:right">${pct}</span>
+                </div>
+              </td>`;
+    }).join('')}
+  </tr>`).join('');
+
+  const kpiHtml = kpiRows.map(({label,fn})=>`<tr style="border-bottom:1px solid var(--bd)">
+    <td style="padding:7px 12px;font-size:13px;font-weight:600;color:var(--green)">${label}</td>
+    ${allResps.map((r,i)=>{
+      const leads = r==='__totaal__' ? filtered : (leadsPerResp[r]||[]);
+      const vl = r==='__totaal__' ? verloren.length : verloren.filter(l=>l.resp===r).length;
+      const gw = r==='__totaal__' ? gewonnen.length : gewonnen.filter(l=>l.resp===r).length;
+      const isLast=i===allResps.length-1;
+      return `<td style="text-align:right;padding:7px 12px;font-weight:700;font-size:13px;color:var(--green);${isLast?'background:var(--bg2)':''}">${fn(leads,vl,gw,leads.length)}</td><td style="${isLast?'background:var(--bg2)':''}"></td>`;
+    }).join('')}
+  </tr>`).join('');
+
+  const totaalHtml = `<tr style="border-top:2px solid var(--bd);background:var(--bg2)">
+    <td style="padding:7px 12px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px">TOTAAL</td>
+    ${allResps.map((r,i)=>{
+      const n = r==='__totaal__' ? filtered.length : (leadsPerResp[r]||[]).length;
+      return `<td style="text-align:right;padding:7px 12px;font-weight:700;font-size:13px">${n}</td><td style="padding:7px 8px"><span style="font-size:10px;color:var(--tx3)">100%</span></td>`;
+    }).join('')}
+  </tr>`;
+
+  el.innerHTML = `
+  <div style="overflow-x:auto;border:1px solid var(--bd);border-radius:var(--rl);background:var(--bg)">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:var(--bg2)">
+          <th style="text-align:left;padding:10px 12px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--tx2);border-bottom:1px solid var(--bd);white-space:nowrap">Categorie</th>
+          ${headerCols}
+        </tr>
+      </thead>
+      <tbody>
+        ${sectionHeader('ti-list-check','Pipeline status')}
+        ${statusHtml}
+        ${sectionHeader('ti-x','Verliesredenen','#a32d2d')}
+        ${verliesHtml}
+        ${totaalHtml}
+        ${sectionHeader('ti-flame','Warmte-verdeling','#e85d04')}
+        ${warmteHtml}
+        ${bronRows.length ? sectionHeader('ti-source','Leads per bron','#534AB7') : ''}
+        ${bronHtml}
+        ${sectionHeader('ti-chart-pie','Conversie KPI\'s')}
+        ${kpiHtml}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function renderRapB2b(){
+  const el = document.getElementById('rap-content-b2b'); if(!el) return;
+
+  const allProj = [...projects];
+  const allClosed = [...closedProjects];
+  const filtered = allProj.filter(p => rapPeriodeFilter(p.aangemaakt||null)||true); // lopend
+  const verkocht = allClosed.filter(p => p.type==='verkocht' && rapPeriodeFilter(p.closed_at));
+  const verloren = allClosed.filter(p => p.type==='verloren' && rapPeriodeFilter(p.closed_at));
+  const all = [...filtered, ...verkocht, ...verloren];
+
+  const respSet = [...new Set(all.map(p=>p.resp).filter(Boolean))].sort();
+  if(!respSet.length && !all.length){
+    el.innerHTML='<div class="empty-state"><i class="ti ti-chart-bar"></i>Geen B2B projecten gevonden.</div>';
+    return;
+  }
+
+  const allResps = [...respSet, '__totaal__'];
+  const leadsPerResp = {};
+  respSet.forEach(r=> leadsPerResp[r] = all.filter(p=>p.resp===r));
+
+  const totals = allResps.map(r=> r==='__totaal__' ? all.length : (leadsPerResp[r]||[]).length);
+
+  const headerCols = [...respSet.map(r=>`<th style="text-align:right;padding:8px 12px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--tx);border-bottom:2px solid var(--green)">${r}<br><span style="font-family:'Inter',sans-serif;font-weight:400;font-size:10px;color:var(--tx3)">${(leadsPerResp[r]||[]).length} proj.</span></th><th></th>`),
+    `<th style="text-align:right;padding:8px 12px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--tx2);border-bottom:2px solid var(--bd2);background:var(--bg2)">TOTAAL<br><span style="font-family:'Inter',sans-serif;font-weight:400;font-size:10px;color:var(--tx3)">${all.length} proj.</span></th><th style="background:var(--bg2)"></th>`].join('');
+
+  const sectionHeader = (icon, title, color='var(--green)') =>
+    `<tr><td colspan="${allResps.length*2+1}" style="padding:12px 12px 6px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${color};background:var(--bg3);border-top:2px solid var(--bd)"><i class="ti ${icon}" style="margin-right:6px"></i>${title}</td></tr>`;
+
+  // Status rows (lopende projecten)
+  const statusRows = [
+    {si:0, label:'Kennismaking'},
+    {si:1, label:'Installateur/partner zoeken'},
+    {si:3, label:'2e gesprek'},
+    {si:4, label:'Opvolging'},
+    {si:5, label:'Wachten op akkoord'},
+    {si:6, label:'Gewonnen (lopend)', highlight:true},
+  ];
+
+  const statusHtml = statusRows.map(({si,label,highlight})=>{
+    const counts = allResps.map(r=>{
+      const list = r==='__totaal__' ? filtered : filtered.filter(p=>p.resp===r);
+      return list.filter(p=>parseInt(p.status)===si).length;
+    });
+    const color = highlight ? 'var(--green)' : 'var(--tx)';
+    const bg = highlight ? 'rgba(0,223,163,.06)' : '';
+    return `<tr style="background:${bg};border-bottom:1px solid var(--bd)">
+      <td style="padding:7px 12px;font-size:13px;font-weight:${highlight?700:400};color:${color}">${label}</td>
+      ${counts.map((c,i)=>{
+        const tot=totals[i]||0; const pct=tot>0?(c/tot*100).toFixed(1)+'%':'—'; const bar=tot>0?Math.round(c/tot*100):0;
+        const isLast=i===counts.length-1;
+        return `<td style="text-align:right;padding:7px 12px;font-weight:${highlight?700:500};color:${color};${isLast?'background:var(--bg2)':''}">${c}</td>
+                <td style="padding:7px 8px 7px 0;${isLast?'background:var(--bg2)':''}">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <div style="flex:1;height:5px;background:var(--bd2);border-radius:3px;overflow:hidden">
+                      <div style="width:${bar}%;height:100%;background:${highlight?'var(--green)':'var(--tx3)'};border-radius:3px"></div>
+                    </div>
+                    <span style="font-size:10px;color:var(--tx3);min-width:34px;text-align:right">${pct}</span>
+                  </div>
+                </td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+
+  // Verkocht / Verloren rows
+  const closedRows = [
+    {label:'VERKOCHT', list: verkocht, color:'#639922', bg:'rgba(99,153,34,.06)', barColor:'#639922'},
+    {label:'VERLOREN', list: verloren, color:'#a32d2d', bg:'rgba(163,45,45,.04)', barColor:'#e57373'},
+  ];
+  const closedHtml = closedRows.map(({label,list,color,bg,barColor})=>{
+    const counts = allResps.map(r=> r==='__totaal__' ? list.length : list.filter(p=>p.resp===r).length);
+    return `<tr style="background:${bg};border-bottom:1px solid var(--bd)">
+      <td style="padding:7px 12px;font-size:13px;font-weight:700;color:${color}">${label}</td>
+      ${counts.map((c,i)=>{
+        const tot=totals[i]||0; const pct=tot>0?(c/tot*100).toFixed(1)+'%':'—'; const bar=tot>0?Math.round(c/tot*100):0;
+        const isLast=i===counts.length-1;
+        return `<td style="text-align:right;padding:7px 12px;font-weight:700;color:${color};${isLast?'background:var(--bg2)':''}">${c}</td>
+                <td style="padding:7px 8px 7px 0;${isLast?'background:var(--bg2)':''}">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <div style="flex:1;height:5px;background:var(--bd2);border-radius:3px;overflow:hidden">
+                      <div style="width:${bar}%;height:100%;background:${barColor};border-radius:3px"></div>
+                    </div>
+                    <span style="font-size:10px;color:var(--tx3);min-width:34px;text-align:right">${pct}</span>
+                  </div>
+                </td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
+
+  // Omzet & laadpunten
+  const omzetRows = [
+    {label:'Totale pipeline omzet', fn:(list)=>'€'+list.filter(p=>p.pct!==100&&p.type!=='verkocht'&&p.type!=='verloren').reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE')},
+    {label:'Omzet verkocht', fn:(list)=>'€'+verkocht.filter(p=>list.includes(p)||list===all).reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE')},
+    {label:'Laadpunten (lopend)', fn:(list)=>list.filter(p=>!p.type||p.type==='lopend').reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP'},
+    {label:'Laadpunten verkocht', fn:(list)=>verkocht.filter(p=>list.includes(p)||list===all).reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP'},
+  ];
+  const omzetHtml = omzetRows.map(({label,fn})=>`<tr style="border-bottom:1px solid var(--bd)">
+    <td style="padding:7px 12px;font-size:13px;font-weight:600;color:var(--green)">${label}</td>
+    ${allResps.map((r,i)=>{
+      const list = r==='__totaal__' ? all : (leadsPerResp[r]||[]);
+      const isLast=i===allResps.length-1;
+      return `<td style="text-align:right;padding:7px 12px;font-weight:700;color:var(--green);${isLast?'background:var(--bg2)':''}" colspan="2">${fn(list)}</td>`;
+    }).join('')}
+  </tr>`).join('');
+
+  // KPI
+  const kpiHtml = [`<tr style="border-bottom:1px solid var(--bd)">
+    <td style="padding:7px 12px;font-size:13px;font-weight:600;color:var(--green)">Win rate %</td>
+    ${allResps.map((r,i)=>{
+      const list=r==='__totaal__'?all:(leadsPerResp[r]||[]);
+      const vk=r==='__totaal__'?verkocht:verkocht.filter(p=>p.resp===r);
+      const vl=r==='__totaal__'?verloren:verloren.filter(p=>p.resp===r);
+      const closed=vk.length+vl.length;
+      const rate=closed>0?(vk.length/closed*100).toFixed(1)+'%':'—';
+      const isLast=i===allResps.length-1;
+      return `<td style="text-align:right;padding:7px 12px;font-weight:700;font-size:13px;color:var(--green);${isLast?'background:var(--bg2)':''}" colspan="2">${rate}</td>`;
+    }).join('')}
+  </tr>`].join('');
+
+  const totaalHtml = `<tr style="border-top:2px solid var(--bd);background:var(--bg2)">
+    <td style="padding:7px 12px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px">TOTAAL</td>
+    ${allResps.map((r,i)=>{
+      const n=r==='__totaal__'?all.length:(leadsPerResp[r]||[]).length;
+      return `<td style="text-align:right;padding:7px 12px;font-weight:700;font-size:13px">${n}</td><td style="padding:7px 8px"><span style="font-size:10px;color:var(--tx3)">100%</span></td>`;
+    }).join('')}
+  </tr>`;
+
+  el.innerHTML = `
+  <div style="overflow-x:auto;border:1px solid var(--bd);border-radius:var(--rl);background:var(--bg)">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:var(--bg2)">
+          <th style="text-align:left;padding:10px 12px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--tx2);border-bottom:1px solid var(--bd);white-space:nowrap">Categorie</th>
+          ${headerCols}
+        </tr>
+      </thead>
+      <tbody>
+        ${sectionHeader('ti-list-check','Pipeline status (lopende projecten)')}
+        ${statusHtml}
+        ${sectionHeader('ti-trophy','Afgeronde projecten','#639922')}
+        ${closedHtml}
+        ${totaalHtml}
+        ${sectionHeader('ti-chart-pie','Financieel overzicht')}
+        ${omzetHtml}
+        ${sectionHeader('ti-chart-bar','Conversie KPI\'s')}
+        ${kpiHtml}
+      </tbody>
+    </table>
+  </div>`;
+}
 
 // ── THEMA TOGGLE ──────────────────────────────────────
 function toggleTheme(){
