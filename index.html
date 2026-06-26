@@ -6529,13 +6529,13 @@ function b2cRenderInfo(l){
             <label>Verantwoordelijke</label>
             <select id="bi-resp" style="font-size:13px">
               <option value="">— kies —</option>
-              ${respNames('sales').map(r=>`<option value="${r}"${l.resp===r?' selected':''}}>${r}</option>`).join('')}
+              ${respNames('sales').map(r=>`<option value="${r}">${r}</option>`).join('')}
             </select>
           </div>
           <div class="field" style="margin-bottom:10px">
             <label>Warmte</label>
             <select id="bi-warmte-top" onchange="b2cQuickWarmte(this.value)" style="font-size:13px;padding:7px 10px;border-radius:var(--r);border:1px solid var(--bd);font-weight:600;cursor:pointer;background:${wBg[l.warmte]||'var(--bg)'};color:${wCol[l.warmte]||'var(--tx)'}">
-              ${B2C_WARMTES.map(w=>`<option value="${w}"${l.warmte===w?' selected':''}}>${w}</option>`).join('')}
+              ${B2C_WARMTES.map(w=>`<option value="${w}"${l.warmte===w?' selected':''}>${w}</option>`).join('')}
             </select>
             <input type="hidden" id="bi-warmte" value="${l.warmte||''}">
           </div>
@@ -6543,7 +6543,7 @@ function b2cRenderInfo(l){
         <div class="grid2" style="gap:10px">
           <div class="field" style="margin-bottom:10px"><label><i class="ti ti-source" style="margin-right:3px"></i>Bron</label>
             <select id="bi-bron" style="font-size:13px">
-              ${['Website','Doorverwijzing','Social media','Beurs/event','Flyer','Google Ads','Telefonisch','Anders'].map(b=>`<option${l.bron===b?' selected':''}}>${b}</option>`).join('')}
+              ${['Website','Doorverwijzing','Social media','Beurs/event','Flyer','Google Ads','Telefonisch','Anders'].map(b=>`<option${l.bron===b?' selected':''}>${b}</option>`).join('')}
             </select>
           </div>
           <div class="field" style="margin-bottom:10px"><label><i class="ti ti-calendar" style="color:var(--green);margin-right:3px"></i>Aanmaakdatum</label><input type="date" id="bi-aanmaakdatum" value="${l.aanmaakdatum||today()}" style="font-size:13px"></div>
@@ -6618,14 +6618,21 @@ function b2cRenderInfo(l){
     </div>
   </div>
   `;
+  // Stel select-waarden in na DOM-render (zoals B2B openModal doet)
   setTimeout(()=>{
+    const respSel=document.getElementById('bi-resp');
+    if(respSel) respSel.value=l.resp||'';
+
+    const bronSel=document.getElementById('bi-bron');
+    if(bronSel) bronSel.value=l.bron||'';
+
     document.addEventListener('click', function _bpClose(e){
       if(!e.target.closest('#bi-partner-search')&&!e.target.closest('#bi-partner-dd')){
         const dd=document.getElementById('bi-partner-dd');if(dd)dd.style.display='none';
         document.removeEventListener('click',_bpClose);
       }
     });
-  },100);
+  },0);
 }
 
 function b2cSaveLeadEdit(){
