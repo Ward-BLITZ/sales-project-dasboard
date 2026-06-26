@@ -5990,17 +5990,23 @@ function b2cHeractiveer(id){
 
 function b2cMarkeerStatus(status){
   const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  if(status==='Verloren'){
+    b2cVerliesLeadId=b2cOpenLeadId;
+    b2cDragLeadId=null;
+    const el=document.getElementById('b2c-verlies-input');if(el)el.value='';
+    const btns=document.querySelectorAll('#b2c-verlies-quick .btn');btns.forEach(b=>b.classList.remove('primary'));
+    document.getElementById('b2c-verlies-overlay').classList.add('open');
+    return;
+  }
   if(!confirm(`Lead "${b2cNaam(l)}" markeren als ${status}?`))return;
   l.status=status;
   if(status==='Gewonnen'&&!l.gewonnenOp)l.gewonnenOp=today();
-  if(status==='Verloren'&&!l.verliesOp)l.verliesOp=today();
   l.acties=l.acties||[];
-  l.acties.push(logEntry('Status gewijzigd naar: '+status));
-  // Close overlay without triggering b2c re-render
+  l.acties.push(logEntry('Status → '+status));
+  sbSaveB2cLead(l);
   document.getElementById('b2c-detail-overlay').classList.remove('open');
   b2cOpenLeadId=null;
-  if(status==='Gewonnen'){b2cRenderGewonnen();showTab('b2c-gewonnen');showToast('🎉 Gewonnen: '+b2cNaam(l)+'!');}
-  else{b2cRenderVerloren();showTab('b2c-verloren');showToast(`Lead gemarkeerd als ${status}!`);}
+  b2cRenderGewonnen();showTab('b2c-gewonnen');showToast('🎉 Gewonnen: '+b2cNaam(l)+'!');
 }
 
 
@@ -6300,7 +6306,13 @@ function b2cBevestigVerlies(){
   l.status='Verloren';l.verliesReden=reden||'Niet opgegeven';l.verliesOp=today();
   l.acties=l.acties||[];l.acties.push(logEntry('Verloren'+(reden?' — '+reden:'')));
   sbSaveB2cLead(l);
-  b2cAnnuleerVerlies();b2cRenderLeads();b2cRenderVerloren();showTab('b2c-verloren');
+  b2cAnnuleerVerlies();
+  // Sluit infoscherm als het open was voor deze lead
+  if(b2cOpenLeadId===l.id){
+    document.getElementById('b2c-detail-overlay').classList.remove('open');
+    b2cOpenLeadId=null;
+  }
+  b2cRenderLeads();b2cRenderVerloren();showTab('b2c-verloren');
   showToast('"'+b2cNaam(l)+'" als verloren gemarkeerd.');
 }
 function b2cAnnuleerVerlies(){
@@ -6933,8 +6945,17 @@ function b2cChangeStatus(id,s){
     document.getElementById('b2c-gewonnen-keuze-overlay').classList.add('open');
     return;
   }
+  if(s==='Verloren'){
+    b2cOpenLeadId=id;
+    b2cVerliesLeadId=id;
+    b2cDragLeadId=null;
+    const el=document.getElementById('b2c-verlies-input');if(el)el.value='';
+    const btns=document.querySelectorAll('#b2c-verlies-quick .btn');btns.forEach(b=>b.classList.remove('primary'));
+    document.getElementById('b2c-verlies-overlay').classList.add('open');
+    return;
+  }
   l.status=s;l.acties=l.acties||[];
-  l.acties.push(logEntry('Status gewijzigd naar: '+s));
+  l.acties.push(logEntry('Status → '+s));
   sbSaveB2cLead(l);
   showToast('Status: '+s);b2cShowDetailTab('info');
 }
