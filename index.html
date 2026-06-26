@@ -6634,16 +6634,16 @@ function b2cSaveLeadEdit(){
   const changed=[];
   const nvnaam=get('bi-vnaam'), nanaam=get('bi-anaam');
   if(nvnaam!==null&&(nvnaam!==l.voornaam||nanaam!==l.achternaam)){l.voornaam=nvnaam;l.achternaam=nanaam;changed.push('naam');}
-  const ntel=get('bi-tel');if(ntel!==null&&ntel!==l.tel){l.tel=ntel;changed.push('telefoon');}
-  const nemail=get('bi-email');if(nemail!==null&&nemail!==l.email){l.email=nemail;changed.push('e-mail');}
-  const nadres=get('bi-adres');if(nadres!==null&&nadres!==l.adres){l.adres=nadres;changed.push('adres');}
-  const nbron=get('bi-bron');if(nbron!==null&&nbron!==l.bron){l.bron=nbron;changed.push('bron');}
-  const nwarmte=get('bi-warmte')||get('bi-warmte-top');if(nwarmte!==null&&nwarmte!==l.warmte){l.warmte=nwarmte;changed.push('warmte');}
-  const nnotities=get('bi-notities');if(nnotities!==null&&nnotities!==l.notities){l.notities=nnotities;changed.push('notities');}
-  const nresp=get('bi-resp');if(nresp!==null&&nresp!==l.resp){l.resp=nresp;changed.push('verantwoordelijke');}
+  const ntel=get('bi-tel');if(ntel!==null&&ntel!==(l.tel||'')){l.tel=ntel;changed.push('telefoon');}
+  const nemail=get('bi-email');if(nemail!==null&&nemail!==(l.email||'')){l.email=nemail;changed.push('e-mail');}
+  const nadres=get('bi-adres');if(nadres!==null&&nadres!==(l.adres||'')){l.adres=nadres;changed.push('adres');}
+  const nbron=get('bi-bron');if(nbron!==null&&nbron!==(l.bron||'')){l.bron=nbron;changed.push('bron');}
+  const nwarmte=get('bi-warmte')||get('bi-warmte-top');if(nwarmte&&nwarmte!==(l.warmte||'')){l.warmte=nwarmte;changed.push('warmte');}
+  const nnotities=get('bi-notities');if(nnotities!==null&&nnotities!==(l.notities||'')){l.notities=nnotities;changed.push('notities');}
+  const nresp=get('bi-resp');if(nresp!==null&&nresp!==(l.resp||'')){l.resp=nresp;changed.push('verantwoordelijke');}
   const naanmaak=get('bi-aanmaakdatum');if(naanmaak!==null&&naanmaak!==l.aanmaakdatum){l.aanmaakdatum=naanmaak;changed.push('aanmaakdatum');}
   const noffertenr=get('bi-offertenr');if(noffertenr!==null&&noffertenr!==l.offertenr){l.offertenr=noffertenr;changed.push('offertenummer');}
-  const npartner=get('bi-partner-naam');if(npartner!==null&&npartner!==l.installatiepartner){l.installatiepartner=npartner;changed.push('installatiepartner');}
+  const npartner=get('bi-partner-naam');if(npartner!==null&&npartner!==(l.installatiepartner||'')){l.installatiepartner=npartner;changed.push('installatiepartner');}
   if(changed.length){
     l.acties=l.acties||[];
     l.acties.push(logEntry('Bewerkt: '+changed.join(', ')));
