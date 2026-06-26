@@ -2411,6 +2411,21 @@ async function loadAll(){
       installaties=irows.map(r=>({...r.data,_sbid:r.id}));
       instNextId=installaties.length?Math.max(...installaties.map(i=>typeof i.id==='number'?i.id:0))+1:1;
       instSaveToStorage();
+      // Herbouw agenda-afspraken vanuit installaties
+      agAfspraken=agAfspraken.filter(a=>a.type!=='Installatie'&&a.type!=='Keuring');
+      installaties.forEach(inst=>{
+        if(inst.datumInst){
+          const agId='inst-'+inst.id;
+          agAfspraken=agAfspraken.filter(a=>a.id!==agId);
+          agAfspraken.push({id:agId,titel:'Installatie: '+inst.naam,datum:inst.datumInst,uur:inst.uurInst,type:'Installatie',resp:inst.resp,notitie:inst.adres,linkId:'inst-'+inst.id,linkLabel:inst.naam,linkType:'installatie'});
+        }
+        if(inst.datumKeur){
+          const agId='keur-'+inst.id;
+          agAfspraken=agAfspraken.filter(a=>a.id!==agId);
+          agAfspraken.push({id:agId,titel:'Keuring: '+inst.naam,datum:inst.datumKeur,uur:inst.uurKeur,type:'Keuring',resp:inst.resp,notitie:inst.adres,linkId:'keur-'+inst.id,linkLabel:inst.naam,linkType:'keuring'});
+        }
+      });
+      try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
     } else if(irows&&irows.length===0&&installaties.length>0){
       // Remote leeg maar lokaal hebben we data → upload
       for(const inst of installaties){await sbSaveInstallatie(inst);}
@@ -4705,7 +4720,19 @@ let instCurrentDocs=[];
 let instScreeningData={};
 
 function instLoadFromStorage(){
-  try{const d=localStorage.getItem('blitz_installaties');if(d){installaties=JSON.parse(d);instNextId=Math.max(1,...installaties.map(i=>typeof i.id==='number'?i.id:0))+1;}}catch{}
+  try{
+    const d=localStorage.getItem('blitz_installaties');
+    if(d){
+      installaties=JSON.parse(d);
+      instNextId=Math.max(1,...installaties.map(i=>typeof i.id==='number'?i.id:0))+1;
+      // Herbouw agenda-afspraken
+      agAfspraken=agAfspraken.filter(a=>a.type!=='Installatie'&&a.type!=='Keuring');
+      installaties.forEach(inst=>{
+        if(inst.datumInst){const agId='inst-'+inst.id;agAfspraken=agAfspraken.filter(a=>a.id!==agId);agAfspraken.push({id:agId,titel:'Installatie: '+inst.naam,datum:inst.datumInst,uur:inst.uurInst,type:'Installatie',resp:inst.resp,notitie:inst.adres,linkId:'inst-'+inst.id,linkLabel:inst.naam,linkType:'installatie'});}
+        if(inst.datumKeur){const agId='keur-'+inst.id;agAfspraken=agAfspraken.filter(a=>a.id!==agId);agAfspraken.push({id:agId,titel:'Keuring: '+inst.naam,datum:inst.datumKeur,uur:inst.uurKeur,type:'Keuring',resp:inst.resp,notitie:inst.adres,linkId:'keur-'+inst.id,linkLabel:inst.naam,linkType:'keuring'});}
+      });
+    }
+  }catch{}
 }
 function instSaveToStorage(){
   try{localStorage.setItem('blitz_installaties',JSON.stringify(installaties));}catch{}
