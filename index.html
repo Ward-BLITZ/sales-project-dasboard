@@ -153,6 +153,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999}
 .modal-overlay.open{display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.above-modal{z-index:1200}
 .modal-box{background:var(--bg);border-radius:var(--rl);width:100%;max-width:640px;max-height:90vh;overflow-y:auto;padding:1.75rem}
 .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
 .modal-title{font-family:'Poppins',sans-serif;font-size:17px;font-weight:600}
@@ -981,7 +982,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 <!-- B2C VERLOREN REDEN POPUP -->
-<div class="modal-overlay" id="b2c-verlies-overlay">
+<div class="modal-overlay above-modal" id="b2c-verlies-overlay">
   <div class="modal-box" style="max-width:440px">
     <div class="modal-header">
       <span class="modal-title"><i class="ti ti-x" style="color:#a32d2d;margin-right:6px"></i>Lead verloren</span>
@@ -1021,7 +1022,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 <!-- B2C AFVINK OPMERKING MODAL -->
-<div class="modal-overlay" id="b2c-afvink-overlay">
+<div class="modal-overlay above-modal" id="b2c-afvink-overlay">
   <div class="modal-box" style="max-width:440px">
     <div class="modal-header">
       <span class="modal-title"><i class="ti ti-check" style="color:#639922;margin-right:6px"></i>Opvolging afvinken</span>
@@ -1048,7 +1049,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 <!-- B2C INSTALLATIEPARTNER POPUP -->
-<div class="modal-overlay" id="b2c-installateur-overlay">
+<div class="modal-overlay above-modal" id="b2c-installateur-overlay">
   <div class="modal-box" style="max-width:480px">
     <div class="modal-header">
       <span class="modal-title"><i class="ti ti-tools" style="color:var(--green);margin-right:6px"></i>Installatiepartner koppelen</span>
@@ -1091,7 +1092,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 <!-- B2C GEWONNEN — PARTNER INSTALLATEUR OVERLAY -->
-<div class="modal-overlay" id="b2c-gw-partner-overlay">
+<div class="modal-overlay above-modal" id="b2c-gw-partner-overlay">
   <div class="modal-box" style="max-width:460px">
     <div class="modal-header">
       <span class="modal-title"><i class="ti ti-users" style="color:var(--green);margin-right:6px"></i>Partner installeert — <span id="b2c-gw-partner-naam"></span></span>
@@ -1690,11 +1691,25 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="inner-tab active" id="b2c-dtab-info" onclick="b2cShowDetailTab('info')"><i class="ti ti-info-circle" style="margin-right:5px"></i>Algemene info</button>
       <button class="inner-tab" id="b2c-dtab-screening" onclick="b2cShowDetailTab('screening')"><i class="ti ti-clipboard-list" style="margin-right:5px"></i>Screening</button>
       <button class="inner-tab" id="b2c-dtab-contract" onclick="b2cShowDetailTab('contract')"><i class="ti ti-file-invoice" style="margin-right:5px"></i>Contract</button>
+      <button class="inner-tab" id="b2c-dtab-documenten" onclick="b2cShowDetailTab('documenten')"><i class="ti ti-paperclip" style="margin-right:5px"></i>Documenten</button>
     </div>
     <div style="flex:1;overflow-y:auto">
       <div id="b2c-detail-info"></div>
       <div id="b2c-detail-screening" style="display:none"></div>
       <div id="b2c-detail-contract" style="display:none"></div>
+      <div id="b2c-detail-documenten" style="display:none">
+        <div style="padding:16px 20px">
+          <div style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Upload hier offertes, foto's, attesten, facturen, ...</div>
+          <div class="attach-drop" id="b2c-doc-drop"
+               ondragover="b2cDocDragOver(event)" ondragleave="b2cDocDragLeave(event)" ondrop="b2cDocDrop(event)"
+               onclick="document.getElementById('b2c-doc-input').click()">
+            <input type="file" id="b2c-doc-input" multiple style="display:none" onchange="b2cDocSelected(event)">
+            <i class="ti ti-upload" style="font-size:22px;color:var(--tx3);display:block;margin-bottom:4px"></i>
+            <span style="font-size:12px;color:var(--tx3)">Klik of sleep bestanden (pdf, foto, doc, ...)</span>
+          </div>
+          <div class="attach-list" id="b2c-doc-list"></div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer" id="b2c-detail-footer" style="border-top:1px solid var(--bd);padding:12px 20px;background:var(--bg);flex-shrink:0">
       <button class="btn danger" onclick="b2cVerwijderLead(b2cOpenLeadId)" style="margin-right:auto"><i class="ti ti-trash"></i> Lead verwijderen</button>
@@ -1812,7 +1827,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 <!-- B2C SCREENING MODAL (mounted dynamically) -->
 
 <!-- B2C GEWONNEN KEUZE MODAL -->
-<div class="modal-overlay" id="b2c-gewonnen-keuze-overlay">
+<div class="modal-overlay above-modal" id="b2c-gewonnen-keuze-overlay">
   <div class="modal-box" style="max-width:500px">
     <div class="modal-header">
       <span class="modal-title"><i class="ti ti-trophy" style="color:#639922;margin-right:8px"></i>Lead gewonnen — wie installeert?</span>
@@ -6310,7 +6325,7 @@ function b2cVerwijderLead(id){
 }
 
 function b2cShowDetailTab(tab){
-  ['info','screening','contract'].forEach(t=>{
+  ['info','screening','contract','documenten'].forEach(t=>{
     document.getElementById('b2c-dtab-'+t).classList.toggle('active',t===tab);
     document.getElementById('b2c-detail-'+t).style.display=t===tab?'block':'none';
   });
@@ -6318,6 +6333,60 @@ function b2cShowDetailTab(tab){
   if(tab==='info')b2cRenderInfo(l);
   if(tab==='screening')b2cRenderScreening(l);
   if(tab==='contract')b2cRenderContract(l);
+  if(tab==='documenten')b2cRenderDocumenten(l);
+}
+
+function b2cRenderDocumenten(l){
+  const listEl=document.getElementById('b2c-doc-list');if(!listEl)return;
+  const docs=l.documenten||[];
+  if(!docs.length){listEl.innerHTML='';return;}
+  listEl.innerHTML=docs.map((a,i)=>{
+    const isImg=a.type&&a.type.startsWith('image/');
+    const preview=isImg
+      ?`<img src="${a.data}" class="attach-thumb" alt="${a.naam}">`
+      :`<div class="attach-icon"><i class="ti ti-${a.type&&a.type.includes('pdf')?'file-type-pdf':a.type&&a.type.includes('word')?'file-type-doc':a.type&&a.type.includes('excel')||a.type&&a.type.includes('sheet')?'file-type-xls':'file'}"></i></div>`;
+    const size=a.size?(a.size>1024*1024?(a.size/(1024*1024)).toFixed(1)+' MB':(a.size/1024).toFixed(0)+' KB'):'';
+    return`<div class="attach-item">
+      ${preview}
+      <div class="attach-name">${a.naam}</div>
+      <span style="font-size:10px;color:var(--tx3);white-space:nowrap">${size}</span>
+      <a href="${a.data}" download="${a.naam}" class="btn sm" onclick="event.stopPropagation()" title="Downloaden"><i class="ti ti-download"></i></a>
+      <button class="btn sm danger" onclick="b2cDocVerwijder(${i})" title="Verwijderen"><i class="ti ti-x"></i></button>
+    </div>`;
+  }).join('');
+}
+
+function b2cDocDragOver(e){e.preventDefault();document.getElementById('b2c-doc-drop').classList.add('drag-over');}
+function b2cDocDragLeave(e){document.getElementById('b2c-doc-drop').classList.remove('drag-over');}
+function b2cDocDrop(e){
+  e.preventDefault();e.stopPropagation();
+  document.getElementById('b2c-doc-drop').classList.remove('drag-over');
+  b2cDocHandleFiles(e.dataTransfer.files);
+}
+function b2cDocSelected(e){b2cDocHandleFiles(e.target.files);e.target.value='';}
+
+function b2cDocHandleFiles(files){
+  if(!files||!files.length)return;
+  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  l.documenten=l.documenten||[];
+  Array.from(files).forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      l.documenten.push({naam:file.name,type:file.type,size:file.size,data:ev.target.result});
+      sbSaveB2cLead(l);
+      b2cRenderDocumenten(l);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function b2cDocVerwijder(i){
+  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  l.documenten=l.documenten||[];
+  l.documenten.splice(i,1);
+  sbSaveB2cLead(l);
+  b2cRenderDocumenten(l);
+  showToast('Document verwijderd.');
 }
 
 // ─── TAB 1: INFO ────────────────────────────────────
@@ -6326,7 +6395,16 @@ function b2cRenderInfo(l){
     <div style="padding:16px 20px">
     <div class="b2c-summary-grid">
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Status</div><div><span class="badge ${b2cBadgeSt(l.status)}">${l.status}</span></div></div>
-      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Warmte</div><div><span class="badge ${b2cBadgeW(l.warmte)}">${l.warmte}</span></div></div>
+      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Warmte</div>
+        <div>
+          <select id="bi-warmte-top" onchange="b2cQuickWarmte(this.value)"
+            style="font-size:12px;padding:3px 8px;border-radius:20px;border:1px solid var(--bd);font-weight:600;cursor:pointer;
+            background:${{Koud:'#E6F1FB',Lauw:'#FAEEDA',Warm:'#E1F5EE',Hot:'#FCEBEB'}[l.warmte]||'var(--bg2)'};
+            color:${{Koud:'#185FA5',Lauw:'#854F0B',Warm:'#0F6E56',Hot:'#A32D2D'}[l.warmte]||'var(--tx)'}">
+            ${B2C_WARMTES.map(w=>`<option value="${w}"${l.warmte===w?' selected':''}>${w}</option>`).join('')}
+          </select>
+        </div>
+      </div>
       <div class="b2c-summary-item"><div class="b2c-summary-lbl">Verantwoordelijke</div>
         <select id="bi-resp" style="font-size:12px;padding:3px 6px;width:auto">
           <option value="">—</option>
@@ -6414,7 +6492,7 @@ function b2cSaveLeadEdit(){
   const nemail=get('bi-email');if(nemail!==null&&nemail!==l.email){l.email=nemail;changed.push('e-mail');}
   const nadres=get('bi-adres');if(nadres!==null&&nadres!==l.adres){l.adres=nadres;changed.push('adres');}
   const nbron=get('bi-bron');if(nbron!==null&&nbron!==l.bron){l.bron=nbron;changed.push('bron');}
-  const nwarmte=get('bi-warmte');if(nwarmte!==null&&nwarmte!==l.warmte){l.warmte=nwarmte;changed.push('warmte');}
+  const nwarmte=get('bi-warmte')||get('bi-warmte-top');if(nwarmte!==null&&nwarmte!==l.warmte){l.warmte=nwarmte;changed.push('warmte');}
   const nnotities=get('bi-notities');if(nnotities!==null&&nnotities!==l.notities){l.notities=nnotities;changed.push('notities');}
   const nresp=get('bi-resp');if(nresp!==null&&nresp!==l.resp){l.resp=nresp;changed.push('verantwoordelijke');}
   const naanmaak=get('bi-aanmaakdatum');if(naanmaak!==null&&naanmaak!==l.aanmaakdatum){l.aanmaakdatum=naanmaak;changed.push('aanmaakdatum');}
@@ -6605,6 +6683,25 @@ function b2cDeleteOpvolging(id,idx){
   document.getElementById('b2c-opvolging-list').innerHTML=b2cRenderOpvolgingen(l);
   b2cRenderDashOpvolgingen();
   showToast('Opvolging verwijderd.');
+}
+
+function b2cQuickWarmte(w){
+  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  l.warmte=w;
+  sbSaveB2cLead(l);
+  b2cRenderLeads();
+  showToast('Warmte: '+w);
+  // Kleur van de top-select bijwerken
+  const topSel=document.getElementById('bi-warmte-top');
+  if(topSel){
+    const bgs={Koud:'#E6F1FB',Lauw:'#FAEEDA',Warm:'#E1F5EE',Hot:'#FCEBEB'};
+    const cols={Koud:'#185FA5',Lauw:'#854F0B',Warm:'#0F6E56',Hot:'#A32D2D'};
+    topSel.style.background=bgs[w]||'var(--bg2)';
+    topSel.style.color=cols[w]||'var(--tx)';
+  }
+  // Sync onderste select
+  const botSel=document.getElementById('bi-warmte');
+  if(botSel)botSel.value=w;
 }
 
 function b2cChangeStatus(id,s){
