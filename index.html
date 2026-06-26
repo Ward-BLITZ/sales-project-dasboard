@@ -5755,11 +5755,13 @@ function linkUserToResp(userNaam, userEmail){
   if(match){
     const respNaam=typeof match==='string'?match:match.naam;
     activeFilter=respNaam;
+    b2cRespFilter=respNaam;
     try{localStorage.setItem('blitz_filter',respNaam);}catch{}
     renderAll();
     showToast('Welkom '+respNaam+' — je ziet jouw projecten.');
   } else if(currentRole!=='admin'){
     activeFilter='all';
+    b2cRespFilter='alle';
     renderAll();
   }
 }
