@@ -295,6 +295,18 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .b2c-tl-item::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--green);position:absolute;left:-5px;top:3px}
 .b2c-tl-date{font-size:10px;color:var(--tx3);white-space:nowrap;margin-top:2px;min-width:78px}
 .b2c-tl-text{font-size:12px;color:var(--tx);line-height:1.4}
+/* Gedeeld activiteitenlog-paneel */
+.act-log-panel{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--rl);padding:12px 14px;display:flex;flex-direction:column;gap:0;height:100%}
+.act-log-panel-hdr{font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.act-log-feed{flex:1;overflow-y:auto;max-height:340px;display:flex;flex-direction:column;gap:0}
+.act-log-item{display:flex;gap:8px;padding-bottom:9px;padding-left:8px;border-left:2px solid var(--bd);margin-left:5px;position:relative}
+.act-log-item::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);position:absolute;left:-5px;top:3px;flex-shrink:0}
+.act-log-item:last-child{border-left:2px solid transparent;padding-bottom:0}
+.act-log-meta{font-size:10px;color:var(--tx3);white-space:nowrap;min-width:70px;line-height:1.5}
+.act-log-tekst{font-size:12px;color:var(--tx);line-height:1.4;flex:1}
+.act-log-gebruiker{font-size:9px;color:var(--tx3);font-style:italic}
+.act-log-input-row{display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)}
+
 .b2c-status-steps{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem}
 .b2c-status-step{padding:4px 11px;border-radius:20px;border:1px solid var(--bd);font-size:12px;cursor:pointer;background:var(--bg);color:var(--tx2);font-family:'Inter',sans-serif;font-weight:500;transition:all .12s}
 .b2c-status-step:hover{border-color:var(--green)}
@@ -781,40 +793,43 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
     <div style="flex:1;overflow-y:auto;padding:0 2px">
       <!-- TAB: INSTALLATIE -->
       <div id="inst-dtab-content-installatie">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-          <div class="field"><label>Voornaam *</label><input id="id-voornaam" placeholder="Jan"></div>
-          <div class="field"><label>Achternaam *</label><input id="id-achternaam" placeholder="Vermeersch"></div>
-          <div class="field"><label>Projectnaam / omschrijving</label><input id="id-project" placeholder="bv. EV-lader thuis Gent"></div>
-          <div class="field"><label>Verantwoordelijke</label>
-            <select id="id-resp"><option value="">— kies —</option></select>
+        <div style="display:grid;grid-template-columns:240px 1fr;gap:0;min-height:380px">
+          <!-- LINKS: Activiteitenlog -->
+          <div style="border-right:1px solid var(--bd);padding:14px 12px;display:flex;flex-direction:column;background:var(--bg2)">
+            <div class="act-log-panel-hdr"><i class="ti ti-timeline" style="color:var(--green)"></i>Activiteitenlog</div>
+            <div class="act-log-feed" id="id-log-list" style="max-height:none;flex:1"></div>
+            <div class="act-log-input-row">
+              <input id="id-log-tekst" placeholder="Actie loggen..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')instLogAdd()">
+              <button class="btn sm primary" onclick="instLogAdd()" title="Loggen"><i class="ti ti-plus"></i></button>
+            </div>
           </div>
-        </div>
-        <div class="field"><label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Installatieadres</label><input id="id-adres" placeholder="Straat, nr, gemeente"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="field"><label>Telefoon</label><input id="id-tel" type="tel" placeholder="0477 ..."></div>
-          <div class="field"><label>E-mail</label><input id="id-email" type="email" placeholder="jan@mail.be"></div>
-          <div class="field"><label><i class="ti ti-tool" style="color:#e85d04;margin-right:4px"></i>Installatiedatum</label><input type="date" id="id-datum-inst"></div>
-          <div class="field"><label>Uur installatie</label><input type="time" id="id-uur-inst" value="09:00"></div>
-          <div class="field"><label><i class="ti ti-clipboard-check" style="color:#7b2d8b;margin-right:4px"></i>Keuringsdatum</label><input type="date" id="id-datum-keur"></div>
-          <div class="field"><label>Uur keuring</label><input type="time" id="id-uur-keur" value="14:00"></div>
-        </div>
-        <div class="field"><label>Gekoppeld aan (B2C / B2B)</label>
-          <div style="position:relative">
-            <input id="id-link-search" placeholder="Zoek lead of project..." autocomplete="off" oninput="instLinkSearch2(this.value)" style="width:100%">
-            <input type="hidden" id="id-link-id"><input type="hidden" id="id-link-label">
-            <div id="id-link-dd" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.14);max-height:180px;overflow-y:auto"></div>
+          <!-- RECHTS: Formulier -->
+          <div style="padding:14px 16px;overflow-y:auto">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+              <div class="field"><label>Voornaam *</label><input id="id-voornaam" placeholder="Jan"></div>
+              <div class="field"><label>Achternaam *</label><input id="id-achternaam" placeholder="Vermeersch"></div>
+              <div class="field"><label>Projectnaam / omschrijving</label><input id="id-project" placeholder="bv. EV-lader thuis Gent"></div>
+              <div class="field"><label>Verantwoordelijke</label>
+                <select id="id-resp"><option value="">— kies —</option></select>
+              </div>
+            </div>
+            <div class="field"><label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Installatieadres</label><input id="id-adres" placeholder="Straat, nr, gemeente"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="field"><label>Telefoon</label><input id="id-tel" type="tel" placeholder="0477 ..."></div>
+              <div class="field"><label>E-mail</label><input id="id-email" type="email" placeholder="jan@mail.be"></div>
+              <div class="field"><label><i class="ti ti-tool" style="color:#e85d04;margin-right:4px"></i>Installatiedatum</label><input type="date" id="id-datum-inst"></div>
+              <div class="field"><label>Uur installatie</label><input type="time" id="id-uur-inst" value="09:00"></div>
+              <div class="field"><label><i class="ti ti-clipboard-check" style="color:#7b2d8b;margin-right:4px"></i>Keuringsdatum</label><input type="date" id="id-datum-keur"></div>
+              <div class="field"><label>Uur keuring</label><input type="time" id="id-uur-keur" value="14:00"></div>
+            </div>
+            <div class="field"><label>Gekoppeld aan (B2C / B2B)</label>
+              <div style="position:relative">
+                <input id="id-link-search" placeholder="Zoek lead of project..." autocomplete="off" oninput="instLinkSearch2(this.value)" style="width:100%">
+                <input type="hidden" id="id-link-id"><input type="hidden" id="id-link-label">
+                <div id="id-link-dd" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.14);max-height:180px;overflow-y:auto"></div>
+              </div>
+            </div>
           </div>
-        </div>
-        <!-- Activiteitenlog -->
-        <div style="margin-top:1rem;border-top:1px solid var(--bd);padding-top:1rem">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
-            <span><i class="ti ti-timeline" style="margin-right:5px"></i>Activiteitenlog</span>
-          </div>
-          <div style="display:flex;gap:8px;margin-bottom:10px">
-            <input id="id-log-tekst" placeholder="Noteer een actie of opvolging..." style="flex:1;font-size:12px">
-            <button class="btn sm primary" onclick="instLogAdd()"><i class="ti ti-plus"></i></button>
-          </div>
-          <div id="id-log-list" style="max-height:220px;overflow-y:auto"></div>
         </div>
       </div>
       <!-- TAB: SCREENING -->
@@ -1638,21 +1653,16 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
         </div>
         <button class="btn sm" onclick="b2bAddOpvolging()" style="margin-bottom:14px;width:100%;justify-content:center"><i class="ti ti-plus"></i> Opvolging toevoegen</button>
         <!-- TIJDLIJN -->
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin:14px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--bd)"><i class="ti ti-timeline" style="margin-right:5px"></i>Tijdlijn acties</div>
-        <!-- Nieuwe actie toevoegen -->
-        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end">
-          <div style="flex:1">
-            <label style="font-size:11px;color:var(--tx2);margin-bottom:3px;display:block">Actie</label>
-            <input id="tl-actie" placeholder="bv. Offerte verstuurd, meeting gehad..." style="font-size:12px">
+        <div style="border:1px solid var(--bd);border-radius:var(--rl);background:var(--bg2);margin-top:14px">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--bd)">
+            <span style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:6px"><i class="ti ti-timeline" style="color:var(--green)"></i>Activiteitenlog</span>
           </div>
-          <div style="width:130px">
-            <label style="font-size:11px;color:var(--tx2);margin-bottom:3px;display:block">Datum</label>
-            <input type="date" id="tl-datum" style="font-size:12px">
+          <div id="m-tijdlijn" style="max-height:260px;overflow-y:auto;padding:8px 4px 0"></div>
+          <div style="display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--bd);margin-top:4px">
+            <input id="tl-actie" placeholder="Actie loggen... (Enter of klik +)" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')tlAddActie()">
+            <button class="btn sm primary" onclick="tlAddActie()" style="flex-shrink:0"><i class="ti ti-plus"></i></button>
           </div>
-          <button class="btn sm primary" onclick="tlAddActie()" style="flex-shrink:0;height:36px"><i class="ti ti-plus"></i></button>
         </div>
-        <!-- Tijdlijn lijst -->
-        <div id="m-tijdlijn" style="max-height:320px;overflow-y:auto"></div>
       </div>
     </div>
 
@@ -1678,8 +1688,8 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 
 <!-- B2C LEAD DETAIL MODAL -->
 <div class="modal-overlay" id="b2c-detail-overlay">
-  <div class="modal-box" style="max-width:880px;display:flex;flex-direction:column;max-height:90vh">
-    <div class="modal-header">
+  <div class="modal-box" style="max-width:1100px;width:98vw;display:flex;flex-direction:column;max-height:90vh">
+    <div class="modal-header" style="flex-shrink:0">
       <span class="modal-title" id="b2c-detail-titel">Klantdossier</span>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
         <button class="btn sm" style="color:#639922;border-color:rgba(99,153,34,.3)" onclick="b2cMarkeerStatus('Gewonnen')" title="Markeer als Gewonnen"><i class="ti ti-trophy"></i> Gewonnen</button>
@@ -1687,8 +1697,8 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
         <button class="modal-close" onclick="b2cCloseDetail()"><i class="ti ti-x"></i></button>
       </div>
     </div>
-    <div class="inner-tabs">
-      <button class="inner-tab active" id="b2c-dtab-info" onclick="b2cShowDetailTab('info')"><i class="ti ti-info-circle" style="margin-right:5px"></i>Algemene info</button>
+    <div class="inner-tabs" style="flex-shrink:0">
+      <button class="inner-tab active" id="b2c-dtab-info" onclick="b2cShowDetailTab('info')"><i class="ti ti-info-circle" style="margin-right:5px"></i>Dossier</button>
       <button class="inner-tab" id="b2c-dtab-screening" onclick="b2cShowDetailTab('screening')"><i class="ti ti-clipboard-list" style="margin-right:5px"></i>Screening</button>
       <button class="inner-tab" id="b2c-dtab-contract" onclick="b2cShowDetailTab('contract')"><i class="ti ti-file-invoice" style="margin-right:5px"></i>Contract</button>
       <button class="inner-tab" id="b2c-dtab-documenten" onclick="b2cShowDetailTab('documenten')"><i class="ti ti-paperclip" style="margin-right:5px"></i>Documenten</button>
@@ -2250,7 +2260,7 @@ function prospSave(){
 function prospDelete(){
   const p=prospects.find(x=>x.id===prospEditId);
   if(!p||!confirm(`Prospect "${p.naam}" verwijderen?`))return;
-  sbDeleteProspect(p.id);
+  sbDeleteProspect(p);
   prospects=prospects.filter(x=>x.id!==prospEditId);
   prospCloseModal();prospRender();showToast('Prospect verwijderd.');
 }
@@ -2267,7 +2277,7 @@ function prospNaarProject(){
     const rEl=document.getElementById('m-resp');if(rEl)rEl.value=p.resp||'';
     const pcEl=document.getElementById('m-postcode');if(pcEl)pcEl.value=p.postcode||'';
   },150);
-  sbDeleteProspect(p.id);
+  sbDeleteProspect(p);
   prospects=prospects.filter(x=>x.id!==prospEditId);
   prospRender();showTab('lopend');
 }
@@ -2453,9 +2463,11 @@ async function sbSaveProspect(p){
   }catch(e){console.warn('sbSaveProspect:',e.message);}
   try{localStorage.setItem('blitz_prospects',JSON.stringify(prospects));}catch{}
 }
-async function sbDeleteProspect(id){
-  if(sbUrl){
-    try{await sbFetch('prospects?id=eq.'+id,{method:'DELETE'});}catch(e){console.warn('sbDeleteProspect:',e.message);}
+async function sbDeleteProspect(prospOrId){
+  // Accepteert zowel een prospect-object (met _sbid) als een losse id
+  const sbid=prospOrId?._sbid||null;
+  if(sbUrl&&sbid){
+    try{await sbFetch('prospects?id=eq.'+sbid,{method:'DELETE'});}catch(e){console.warn('sbDeleteProspect:',e.message);}
   }
   try{localStorage.setItem('blitz_prospects',JSON.stringify(prospects));}catch{}
 }
@@ -2860,7 +2872,6 @@ function openModal(idx){
     renderAttachList();
     currentTijdlijn=Array.isArray(p.tijdlijn)?[...p.tijdlijn]:[];
     currentB2bOpvolgingen=Array.isArray(p.opvolgingen)?[...p.opvolgingen]:[];
-    document.getElementById('tl-datum').value=today();
     renderTijdlijn();
     b2bRenderOpvolgingen();
   } else {
@@ -2874,7 +2885,6 @@ function openModal(idx){
     currentAttachments=[];renderAttachList();
     currentTijdlijn=[];
     currentB2bOpvolgingen=[];
-    document.getElementById('tl-datum').value=today();
     renderTijdlijn();
     b2bRenderOpvolgingen();
   }
@@ -4980,12 +4990,16 @@ function instDossierDelete(){
 // ── LOG ──
 function instLogRender(acties){
   const el=document.getElementById('id-log-list');if(!el)return;
-  if(!acties.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3)">Nog geen activiteiten.</div>';return;}
-  el.innerHTML=[...acties].reverse().map((a,i)=>`<div class="tl-item">
-    <div class="tl-datum">${a.datum||''}${a.tijdstip?' '+a.tijdstip:''}<br>${a.gebruiker?'<span style="font-size:9px;color:var(--tx3)">'+a.gebruiker+'</span>':''}</div>
-    <div class="tl-tekst">${a.tekst}</div>
-    <button class="tl-del" onclick="instLogDel(${acties.length-1-i})"><i class="ti ti-x"></i></button>
-  </div>`).join('');
+  if(!acties||!acties.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:1rem 0"><i class="ti ti-timeline" style="display:block;font-size:22px;margin-bottom:6px"></i>Nog geen activiteiten.</div>';return;}
+  el.innerHTML=[...acties].reverse().map((a,i)=>`
+    <div class="act-log-item">
+      <div class="act-log-meta">
+        ${a.datum||''}${a.tijdstip?`<br>${a.tijdstip}`:''}
+        ${a.gebruiker?`<br><span class="act-log-gebruiker">${a.gebruiker}</span>`:''}
+      </div>
+      <div class="act-log-tekst">${a.tekst}</div>
+      <button class="tl-del" onclick="instLogDel(${acties.length-1-i})"><i class="ti ti-x"></i></button>
+    </div>`).join('');
 }
 function instLogAdd(){
   const txt=document.getElementById('id-log-tekst').value.trim();
@@ -5297,7 +5311,7 @@ function doorstuurNaarInstallatie(bron, id){
     if(!leadObj.gewonnenOp)leadObj.gewonnenOp=today();
     leadObj.installatieType='eigen';
     leadObj.acties=leadObj.acties||[];
-    leadObj.acties.push({datum:today(),tekst:'✓ Gewonnen — doorgestuurd naar installatiedashboard.'});
+    leadObj.acties.push(logEntry('✓ Gewonnen — doorgestuurd naar installatiedashboard.'));
     sbSaveB2cLead(leadObj);
     b2cRenderGewonnen();
   }
@@ -5309,7 +5323,7 @@ function doorstuurNaarInstallatie(bron, id){
     projObj.status=String(STATUSES.length-1);
     if(!projObj.sold_at)projObj.sold_at=today();
     projObj.tijdlijn=projObj.tijdlijn||[];
-    projObj.tijdlijn.push({datum:today(),tekst:'Gewonnen — doorgestuurd naar installatiedashboard.'});
+    projObj.tijdlijn.push(logEntry('Gewonnen — doorgestuurd naar installatiedashboard.'));
     if(projIdx>=0)projects[projIdx]=projObj;
     if(prevSoldSet)prevSoldSet.add(projObj.naam||'');
     lsSave();
@@ -5866,7 +5880,7 @@ function b2cHeractiveer(id){
   if(!confirm(`"${b2cNaam(l)}" terugzetten naar actieve leads?`))return;
   l.status='Nieuw';
   l.acties=l.acties||[];
-  l.acties.push({datum:today(),tekst:'Teruggezet naar actieve leads'});
+  l.acties.push(logEntry('Teruggezet naar actieve leads'));
   b2cRenderLeads();b2cRenderGewonnen();b2cRenderVerloren();
   showToast('Lead teruggezet naar actief.');
 }
@@ -5878,7 +5892,7 @@ function b2cMarkeerStatus(status){
   if(status==='Gewonnen'&&!l.gewonnenOp)l.gewonnenOp=today();
   if(status==='Verloren'&&!l.verliesOp)l.verliesOp=today();
   l.acties=l.acties||[];
-  l.acties.push({datum:today(),tekst:'Status gewijzigd naar: '+status});
+  l.acties.push(logEntry('Status gewijzigd naar: '+status));
   // Close overlay without triggering b2c re-render
   document.getElementById('b2c-detail-overlay').classList.remove('open');
   b2cOpenLeadId=null;
@@ -6057,7 +6071,7 @@ function b2cBevestigGwPartner(){
   l.installatieType='partner';
   l.installatiepartner=naam;
   l.acties=l.acties||[];
-  l.acties.push({datum:today(),tekst:`✓ Gewonnen — partner: ${naam}`});
+  l.acties.push(logEntry(`✓ Gewonnen — partner: ${naam}`));
   sbSaveB2cLead(l);
   b2cSluitGwPartner();
   b2cRenderGewonnen();
@@ -6139,7 +6153,7 @@ function b2cAttachBoardEvents(){
       return;
     }
     l.status=newStatus;
-    l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Status → '+newStatus});
+    l.acties=l.acties||[];l.acties.push(logEntry('Status → '+newStatus));
     sbSaveB2cLead(l);_b2cDragId=null;
     b2cRenderLeads();
     showToast('"'+b2cNaam(l)+'" → '+newStatus);
@@ -6181,7 +6195,7 @@ function b2cBevestigVerlies(){
   if(!l){b2cAnnuleerVerlies();return;}
   const reden=document.getElementById('b2c-verlies-input').value.trim();
   l.status='Verloren';l.verliesReden=reden||'Niet opgegeven';l.verliesOp=today();
-  l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Verloren'+(reden?' — '+reden:'')});
+  l.acties=l.acties||[];l.acties.push(logEntry('Verloren'+(reden?' — '+reden:'')));
   sbSaveB2cLead(l);
   b2cAnnuleerVerlies();b2cRenderLeads();b2cRenderVerloren();showTab('b2c-verloren');
   showToast('"'+b2cNaam(l)+'" als verloren gemarkeerd.');
@@ -6199,7 +6213,7 @@ function b2cBevestigInstallateur(){
   l.status=b2cInstallateurNewStatus;
   l.installatiepartner=naam;
   l.acties=l.acties||[];
-  l.acties.push({datum:today(),tekst:`Status → ${b2cInstallateurNewStatus} — Partner: ${naam}`});
+  l.acties.push(logEntry(`Status → ${b2cInstallateurNewStatus} — Partner: ${naam}`));
   sbSaveB2cLead(l);
   b2cSluitInstallateur();
   b2cRenderLeads();
@@ -6390,96 +6404,154 @@ function b2cDocVerwijder(i){
 }
 
 // ─── TAB 1: INFO ────────────────────────────────────
+function b2cActLogHtml(acties){
+  if(!acties||!acties.length) return '<div style="font-size:12px;color:var(--tx3);text-align:center;padding:1rem 0"><i class="ti ti-timeline" style="display:block;font-size:22px;margin-bottom:6px"></i>Nog geen activiteiten.</div>';
+  return [...acties].reverse().map(a=>`
+    <div class="act-log-item">
+      <div class="act-log-meta">
+        ${a.datum||''}${a.tijdstip?`<br>${a.tijdstip}`:''}
+        ${a.gebruiker?`<br><span class="act-log-gebruiker">${a.gebruiker}</span>`:''}
+      </div>
+      <div class="act-log-tekst">${a.tekst}</div>
+    </div>`).join('');
+}
+
 function b2cRenderInfo(l){
+  const wBg={Koud:'#E6F1FB',Lauw:'#FAEEDA',Warm:'#E1F5EE',Hot:'#FCEBEB'};
+  const wCol={Koud:'#185FA5',Lauw:'#854F0B',Warm:'#0F6E56',Hot:'#A32D2D'};
   document.getElementById('b2c-detail-info').innerHTML=`
-    <div style="padding:16px 20px">
-    <div class="b2c-summary-grid">
-      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Status</div><div><span class="badge ${b2cBadgeSt(l.status)}">${l.status}</span></div></div>
-      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Warmte</div>
-        <div>
-          <select id="bi-warmte-top" onchange="b2cQuickWarmte(this.value)"
-            style="font-size:12px;padding:3px 8px;border-radius:20px;border:1px solid var(--bd);font-weight:600;cursor:pointer;
-            background:${{Koud:'#E6F1FB',Lauw:'#FAEEDA',Warm:'#E1F5EE',Hot:'#FCEBEB'}[l.warmte]||'var(--bg2)'};
-            color:${{Koud:'#185FA5',Lauw:'#854F0B',Warm:'#0F6E56',Hot:'#A32D2D'}[l.warmte]||'var(--tx)'}">
-            ${B2C_WARMTES.map(w=>`<option value="${w}"${l.warmte===w?' selected':''}>${w}</option>`).join('')}
-          </select>
-        </div>
+  <div style="padding:20px 24px">
+
+    <!-- Naam bovenaan -->
+    <div class="field" style="margin-bottom:16px">
+      <label style="font-size:11px">Naam *</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <input id="bi-vnaam" value="${l.voornaam||''}" placeholder="Voornaam" style="font-size:15px;font-weight:600">
+        <input id="bi-anaam" value="${l.achternaam||''}" placeholder="Achternaam" style="font-size:15px;font-weight:600">
       </div>
-      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Verantwoordelijke</div>
-        <select id="bi-resp" style="font-size:12px;padding:3px 6px;width:auto">
-          <option value="">—</option>
-          ${respNames('sales').map(r=>`<option value="${r}"${l.resp===r?' selected':''}>${r}</option>`).join('')}
-        </select>
-      </div>
-      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Visit</div><div class="b2c-summary-val">${l.visitDatum?(l.visitDatum+(l.visitUur?' om '+l.visitUur:'')):'Niet gepland'}</div></div>
-      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Aanmaakdatum</div><div><input type="date" id="bi-aanmaakdatum" value="${l.aanmaakdatum||today()}" style="font-size:12px;padding:3px 6px;width:auto"></div></div>
-      <div class="b2c-summary-item"><div class="b2c-summary-lbl">Offertenummer</div><div><input type="text" id="bi-offertenr" value="${l.offertenr||''}" placeholder="OFF-2026-001" style="font-size:12px;padding:3px 6px;width:130px"></div></div>
-      ${l.installatiepartner?`<div class="b2c-summary-item"><div class="b2c-summary-lbl">Installatiepartner</div><div class="b2c-summary-val" style="font-weight:600;color:var(--green)"><i class="ti ti-tools" style="font-size:11px;margin-right:3px"></i>${l.installatiepartner}</div></div>`:''}
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1rem">
+    <!-- SPLIT LAYOUT -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+      <!-- LINKS -->
       <div>
-        <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Contactgegevens</div>
-        <div class="field" style="margin-bottom:8px"><label>Voornaam</label><input id="bi-vnaam" value="${l.voornaam||''}" style="font-size:12px"></div>
-        <div class="field" style="margin-bottom:8px"><label>Achternaam</label><input id="bi-anaam" value="${l.achternaam||''}" style="font-size:12px"></div>
-        <div class="field" style="margin-bottom:8px"><label><i class="ti ti-phone" style="margin-right:4px"></i>Telefoon</label><input id="bi-tel" value="${l.tel||''}" type="tel" style="font-size:12px"></div>
-        <div class="field" style="margin-bottom:8px"><label><i class="ti ti-mail" style="margin-right:4px"></i>E-mail</label><input id="bi-email" value="${l.email||''}" type="email" style="font-size:12px"></div>
-        <div class="field" style="margin-bottom:8px"><label><i class="ti ti-map-pin" style="margin-right:4px"></i>Adres</label><input id="bi-adres" value="${l.adres||''}" style="font-size:12px"></div>
-        <div class="field" style="margin-bottom:8px"><label><i class="ti ti-source" style="margin-right:4px"></i>Bron</label>
-          <select id="bi-bron" style="font-size:12px">
-            ${['Website','Doorverwijzing','Social media','Beurs/event','Flyer','Google Ads','Telefonisch','Anders'].map(b=>`<option${l.bron===b?' selected':''}>${b}</option>`).join('')}
-          </select>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)"><i class="ti ti-user" style="margin-right:5px"></i>Klant &amp; contact</div>
+        <div class="grid2" style="gap:10px">
+          <div class="field" style="margin-bottom:10px"><label><i class="ti ti-phone" style="margin-right:3px"></i>Telefoon</label><input id="bi-tel" value="${l.tel||''}" type="tel" style="font-size:13px"></div>
+          <div class="field" style="margin-bottom:10px"><label><i class="ti ti-mail" style="margin-right:3px"></i>E-mail</label><input id="bi-email" value="${l.email||''}" type="email" style="font-size:13px"></div>
         </div>
-        <div class="field" style="margin-bottom:8px"><label>Warmte</label>
-          <select id="bi-warmte" style="font-size:12px">
-            ${B2C_WARMTES.map(w=>`<option${l.warmte===w?' selected':''}>${w}</option>`).join('')}
-          </select>
+        <div class="field" style="margin-bottom:10px"><label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Installatieadres</label><input id="bi-adres" value="${l.adres||''}" placeholder="Straat, nr, gemeente..." style="font-size:13px"></div>
+
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin:14px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--bd)"><i class="ti ti-settings" style="margin-right:5px"></i>Lead details</div>
+        <div class="field" style="margin-bottom:10px">
+          <label>Status</label>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+            ${B2C_STATUSSEN.map(s=>`<button class="b2c-status-step${l.status===s?' current':''}" style="font-size:11px;padding:3px 9px" onclick="b2cChangeStatus(${l.id},'${s}')">${s}</button>`).join('')}
+          </div>
         </div>
-        <div class="field" style="margin-bottom:8px"><label>Notities</label><textarea id="bi-notities" rows="3" style="font-size:12px">${l.notities||''}</textarea></div>
+        <div class="grid2" style="gap:10px">
+          <div class="field" style="margin-bottom:10px">
+            <label>Verantwoordelijke</label>
+            <select id="bi-resp" style="font-size:13px">
+              <option value="">— kies —</option>
+              ${respNames('sales').map(r=>`<option value="${r}"${l.resp===r?' selected':''}}>${r}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:10px">
+            <label>Warmte</label>
+            <select id="bi-warmte-top" onchange="b2cQuickWarmte(this.value)" style="font-size:13px;padding:7px 10px;border-radius:var(--r);border:1px solid var(--bd);font-weight:600;cursor:pointer;background:${wBg[l.warmte]||'var(--bg)'};color:${wCol[l.warmte]||'var(--tx)'}">
+              ${B2C_WARMTES.map(w=>`<option value="${w}"${l.warmte===w?' selected':''}}>${w}</option>`).join('')}
+            </select>
+            <input type="hidden" id="bi-warmte" value="${l.warmte||''}">
+          </div>
+        </div>
+        <div class="grid2" style="gap:10px">
+          <div class="field" style="margin-bottom:10px"><label><i class="ti ti-source" style="margin-right:3px"></i>Bron</label>
+            <select id="bi-bron" style="font-size:13px">
+              ${['Website','Doorverwijzing','Social media','Beurs/event','Flyer','Google Ads','Telefonisch','Anders'].map(b=>`<option${l.bron===b?' selected':''}}>${b}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:10px"><label><i class="ti ti-calendar" style="color:var(--green);margin-right:3px"></i>Aanmaakdatum</label><input type="date" id="bi-aanmaakdatum" value="${l.aanmaakdatum||today()}" style="font-size:13px"></div>
+        </div>
+        <div class="grid2" style="gap:10px">
+          <div class="field" style="margin-bottom:10px"><label><i class="ti ti-file-invoice" style="color:var(--green);margin-right:3px"></i>Offertenummer</label><input id="bi-offertenr" value="${l.offertenr||''}" placeholder="bv. OFF-2026-001" style="font-size:13px"></div>
+          <div class="field" style="margin-bottom:10px"><label>Visit</label>
+            <div style="display:flex;align-items:center;gap:6px">
+              ${l.visitDatum
+                ?`<span style="font-size:12px;font-weight:600;color:var(--green)">${l.visitDatum}${l.visitUur?' '+l.visitUur:''}</span>`
+                :`<span style="font-size:12px;color:var(--tx3)">Niet gepland</span>`}
+              <button class="btn sm" onclick="b2cOpenVisitModal(${l.id})" style="flex-shrink:0"><i class="ti ti-calendar-${l.visitDatum?'event':'plus'}"></i> ${l.visitDatum?'Wijzigen':'Plannen'}</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Installatiepartner -->
+        <div style="border-top:1px solid var(--bd);padding-top:14px;margin-top:4px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:10px"><i class="ti ti-tools" style="color:#e85d04;margin-right:5px"></i>Installatiepartner</div>
+          <div style="position:relative">
+            <input id="bi-partner-search" placeholder="Zoek installatiepartner in CRM…" autocomplete="off"
+              oninput="b2cPartnerZoek(this.value);document.getElementById('bi-partner-naam').value=this.value.trim();"
+              value="${l.installatiepartner||''}" style="width:100%;font-size:13px">
+            <div id="bi-partner-dd" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:300;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,.12);max-height:160px;overflow-y:auto;margin-top:2px"></div>
+          </div>
+          <div id="bi-partner-chip" style="display:${l.installatiepartner?'flex':'none'};margin-top:6px;align-items:center;gap:6px;background:rgba(232,93,4,.08);border:1px solid rgba(232,93,4,.25);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;color:#e85d04">
+            ${l.installatiepartner?`<i class="ti ti-tools" style="font-size:11px"></i> ${l.installatiepartner}<button onclick="b2cPartnerClear()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;font-size:13px"><i class="ti ti-x"></i></button>`:''}
+          </div>
+          <input type="hidden" id="bi-partner-naam" value="${l.installatiepartner||''}">
+        </div>
       </div>
+
+      <!-- RECHTS -->
       <div>
-        <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Pipeline</div>
-        <div class="b2c-status-steps">${B2C_STATUSSEN.map(s=>`<button class="b2c-status-step${l.status===s?' current':''}" onclick="b2cChangeStatus(${l.id},'${s}')">${s}</button>`).join('')}</div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)"><i class="ti ti-notes" style="margin-right:5px"></i>Opmerkingen &amp; info</div>
+        <div class="field" style="margin-bottom:14px">
+          <label>Notities</label>
+          <textarea id="bi-notities" rows="3" placeholder="Eerste indruk, wensen, bijzonderheden..." style="min-height:70px;max-height:160px;overflow-y:auto;resize:none;transition:height .15s;font-size:13px" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,160)+'px'">${l.notities||''}</textarea>
+        </div>
 
-        ${!l.visitDatum
-          ?`<button class="btn primary" style="width:100%;justify-content:center" onclick="b2cOpenVisitModal(${l.id})"><i class="ti ti-calendar-plus"></i> Visit inplannen</button>`
-          :`<div style="background:rgba(0,223,163,.08);border:1px solid rgba(0,223,163,.3);border-radius:var(--r);padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:space-between"><span><i class="ti ti-calendar-event" style="color:var(--green);margin-right:6px"></i><strong>${l.visitDatum}</strong>${l.visitUur?' om <strong>'+l.visitUur+'</strong>':''}</span><button class="btn sm" onclick="b2cOpenVisitModal(${l.id})"><i class="ti ti-edit"></i></button></div>`}
-        <div style="margin-top:10px">
-          <button class="btn" style="width:100%;justify-content:center;border-color:rgba(0,223,163,.4);color:var(--green)" onclick="b2cOpenDoorstuur(${l.id})"><i class="ti ti-arrow-right"></i> Doorsturen naar B2B projecten</button>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin:0 0 10px;padding-bottom:6px;border-bottom:2px solid var(--bd);display:flex;align-items:center;justify-content:space-between">
+          <span><i class="ti ti-calendar-check" style="margin-right:5px;color:var(--green)"></i>Opvolgingen</span>
+          <button class="btn sm primary" onclick="b2cAddOpvolging(${l.id})"><i class="ti ti-plus"></i> Toevoegen</button>
+        </div>
+        <div id="b2c-opvolging-list" style="margin-bottom:8px">${b2cRenderOpvolgingen(l)}</div>
+        <div id="b2c-opvolging-form" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div class="field" style="margin:0"><label style="font-size:11px">Datum</label><input type="date" id="bop-datum" value="${today()}" style="font-size:12px"></div>
+            <div class="field" style="margin:0"><label style="font-size:11px">Uur (optioneel)</label><input type="time" id="bop-uur" style="font-size:12px"></div>
+          </div>
+          <div class="field" style="margin-bottom:8px"><label style="font-size:11px">Wat moet er gedaan worden?</label><input id="bop-tekst" placeholder="bv. Offerte opvolgen, terugbellen..." style="font-size:12px"></div>
+          <div style="display:flex;gap:6px;justify-content:flex-end">
+            <button class="btn sm" onclick="document.getElementById('b2c-opvolging-form').style.display='none'">Annuleren</button>
+            <button class="btn sm primary" onclick="b2cSaveOpvolging(${l.id})"><i class="ti ti-check"></i> Opslaan</button>
+          </div>
+        </div>
+        <button class="btn sm" onclick="b2cOpenDoorstuur(${l.id})" style="width:100%;justify-content:center;margin-bottom:14px;border-color:rgba(0,223,163,.4);color:var(--green)"><i class="ti ti-arrow-right"></i> Doorsturen naar B2B projecten</button>
+
+        <!-- ACTIVITEITENLOG -->
+        <div style="border:1px solid var(--bd);border-radius:var(--rl);background:var(--bg2)">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:6px">
+            <i class="ti ti-timeline" style="color:var(--green)"></i>
+            <span style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px">Activiteitenlog</span>
+          </div>
+          <div class="act-log-feed" id="b2c-act-feed" style="max-height:220px;overflow-y:auto;padding:8px 4px 0">${b2cActLogHtml(l.acties)}</div>
+          <div class="act-log-input-row" style="padding:10px 12px;border-top:1px solid var(--bd);margin-top:4px">
+            <input type="text" id="b2c-actie-input" placeholder="Actie loggen... (Enter of klik +)" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')b2cLogActie(${l.id})">
+            <button class="btn sm primary" onclick="b2cLogActie(${l.id})" title="Loggen"><i class="ti ti-plus"></i></button>
+          </div>
         </div>
       </div>
     </div>
-
-    <!-- OPVOLGINGSAGENDA -->
-    <div style="border-top:1px solid var(--bd);margin-top:4px;padding-top:14px">
-      <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
-        <span><i class="ti ti-calendar-check" style="margin-right:6px;color:var(--green)"></i>Opvolgingen</span>
-        <button class="btn sm primary" onclick="b2cAddOpvolging(${l.id})"><i class="ti ti-plus"></i> Toevoegen</button>
-      </div>
-      <div id="b2c-opvolging-list">${b2cRenderOpvolgingen(l)}</div>
-      <div id="b2c-opvolging-form" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-top:8px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <div class="field" style="margin:0"><label style="font-size:11px">Datum</label><input type="date" id="bop-datum" value="${today()}" style="font-size:12px"></div>
-          <div class="field" style="margin:0"><label style="font-size:11px">Uur (optioneel)</label><input type="time" id="bop-uur" style="font-size:12px"></div>
-        </div>
-        <div class="field" style="margin-bottom:8px"><label style="font-size:11px">Wat moet er gedaan worden?</label><input id="bop-tekst" placeholder="bv. Offerte opvolgen, terugbellen..." style="font-size:12px"></div>
-        <div style="display:flex;gap:6px;justify-content:flex-end">
-          <button class="btn sm" onclick="document.getElementById('b2c-opvolging-form').style.display='none'">Annuleren</button>
-          <button class="btn sm primary" onclick="b2cSaveOpvolging(${l.id})"><i class="ti ti-check"></i> Opslaan</button>
-        </div>
-      </div>
-    </div>
-
-    <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:10px">
-      <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Activiteit</div>
-      <div class="b2c-tl">${(l.acties||[]).slice().reverse().map(a=>`<div class="b2c-tl-item"><span class="b2c-tl-date">${a.datum}</span><span class="b2c-tl-text">${a.tekst}</span></div>`).join('')}</div>
-      <div style="margin-top:12px;display:flex;gap:8px">
-        <input type="text" id="b2c-actie-input" placeholder="Actie loggen..." style="flex:1">
-        <button class="btn primary" onclick="b2cLogActie(${l.id})"><i class="ti ti-plus"></i> Log</button>
-      </div>
-    </div>
-    </div>
+  </div>
   `;
+  setTimeout(()=>{
+    document.addEventListener('click', function _bpClose(e){
+      if(!e.target.closest('#bi-partner-search')&&!e.target.closest('#bi-partner-dd')){
+        const dd=document.getElementById('bi-partner-dd');if(dd)dd.style.display='none';
+        document.removeEventListener('click',_bpClose);
+      }
+    });
+  },100);
 }
 
 function b2cSaveLeadEdit(){
@@ -6497,9 +6569,10 @@ function b2cSaveLeadEdit(){
   const nresp=get('bi-resp');if(nresp!==null&&nresp!==l.resp){l.resp=nresp;changed.push('verantwoordelijke');}
   const naanmaak=get('bi-aanmaakdatum');if(naanmaak!==null&&naanmaak!==l.aanmaakdatum){l.aanmaakdatum=naanmaak;changed.push('aanmaakdatum');}
   const noffertenr=get('bi-offertenr');if(noffertenr!==null&&noffertenr!==l.offertenr){l.offertenr=noffertenr;changed.push('offertenummer');}
+  const npartner=get('bi-partner-naam');if(npartner!==null&&npartner!==l.installatiepartner){l.installatiepartner=npartner;changed.push('installatiepartner');}
   if(changed.length){
     l.acties=l.acties||[];
-    l.acties.push({datum:today(),tekst:'Bewerkt: '+changed.join(', ')});
+    l.acties.push(logEntry('Bewerkt: '+changed.join(', ')));
   }
   document.getElementById('b2c-detail-titel').textContent=b2cNaam(l);
   b2cRenderLeads();
@@ -6618,7 +6691,7 @@ function b2cSaveOpvolging(id){
   l.opvolgingen=l.opvolgingen||[];
   l.opvolgingen.push({datum,uur:document.getElementById('bop-uur').value,tekst,gedaan:false});
   l.acties=l.acties||[];
-  l.acties.push({datum:today(),tekst:'Opvolging ingepland: '+tekst+' op '+datum});
+  l.acties.push(logEntry('Opvolging ingepland: '+tekst+' op '+datum));
   sbSaveB2cLead(l);
   document.getElementById('b2c-opvolging-form').style.display='none';
   document.getElementById('b2c-opvolging-list').innerHTML=b2cRenderOpvolgingen(l);
@@ -6632,7 +6705,7 @@ function b2cToggleOpvolgingGedaan(leadId,idx){
   if(op.gedaan){
     op.gedaan=false;op.opmerking='';
     l.acties=l.acties||[];
-    l.acties.push({datum:today(),tekst:'Opvolging heractiveerd: '+op.tekst});
+    l.acties.push(logEntry('Opvolging heractiveerd: '+op.tekst));
     sbSaveB2cLead(l);
     const listEl=document.getElementById('b2c-opvolging-list');
     if(listEl)listEl.innerHTML=b2cRenderOpvolgingen(l);
@@ -6660,7 +6733,7 @@ function b2cBevestigAfvink(){
   const opmerking=document.getElementById('b2c-afvink-opmerking').value.trim();
   op.gedaan=true;op.opmerking=opmerking;
   l.acties=l.acties||[];
-  l.acties.push({datum:today(),tekst:`✓ Opvolging gedaan: ${op.tekst}${opmerking?' — '+opmerking:''}`});
+  l.acties.push(logEntry(`✓ Opvolging gedaan: ${op.tekst}${opmerking?' — '+opmerking:''}`));
   sbSaveB2cLead(l);
   b2cSluitAfvink();
   const listEl=document.getElementById('b2c-opvolging-list');
@@ -6683,6 +6756,44 @@ function b2cDeleteOpvolging(id,idx){
   document.getElementById('b2c-opvolging-list').innerHTML=b2cRenderOpvolgingen(l);
   b2cRenderDashOpvolgingen();
   showToast('Opvolging verwijderd.');
+}
+
+function b2cPartnerZoek(q){
+  const dd=document.getElementById('bi-partner-dd');if(!dd)return;
+  if(!q||q.length<1){dd.style.display='none';return;}
+  const ql=q.toLowerCase();
+  const results=[];
+  klanten.filter(k=>k.isInstallatiepartner&&(k.naam||'').toLowerCase().includes(ql)).forEach(k=>results.push({label:k.naam,sub:'✓ Installatiepartner',icon:'ti-tools',color:'#e85d04'}));
+  klanten.filter(k=>!k.isInstallatiepartner&&(k.naam||'').toLowerCase().includes(ql)).slice(0,3).forEach(k=>results.push({label:k.naam,sub:k.contact||'CRM klant',icon:'ti-building',color:'var(--tx2)'}));
+  [...new Set(b2cLeads.filter(l=>l.installatiepartner).map(l=>l.installatiepartner))].filter(p=>p.toLowerCase().includes(ql)&&!results.find(r=>r.label===p)).forEach(p=>results.push({label:p,sub:'Eerder gebruikt',icon:'ti-history',color:'var(--tx3)'}));
+  if(!results.length){dd.style.display='none';return;}
+  dd.innerHTML=results.map((r,i)=>`<div data-bpi="${i}" style="padding:7px 12px;cursor:pointer;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+    <i class="ti ${r.icon}" style="color:${r.color};font-size:12px;flex-shrink:0"></i>
+    <div><div style="font-size:12px;font-weight:600">${r.label}</div><div style="font-size:10px;color:var(--tx3)">${r.sub}</div></div>
+  </div>`).join('');
+  dd._results=results;
+  dd.querySelectorAll('[data-bpi]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const r=dd._results[parseInt(el.dataset.bpi)];
+      b2cPartnerSelect(r.label);
+    });
+  });
+  dd.style.display='block';
+}
+function b2cPartnerSelect(naam){
+  const inp=document.getElementById('bi-partner-search');if(inp)inp.value=naam;
+  const hid=document.getElementById('bi-partner-naam');if(hid)hid.value=naam;
+  const dd=document.getElementById('bi-partner-dd');if(dd)dd.style.display='none';
+  const chip=document.getElementById('bi-partner-chip');
+  if(chip){
+    chip.style.display='flex';
+    chip.innerHTML=`<i class="ti ti-tools" style="font-size:11px"></i> ${naam}<button onclick="b2cPartnerClear()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;font-size:13px"><i class="ti ti-x"></i></button>`;
+  }
+}
+function b2cPartnerClear(){
+  const inp=document.getElementById('bi-partner-search');if(inp)inp.value='';
+  const hid=document.getElementById('bi-partner-naam');if(hid)hid.value='';
+  const chip=document.getElementById('bi-partner-chip');if(chip)chip.style.display='none';
 }
 
 function b2cQuickWarmte(w){
@@ -6713,7 +6824,7 @@ function b2cChangeStatus(id,s){
     return;
   }
   l.status=s;l.acties=l.acties||[];
-  l.acties.push({datum:today(),tekst:'Status gewijzigd naar: '+s});
+  l.acties.push(logEntry('Status gewijzigd naar: '+s));
   sbSaveB2cLead(l);
   showToast('Status: '+s);b2cShowDetailTab('info');
 }
@@ -6722,9 +6833,13 @@ function b2cLogActie(id){
   const inp=document.getElementById('b2c-actie-input');
   const tekst=inp.value.trim();if(!tekst)return;
   const l=b2cLeads.find(x=>x.id===id);if(!l)return;
-  l.acties=l.acties||[];l.acties.push({datum:today(),tekst});
+  l.acties=l.acties||[];l.acties.push(logEntry(tekst));
   sbSaveB2cLead(l);
-  inp.value='';b2cShowDetailTab('info');showToast('Actie gelogd');
+  inp.value='';
+  // Refresh enkel de feed, niet de hele tab
+  const feed=document.getElementById('b2c-act-feed');
+  if(feed)feed.innerHTML=b2cActLogHtml(l.acties);
+  showToast('Actie gelogd ✓');
 }
 
 // ─── TAB 2: SCREENING ───────────────────────────────
@@ -6917,7 +7032,7 @@ function b2cSaveScreening(){
     fotos:[...b2cScreeningFotos],datum:today()
   };
   if(l.status==='Visit gepland')l.status='Visit gedaan';
-  l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Screeningsformulier ingevuld'});
+  l.acties=l.acties||[];l.acties.push(logEntry('Screeningsformulier ingevuld'));
   sbSaveB2cLead(l);
   b2cCloseScModal();
   b2cOpenDetail(b2cScreeningLeadId);
@@ -7065,7 +7180,7 @@ function b2cGenereerContract(id){
       </div>
     </div>`;
   document.getElementById('ct-acties').style.display='flex';
-  l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Contract gegenereerd'});
+  l.acties=l.acties||[];l.acties.push(logEntry('Contract gegenereerd'));
   showToast('Contract gegenereerd!');
 }
 
@@ -7159,7 +7274,7 @@ function b2cSaveLead(){
   const vd=b2cIsVisitMode?document.getElementById('bn-vdatum').value:null;
   const vu=b2cIsVisitMode?document.getElementById('bn-vuur').value:null;
   const acties=[{datum:today(),tekst:'Lead aangemaakt'}];
-  if(b2cIsVisitMode&&vd)acties.push({datum:today(),tekst:'Visit gepland op '+vd+' om '+vu});
+  if(b2cIsVisitMode&&vd)acties.push(logEntry('Visit gepland op '+vd+' om '+vu));
   const aanmaakDatum=document.getElementById('bn-aanmaakdatum')?.value||today();
   b2cLeads.unshift({
     id:b2cNextId++,voornaam:vn,achternaam:an,
@@ -7206,7 +7321,7 @@ function b2cSaveVisit(){
   l.adres=document.getElementById('bv-adres').value;
   l.notities=document.getElementById('bv-nota').value;
   if(l.status==='Nieuw'||l.status==='Gecontacteerd')l.status='Visit gepland';
-  l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Visit gepland op '+l.visitDatum+' om '+l.visitUur});
+  l.acties=l.acties||[];l.acties.push(logEntry('Visit gepland op '+l.visitDatum+' om '+l.visitUur));
   sbSaveB2cLead(l);
   b2cCloseVisitModal();b2cRenderLeads();b2cRenderCalendar();b2cRenderAankomende();
   showToast('Visit ingepland!');
@@ -7217,7 +7332,7 @@ function b2cAnnuleerVisit(){
   if(!confirm(`Visit van ${b2cNaam(l)} op ${l.visitDatum} verwijderen?`))return;
   l.visitDatum=null;l.visitUur=null;
   if(l.status==='Visit gepland')l.status='Nieuw';
-  l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Visit geannuleerd'});
+  l.acties=l.acties||[];l.acties.push(logEntry('Visit geannuleerd'));
   sbSaveB2cLead(l);
   b2cCloseVisitModal();b2cRenderLeads();b2cRenderCalendar();b2cRenderAankomende();
   showToast('Visit verwijderd.');
@@ -7265,7 +7380,7 @@ function b2cDoorstuurConfirm(){
   };
   projects.push(project);
   // Update B2C lead status
-  if(l){l.status='Offerte';l.acties=l.acties||[];l.acties.push({datum:today(),tekst:'Doorgestuurd als B2B project: '+naam});}
+  if(l){l.status='Offerte';l.acties=l.acties||[];l.acties.push(logEntry('Doorgestuurd als B2B project: '+naam));}
   document.getElementById('b2c-doorstuur-overlay').classList.remove('open');
   sbSaveProject(project).then(newId=>{if(newId)project.id=newId;}).catch(()=>lsSave());
   renderAll();b2cRenderLeads();
@@ -7347,20 +7462,30 @@ function b2cRenderAankomende(){
 function renderTijdlijn(){
   const el=document.getElementById('m-tijdlijn');if(!el)return;
   if(!currentTijdlijn.length){
-    el.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:16px 0"><i class="ti ti-timeline" style="display:block;font-size:24px;margin-bottom:6px"></i>Nog geen acties geregistreerd.</div>';
+    el.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:16px 0"><i class="ti ti-timeline" style="display:block;font-size:22px;margin-bottom:6px"></i>Nog geen acties geregistreerd.</div>';
     return;
   }
-  const sorted=[...currentTijdlijn].sort((a,b)=>b.datum.localeCompare(a.datum));
-  el.innerHTML=sorted.map((item,i)=>{
-    const realIdx=currentTijdlijn.indexOf(item);
-    return `<div class="tl-item">
-      <div class="tl-datum"><input type="date" value="${item.datum}" onchange="tlChangeDatum(${realIdx},this.value)" style="font-size:10px;padding:2px 4px;width:110px;border:1px solid var(--bd);border-radius:4px;background:transparent;color:var(--tx3)">${item.tijdstip?'<br><span style="font-size:9px;color:var(--tx3)">'+item.tijdstip+'</span>':''}<br>${item.gebruiker?'<span style="font-size:9px;color:var(--tx3)">'+item.gebruiker+'</span>':''}</div>
-      <div class="tl-tekst">${item.tekst}</div>
-      <button class="tl-del" onclick="tlDeleteActie(${realIdx})" title="Verwijderen"><i class="ti ti-x"></i></button>
-    </div>`;
-  }).join('');
+  const sorted=[...currentTijdlijn].map((item,i)=>({item,origIdx:i})).sort((a,b)=>b.item.datum.localeCompare(a.item.datum)||(b.item.tijdstip||'').localeCompare(a.item.tijdstip||''));
+  el.innerHTML=sorted.map(({item,origIdx})=>`
+    <div class="act-log-item">
+      <div class="act-log-meta">
+        ${item.datum||''}${item.tijdstip?`<br>${item.tijdstip}`:''}
+        ${item.gebruiker?`<br><span class="act-log-gebruiker">${item.gebruiker}</span>`:''}
+      </div>
+      <div class="act-log-tekst">${item.tekst}</div>
+      <button class="tl-del" onclick="tlDeleteActie(${origIdx})" title="Verwijderen"><i class="ti ti-x"></i></button>
+    </div>`).join('');
 }
-// ── B2B DASHBOARD OPVOLGINGEN SIDEBAR ─────────────────
+function tlAddActie(){
+  const tekst=document.getElementById('tl-actie').value.trim();
+  if(!tekst){showToast('Vul een actie in.');return;}
+  currentTijdlijn.push(logEntry(tekst));
+  document.getElementById('tl-actie').value='';
+  renderTijdlijn();
+}
+function tlDeleteActie(idx){currentTijdlijn.splice(idx,1);renderTijdlijn();}
+function tlChangeDatum(idx,val){if(currentTijdlijn[idx])currentTijdlijn[idx].datum=val;renderTijdlijn();}
+
 function renderB2bDashOpvolgingen(){
   const el=document.getElementById('b2b-dash-opvolgingen');if(!el)return;
   const t=today();
@@ -7562,7 +7687,7 @@ function b2cBevestigAfvink(){
   const opmerking=document.getElementById('b2c-afvink-opmerking').value.trim();
   op.gedaan=true;op.opmerking=opmerking;
   l.acties=l.acties||[];
-  l.acties.push({datum:today(),tekst:`✓ Opvolging gedaan: ${op.tekst}${opmerking?' — '+opmerking:''}`});
+  l.acties.push(logEntry(`✓ Opvolging gedaan: ${op.tekst}${opmerking?' — '+opmerking:''}`));
   sbSaveB2cLead(l);
   b2cSluitAfvink();
   const listEl=document.getElementById('b2c-opvolging-list');
@@ -7575,11 +7700,9 @@ function b2cBevestigAfvink(){
 
 function tlAddActie(){
   const tekst=document.getElementById('tl-actie').value.trim();
-  const datum=document.getElementById('tl-datum').value||today();
   if(!tekst){showToast('Vul een actie in.');return;}
-  currentTijdlijn.push({datum,tekst,...(()=>{const u=currentUser?.user_metadata?.naam||currentUser?.email||'';const t=nowTijdstip();return{tijdstip:t,gebruiker:u};})()});
+  currentTijdlijn.push(logEntry(tekst));
   document.getElementById('tl-actie').value='';
-  document.getElementById('tl-datum').value=today();
   renderTijdlijn();
 }
 function tlDeleteActie(idx){currentTijdlijn.splice(idx,1);renderTijdlijn();}
