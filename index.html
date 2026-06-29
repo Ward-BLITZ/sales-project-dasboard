@@ -910,6 +910,27 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 
 <!-- INSTELLINGEN -->
 <div id="pane-instellingen" class="page" style="display:none">
+
+  <!-- MIJN PROFIEL -->
+  <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600;margin-bottom:1rem"><i class="ti ti-user-circle" style="color:var(--green);margin-right:8px"></i>Mijn profiel</div>
+  <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:1.25rem;margin-bottom:1.5rem">
+    <div id="profiel-info" style="font-size:13px;color:var(--tx2);margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--bd)"></div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--tx)">Wachtwoord wijzigen</div>
+    <div class="grid2">
+      <div class="field">
+        <label>Nieuw wachtwoord</label>
+        <input id="profiel-pw1" type="password" placeholder="Minimaal 8 tekens" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>Herhaal nieuw wachtwoord</label>
+        <input id="profiel-pw2" type="password" placeholder="Herhaal wachtwoord" autocomplete="new-password" onkeydown="if(event.key==='Enter')profielWachtwoordWijzigen()">
+      </div>
+    </div>
+    <div id="profiel-pw-error" style="font-size:12px;color:#a32d2d;background:#fcebeb;padding:8px 12px;border-radius:6px;margin-bottom:10px;display:none"></div>
+    <div id="profiel-pw-ok" style="font-size:12px;color:#085041;background:#E1F5EE;padding:8px 12px;border-radius:6px;margin-bottom:10px;display:none"></div>
+    <button class="btn primary" onclick="profielWachtwoordWijzigen()"><i class="ti ti-lock"></i> Wachtwoord opslaan</button>
+  </div>
+
   <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600;margin-bottom:1rem">Supabase database</div>
   <div class="setup-card" id="db-setup-card">
     <h3><i class="ti ti-database" style="margin-right:6px"></i>Supabase koppelen</h3>
@@ -2096,7 +2117,7 @@ function showTab(name){
   if(name==='verkocht')renderVerkocht();
   if(name==='verloren')renderVerloren();
   if(name==='crm'){loadKlanten().then(renderCrm);}
-  if(name==='instellingen'){loadServiceRoleKeyField();}
+  if(name==='instellingen'){loadServiceRoleKeyField();profielInfoRender();}
   if(name==='gebruikers')loadGebruikers();
   if(name==='b2c')b2cRenderLeads();
   if(name==='b2c-gewonnen')b2cRenderGewonnen();
@@ -2114,7 +2135,7 @@ function showTab(name){
   if(name==='verkocht')renderVerkocht();
   if(name==='verloren')renderVerloren();
   if(name==='crm'){loadKlanten().then(renderCrm);}
-  if(name==='instellingen'){loadServiceRoleKeyField();}
+  if(name==='instellingen'){loadServiceRoleKeyField();profielInfoRender();}
   if(name==='gebruikers')loadGebruikers();
   if(name==='b2c')b2cRenderLeads();
   if(name==='b2c-gewonnen')b2cRenderGewonnen();
@@ -3754,6 +3775,35 @@ async function doSetPass(){
   const {data,error}=await supabaseClient.auth.updateUser({password:pw1,data:{naam}});
   if(error){errEl.textContent='Fout: '+error.message;errEl.classList.add('show');return;}
   await onLoggedIn(data.user);
+}
+
+function profielInfoRender(){
+  const el=document.getElementById('profiel-info');
+  if(!el||!currentUser)return;
+  const meta=currentUser.user_metadata||{};
+  const naam=meta.naam||(meta.voornaam?(meta.voornaam+' '+(meta.achternaam||'')).trim():'')||currentUser.email.split('@')[0];
+  const afdeling=meta.afdeling||'—';
+  const rol=meta.rol||'—';
+  el.innerHTML=`<strong style="font-size:14px;color:var(--tx)">${naam}</strong><br>
+    <span style="color:var(--tx3)">${currentUser.email}</span>
+    <span style="margin-left:12px;background:var(--bg2);border:1px solid var(--bd);border-radius:4px;padding:1px 8px;font-size:11px;font-weight:600">${afdeling}${rol&&rol!=='—'?' · '+rol:''}</span>`;
+}
+
+async function profielWachtwoordWijzigen(){
+  const pw1=document.getElementById('profiel-pw1').value;
+  const pw2=document.getElementById('profiel-pw2').value;
+  const errEl=document.getElementById('profiel-pw-error');
+  const okEl=document.getElementById('profiel-pw-ok');
+  errEl.style.display='none';okEl.style.display='none';
+  if(pw1.length<8){errEl.textContent='Wachtwoord moet minimaal 8 tekens zijn.';errEl.style.display='block';return;}
+  if(pw1!==pw2){errEl.textContent='Wachtwoorden komen niet overeen.';errEl.style.display='block';return;}
+  try{
+    const {error}=await supabaseClient.auth.updateUser({password:pw1});
+    if(error){errEl.textContent='Fout: '+error.message;errEl.style.display='block';return;}
+    okEl.textContent='✓ Wachtwoord succesvol gewijzigd.';okEl.style.display='block';
+    document.getElementById('profiel-pw1').value='';
+    document.getElementById('profiel-pw2').value='';
+  }catch(e){errEl.textContent='Verbindingsfout: '+e.message;errEl.style.display='block';}
 }
 
 async function onLoggedIn(user){
