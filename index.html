@@ -1703,26 +1703,18 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>GSM</label><input id="ue-gsm" type="tel" placeholder="0499 123 456"></div>
       <div class="field"><label>Functietitel</label><input id="ue-functie" placeholder="bv. Sales Executive"></div>
     </div>
-    <div class="grid2">
-      <div class="field"><label>Afdeling</label>
-        <select id="ue-afdeling" onchange="userEditAfdelingChange()">
-          <option value="">— Kies afdeling —</option>
-          <option value="sales">Sales</option>
-          <option value="service">Service &amp; Installatie</option>
-          <option value="operations">Operations</option>
-          <option value="hoofdadmin">Hoofdadmin</option>
-        </select>
+
+    <!-- Afdelingen & rollen (meerdere mogelijk) -->
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label style="font-size:12px;color:var(--tx2);margin:0">Afdelingen &amp; rollen</label>
+        <button class="btn sm" type="button" onclick="ueAfdelingToevoegen()"><i class="ti ti-plus"></i> Toevoegen</button>
       </div>
-      <div class="field" id="ue-rol-wrap">
-        <label>Rol</label>
-        <select id="ue-rol">
-          <option value="operator">Operator</option>
-          <option value="manager">Manager</option>
-        </select>
-      </div>
+      <div id="ue-afdelingen-lijst"></div>
     </div>
+
     <div id="ue-verantw-wrap" style="display:none;margin-bottom:14px;padding:12px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--bd)">
-      <label style="font-size:12px;color:var(--tx2);margin-bottom:8px;display:block">Verantwoordelijk voor</label>
+      <label style="font-size:12px;color:var(--tx2);margin-bottom:8px;display:block">Verantwoordelijk voor (agenda)</label>
       <div style="display:flex;gap:16px">
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
           <input type="checkbox" id="ue-verantw-sales" style="width:auto;accent-color:var(--green)"> Sales
@@ -1755,22 +1747,12 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Achternaam *</label><input id="inv-achternaam" type="text" placeholder="Janssen"></div>
     </div>
     <div class="field"><label>E-mailadres *</label><input id="inv-email" type="email" placeholder="jan@blitzpower.be"></div>
-    <div class="grid2">
-      <div class="field"><label>Afdeling</label>
-        <select id="inv-afdeling" onchange="inviteAfdelingChange()">
-          <option value="sales">Sales</option>
-          <option value="service">Service &amp; Installatie</option>
-          <option value="operations">Operations</option>
-          <option value="hoofdadmin">Hoofdadmin</option>
-        </select>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label style="font-size:12px;color:var(--tx2);margin:0">Afdelingen &amp; rollen</label>
+        <button class="btn sm" type="button" onclick="invAfdelingToevoegen()"><i class="ti ti-plus"></i> Toevoegen</button>
       </div>
-      <div class="field" id="inv-rol-wrap">
-        <label>Rol</label>
-        <select id="inv-rol">
-          <option value="operator">Operator</option>
-          <option value="manager">Manager</option>
-        </select>
-      </div>
+      <div id="inv-afdelingen-lijst"></div>
     </div>
     <p style="font-size:12px;color:var(--tx3);margin-top:4px">De gebruiker ontvangt een e-mail om zijn wachtwoord in te stellen.</p>
     <div class="modal-footer">
@@ -4095,24 +4077,114 @@ function afdelingLabel(a){return{sales:'Sales',service:'Service & Installatie',h
 function afdelingKleur(a){return{sales:'#3b82f6',service:'#e85d04',hoofdadmin:'#f59e0b',operations:'#7c3aed'}[a]||'#888';}
 function rolLabel(r){return r==='manager'?'Manager':'Operator';}
 
-function userEditAfdelingChange(){
-  const afd=document.getElementById('ue-afdeling').value;
-  const wrap=document.getElementById('ue-rol-wrap');
-  if(wrap)wrap.style.display=afd==='hoofdadmin'?'none':'block';
+// ── MULTI-AFDELING HELPERS ──────────────────────────
+const ALLE_AFDELINGEN=[
+  {value:'sales',label:'Sales'},
+  {value:'service',label:'Service & Installatie'},
+  {value:'operations',label:'Operations'},
+  {value:'hoofdadmin',label:'Hoofdadmin'},
+];
+
+// Bouw één afdeling-rij HTML
+function ueAfdelingRijHTML(idx, afd='', rol='operator', prefix='ue'){
+  const isHoofdadmin=afd==='hoofdadmin';
+  return`<div id="${prefix}-afd-rij-${idx}" style="display:flex;align-items:center;gap:8px;margin-bottom:7px;padding:9px 11px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r)">
+    <select onchange="${prefix}AfdelingRijChange(${idx},this)" style="flex:1;padding:7px 9px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px">
+      <option value="">— Kies afdeling —</option>
+      ${ALLE_AFDELINGEN.map(a=>`<option value="${a.value}"${afd===a.value?' selected':''}>${a.label}</option>`).join('')}
+    </select>
+    <select id="${prefix}-rol-${idx}" style="flex:1;padding:7px 9px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px;${isHoofdadmin?'display:none':''}" ${!afd?'disabled':''}>
+      <option value="operator"${rol==='operator'?' selected':''}>Operator</option>
+      <option value="manager"${rol==='manager'?' selected':''}>Manager</option>
+    </select>
+    ${isHoofdadmin?`<span style="flex:1;font-size:12px;color:var(--tx2);padding:0 4px">Volledige toegang</span>`:''}
+    <button class="btn danger sm" type="button" onclick="${prefix}AfdelingRijVerwijder(${idx})"><i class="ti ti-trash"></i></button>
+  </div>`;
 }
-function inviteAfdelingChange(){
-  const afd=document.getElementById('inv-afdeling').value;
-  const wrap=document.getElementById('inv-rol-wrap');
-  if(wrap)wrap.style.display=afd==='hoofdadmin'?'none':'block';
+
+// ── USER EDIT AFDELING-LIJST ──
+let ueAfdelingenLijst=[]; // [{afd, rol}]
+
+function ueAfdelingToevoegen(){
+  ueAfdelingenLijst.push({afd:'',rol:'operator'});
+  ueRenderAfdelingenLijst();
 }
+function ueAfdelingRijVerwijder(idx){
+  ueAfdelingenLijst.splice(idx,1);
+  ueRenderAfdelingenLijst();
+}
+function ueAfdelingRijChange(idx,sel){
+  const afd=sel.value;
+  ueAfdelingenLijst[idx].afd=afd;
+  if(afd==='hoofdadmin')ueAfdelingenLijst[idx].rol='manager';
+  ueRenderAfdelingenLijst();
+  // Toon/verberg verantwoordelijk-wrap
+  ueUpdateVerantwWrap();
+}
+function ueRenderAfdelingenLijst(){
+  document.getElementById('ue-afdelingen-lijst').innerHTML=
+    ueAfdelingenLijst.length
+      ?ueAfdelingenLijst.map((item,i)=>ueAfdelingRijHTML(i,item.afd,item.rol,'ue')).join('')
+      :'<div style="font-size:12px;color:var(--tx3);font-style:italic;padding:6px 0">Nog geen afdeling toegevoegd.</div>';
+}
+function ueUpdateVerantwWrap(){
+  const isHoofdadmin=ueAfdelingenLijst.some(x=>x.afd==='hoofdadmin');
+  document.getElementById('ue-verantw-wrap').style.display=isHoofdadmin?'block':'none';
+}
+function ueGetAfdelingenFromDOM(){
+  // Lees actuele waarden uit DOM
+  return ueAfdelingenLijst.map((item,i)=>{
+    const rij=document.getElementById('ue-afd-rij-'+i);if(!rij)return item;
+    const sels=rij.querySelectorAll('select');
+    const afd=sels[0]?.value||'';
+    const rol=afd==='hoofdadmin'?'manager':(sels[1]?.value||'operator');
+    return{afd,rol};
+  }).filter(x=>x.afd);
+}
+
+// ── INVITE AFDELING-LIJST ──
+let invAfdelingenLijst=[];
+
+function invAfdelingToevoegen(){
+  invAfdelingenLijst.push({afd:'sales',rol:'operator'});
+  invRenderAfdelingenLijst();
+}
+function invAfdelingRijVerwijder(idx){
+  invAfdelingenLijst.splice(idx,1);
+  invRenderAfdelingenLijst();
+}
+function invAfdelingRijChange(idx,sel){
+  const afd=sel.value;
+  invAfdelingenLijst[idx].afd=afd;
+  if(afd==='hoofdadmin')invAfdelingenLijst[idx].rol='manager';
+  invRenderAfdelingenLijst();
+}
+function invRenderAfdelingenLijst(){
+  document.getElementById('inv-afdelingen-lijst').innerHTML=
+    invAfdelingenLijst.length
+      ?invAfdelingenLijst.map((item,i)=>ueAfdelingRijHTML(i,item.afd,item.rol,'inv')).join('')
+      :'<div style="font-size:12px;color:var(--tx3);font-style:italic;padding:6px 0">Nog geen afdeling toegevoegd.</div>';
+}
+function invGetAfdelingenFromDOM(){
+  return invAfdelingenLijst.map((item,i)=>{
+    const rij=document.getElementById('inv-afd-rij-'+i);if(!rij)return item;
+    const sels=rij.querySelectorAll('select');
+    const afd=sels[0]?.value||'';
+    const rol=afd==='hoofdadmin'?'manager':(sels[1]?.value||'operator');
+    return{afd,rol};
+  }).filter(x=>x.afd);
+}
+
+// Legacy single-afdeling helpers (houden compatibiliteit)
+function userEditAfdelingChange(){}
+function inviteAfdelingChange(){}
 
 function openInviteModal(){
   document.getElementById('inv-voornaam').value='';
   document.getElementById('inv-achternaam').value='';
   document.getElementById('inv-email').value='';
-  document.getElementById('inv-afdeling').value='sales';
-  document.getElementById('inv-rol').value='operator';
-  document.getElementById('inv-rol-wrap').style.display='block';
+  invAfdelingenLijst=[{afd:'sales',rol:'operator'}];
+  invRenderAfdelingenLijst();
   document.getElementById('invite-error').classList.remove('show');
   document.getElementById('invite-msg').classList.remove('show');
   document.getElementById('invite-modal').classList.add('open');
@@ -4123,15 +4195,19 @@ async function doInvite(){
   const voornaam=document.getElementById('inv-voornaam').value.trim();
   const achternaam=document.getElementById('inv-achternaam').value.trim();
   const email=document.getElementById('inv-email').value.trim();
-  const afdeling=document.getElementById('inv-afdeling').value;
-  const rol=afdeling==='hoofdadmin'?'manager':document.getElementById('inv-rol').value;
   const naam=(voornaam+' '+achternaam).trim()||email.split('@')[0];
   const errEl=document.getElementById('invite-error');
   const msgEl=document.getElementById('invite-msg');
   errEl.classList.remove('show');msgEl.classList.remove('show');
   if(!email){errEl.textContent='E-mailadres is verplicht.';errEl.classList.add('show');return;}
 
-  const metadata={naam,voornaam,achternaam,afdeling,rol,role:afdeling==='hoofdadmin'?'admin':'user'};
+  const afdelingen=invGetAfdelingenFromDOM();
+  if(!afdelingen.length){errEl.textContent='Voeg minstens één afdeling toe.';errEl.classList.add('show');return;}
+
+  const eersteAfd=afdelingen[0].afd;
+  const eersteRol=afdelingen[0].rol;
+  const isAdmin=afdelingen.some(x=>x.afd==='hoofdadmin');
+  const metadata={naam,voornaam,achternaam,afdelingen,afdeling:eersteAfd,rol:eersteRol,role:isAdmin?'admin':'user'};
 
   const {data,error}=await (supabaseClient.auth.admin?.inviteUserByEmail
     ? supabaseClient.auth.admin.inviteUserByEmail(email,{data:metadata})
@@ -4145,9 +4221,8 @@ async function doInvite(){
   } else {
     msgEl.textContent=`Uitnodigingsmail verstuurd naar ${email}!`;msgEl.classList.add('show');
   }
-  // Voeg ook toe aan resps voor onmiddellijke beschikbaarheid als verantwoordelijke
   if(naam&&!resps.find(r=>(typeof r==='string'?r:r.naam||'').toLowerCase()===naam.toLowerCase())){
-    resps.push({naam,email,rol:afdeling+':'+rol,afdeling,rolNaam:rol});
+    resps.push({naam,email,rol:eersteAfd+':'+eersteRol,afdeling:eersteAfd,rolNaam:eersteRol});
     sbSaveResps();
   }
   loadGebruikers();
@@ -4197,13 +4272,23 @@ function syncRespsFromUsers(users){
 
 function renderGebruikersLijst(users){
   const el=document.getElementById('gebruikers-list');if(!el)return;
-  // Groepeer per afdeling
+  // Groepeer per afdeling — gebruiker kan in meerdere groepen staan
   const groups={hoofdadmin:[],sales:[],service:[],operations:[],overig:[]};
   users.forEach(u=>{
-    const afd=u.user_metadata?.afdeling||(u.email===ADMIN_EMAIL?'hoofdadmin':'');
-    if(groups[afd])groups[afd].push(u);
-    else groups.overig.push(u);
+    if(u.email===ADMIN_EMAIL){groups.hoofdadmin.push(u);return;}
+    const meta=u.user_metadata||{};
+    const afdelingen=Array.isArray(meta.afdelingen)&&meta.afdelingen.length
+      ?meta.afdelingen.map(x=>x.afd)
+      :[meta.afdeling].filter(Boolean);
+    if(!afdelingen.length){groups.overig.push(u);return;}
+    let geplaatst=false;
+    afdelingen.forEach(afd=>{
+      if(groups[afd]){groups[afd].push(u);geplaatst=true;}
+    });
+    if(!geplaatst)groups.overig.push(u);
   });
+  // Dedupliceer (zelfde user meerdere keren in dezelfde groep als hij er twee keer in zit)
+  Object.keys(groups).forEach(k=>{groups[k]=[...new Map(groups[k].map(u=>[u.id,u])).values()];});
   let html='';
   const groupOrder=[['hoofdadmin','👑 Hoofdadmin'],['sales','🏷 Sales'],['service','🔧 Service & Installatie'],['operations','📦 Operations'],['overig','Overig / niet ingesteld']];
   groupOrder.forEach(([key,label])=>{
@@ -4220,21 +4305,39 @@ function renderGebruikerRow(u){
   const voornaam=u.user_metadata?.voornaam||'';
   const achternaam=u.user_metadata?.achternaam||'';
   const naam=u.user_metadata?.naam||(voornaam?(voornaam+' '+achternaam).trim():null)||u.email.split('@')[0];
-  const afdeling=isMainAdmin?'hoofdadmin':(u.user_metadata?.afdeling||'');
-  const rol=u.user_metadata?.rol||'operator';
   const confirmed=!!u.email_confirmed_at;
-  const afKleur=afdelingKleur(afdeling);
+  const meta=u.user_metadata||{};
+
+  // Haal afdelingen op — nieuw of legacy formaat
+  let afdelingen=[];
+  if(isMainAdmin){
+    afdelingen=[{afd:'hoofdadmin',rol:'manager'}];
+  } else if(Array.isArray(meta.afdelingen)&&meta.afdelingen.length){
+    afdelingen=meta.afdelingen;
+  } else if(meta.afdeling){
+    afdelingen=[{afd:meta.afdeling,rol:meta.rol||'operator'}];
+  }
+
+  const eersteAfd=afdelingen[0]?.afd||'';
+  const afKleur=afdelingKleur(eersteAfd);
   const ini=naam.charAt(0).toUpperCase();
+
+  const afBadges=afdelingen.map(({afd,rol})=>{
+    const kleur=afdelingKleur(afd);
+    return`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:${kleur}18;color:${kleur}">
+      ${afdelingLabel(afd)}${afd!=='hoofdadmin'?`<span style="font-weight:400;opacity:.7">· ${rolLabel(rol)}</span>`:''}
+    </span>`;
+  }).join('');
+
   return`<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:6px">
     <div style="width:38px;height:38px;border-radius:50%;background:${afKleur}22;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;color:${afKleur};flex-shrink:0">${ini}</div>
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:600">${naam}</div>
       <div style="font-size:11px;color:var(--tx3)">${u.email||''}</div>
-      ${u.user_metadata?.functie?`<div style="font-size:11px;color:var(--tx2)">${u.user_metadata.functie}</div>`:''}
+      ${meta.functie?`<div style="font-size:11px;color:var(--tx2)">${meta.functie}</div>`:''}
     </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-      ${afdeling?`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:${afKleur}18;color:${afKleur}">${afdelingLabel(afdeling)}</span>`:''}
-      ${afdeling&&afdeling!=='hoofdadmin'?`<span style="font-size:10px;color:var(--tx3);padding:2px 7px;border-radius:10px;background:var(--bg2)">${rolLabel(rol)}</span>`:''}
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:280px">
+      ${afBadges||'<span style="font-size:11px;color:var(--tx3)">—</span>'}
       <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${confirmed?'rgba(99,153,34,.12)':'rgba(0,0,0,.06)'};color:${confirmed?'#639922':'var(--tx3)'}">${confirmed?'Actief':'Uitgenodigd'}</span>
       ${isMainAdmin?'':`<button class="btn sm" onclick="openUserEditModal('${u.id}')"><i class="ti ti-edit"></i></button>`}
     </div>
@@ -4247,26 +4350,33 @@ function openUserEditModal(userId){
   const voornaam=u.user_metadata?.voornaam||'';
   const achternaam=u.user_metadata?.achternaam||'';
   const naam=u.user_metadata?.naam||(voornaam?(voornaam+' '+achternaam).trim():'')||u.email.split('@')[0];
-  const afdeling=u.user_metadata?.afdeling||'sales';
-  const rol=u.user_metadata?.rol||'operator';
 
   document.getElementById('user-edit-titel').textContent=naam;
   document.getElementById('user-edit-avatar').textContent=naam.charAt(0).toUpperCase();
-  document.getElementById('user-edit-avatar').style.background=afdelingKleur(afdeling)+'33';
-  document.getElementById('user-edit-avatar').style.color=afdelingKleur(afdeling);
+
+  // Laad afdelingen — nieuw formaat: afdelingen=[{afd,rol}] of legacy: afdeling+rol
+  const meta=u.user_metadata||{};
+  if(Array.isArray(meta.afdelingen)&&meta.afdelingen.length){
+    ueAfdelingenLijst=[...meta.afdelingen];
+  } else if(meta.afdeling){
+    ueAfdelingenLijst=[{afd:meta.afdeling,rol:meta.rol||'operator'}];
+  } else {
+    ueAfdelingenLijst=[];
+  }
+  const eersteAfd=ueAfdelingenLijst[0]?.afd||'';
+  document.getElementById('user-edit-avatar').style.background=afdelingKleur(eersteAfd)+'33';
+  document.getElementById('user-edit-avatar').style.color=afdelingKleur(eersteAfd);
   document.getElementById('user-edit-naam-display').textContent=naam;
   document.getElementById('user-edit-email-display').textContent=u.email||'';
   document.getElementById('ue-voornaam').value=voornaam||naam.split(' ')[0]||'';
   document.getElementById('ue-achternaam').value=achternaam||naam.split(' ').slice(1).join(' ')||'';
-  document.getElementById('ue-gsm').value=u.user_metadata?.gsm||u.user_metadata?.contact||'';
-  document.getElementById('ue-functie').value=u.user_metadata?.functie||'';
-  document.getElementById('ue-afdeling').value=afdeling;
-  document.getElementById('ue-rol').value=rol;
-  document.getElementById('ue-rol-wrap').style.display=afdeling==='hoofdadmin'?'none':'block';
-  const verantw=u.user_metadata?.verantwoordelijk||{};
+  document.getElementById('ue-gsm').value=meta.gsm||meta.contact||'';
+  document.getElementById('ue-functie').value=meta.functie||'';
+  ueRenderAfdelingenLijst();
+  const verantw=meta.verantwoordelijk||{};
   document.getElementById('ue-verantw-sales').checked=verantw.sales===true;
   document.getElementById('ue-verantw-service').checked=verantw.service===true;
-  document.getElementById('ue-verantw-wrap').style.display=afdeling==='hoofdadmin'?'block':'none';
+  ueUpdateVerantwWrap();
   document.getElementById('user-edit-modal').classList.add('open');
 }
 
@@ -4277,23 +4387,39 @@ async function saveUserEdit(){
   const voornaam=document.getElementById('ue-voornaam').value.trim();
   const achternaam=document.getElementById('ue-achternaam').value.trim();
   const naam=(voornaam+' '+achternaam).trim();
-  const afdeling=document.getElementById('ue-afdeling').value;
-  const rol=afdeling==='hoofdadmin'?'manager':document.getElementById('ue-rol').value;
   const gsm=document.getElementById('ue-gsm').value.trim();
   const functie=document.getElementById('ue-functie').value.trim();
-  const verantwoordelijk=afdeling==='hoofdadmin'?{
-    sales:document.getElementById('ue-verantw-sales').checked,
-    service:document.getElementById('ue-verantw-service').checked
-  }:{sales:afdeling==='sales',service:afdeling==='service',operations:afdeling==='operations'};
-  const metadata={naam,voornaam,achternaam,afdeling,rol,gsm,functie,role:afdeling==='hoofdadmin'?'admin':'user',verantwoordelijk};
+
+  // Lees afdelingen uit DOM
+  const afdelingen=ueGetAfdelingenFromDOM();
+  if(!afdelingen.length){showToast('Voeg minstens één afdeling toe.');return;}
+
+  // Legacy velden voor achterwaartse compatibiliteit (eerste afdeling als primaire)
+  const eersteAfd=afdelingen[0].afd;
+  const eersteRol=afdelingen[0].rol;
+  const isAdmin=afdelingen.some(x=>x.afd==='hoofdadmin');
+
+  const verantwoordelijk={
+    sales:afdelingen.some(x=>x.afd==='sales')||document.getElementById('ue-verantw-sales').checked,
+    service:afdelingen.some(x=>x.afd==='service')||document.getElementById('ue-verantw-service').checked,
+    operations:afdelingen.some(x=>x.afd==='operations'),
+  };
+
+  const metadata={
+    naam,voornaam,achternaam,gsm,functie,
+    afdelingen,                    // nieuw: array
+    afdeling:eersteAfd,            // legacy
+    rol:eersteRol,                 // legacy
+    role:isAdmin?'admin':'user',
+    verantwoordelijk,
+  };
   try{
     await supabaseClient.auth.admin.updateUserById(userEditId,{user_metadata:metadata});
-    // Sync naar resps
     const u=allUsers.find(x=>x.id===userEditId);
     if(u){
       Object.assign(u.user_metadata,metadata);
       const existing=resps.find(r=>typeof r!=='string'&&r.email&&r.email.toLowerCase()===(u.email||'').toLowerCase());
-      if(existing){existing.naam=naam;existing.afdeling=afdeling;existing.rolNaam=rol;}
+      if(existing){existing.naam=naam;existing.afdeling=eersteAfd;existing.rolNaam=eersteRol;}
       sbSaveResps();
     }
     showToast(naam+' opgeslagen ✓');
