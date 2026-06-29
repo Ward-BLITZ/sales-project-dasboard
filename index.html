@@ -8718,23 +8718,23 @@ function wmsRenderLocaties(){
     :uniek;
 
   // Code-illustratie (altijd zichtbaar bovenaan)
-  const illustratie=`<div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:28px 24px;margin-bottom:20px;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center">
-    <div style="font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.8px">Locatiecode opbouw</div>
-    <div style="display:flex;align-items:stretch;gap:0;font-family:'Poppins',sans-serif;font-size:28px;font-weight:700">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
-        <div style="background:rgba(59,130,246,.12);color:#1d4ed8;border:2px solid rgba(59,130,246,.35);border-radius:10px 0 0 10px;padding:14px 28px;letter-spacing:2px">A</div>
-        <div style="font-size:11px;font-weight:600;color:#1d4ed8">Rek (letter)</div>
+  const illustratie=`<div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:16px 20px;margin-bottom:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center">
+    <div style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.8px">Locatiecode opbouw</div>
+    <div style="display:flex;align-items:stretch;gap:0;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="background:rgba(59,130,246,.12);color:#1d4ed8;border:1.5px solid rgba(59,130,246,.35);border-radius:6px 0 0 6px;padding:8px 16px;letter-spacing:1px">A</div>
+        <div style="font-size:10px;font-weight:600;color:#1d4ed8">Rek (letter)</div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
-        <div style="background:rgba(234,88,12,.12);color:#c2410c;border:2px solid rgba(234,88,12,.35);border-left:none;padding:14px 28px;letter-spacing:2px">1</div>
-        <div style="font-size:11px;font-weight:600;color:#c2410c">Laag (0=vloer)</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="background:rgba(234,88,12,.12);color:#c2410c;border:1.5px solid rgba(234,88,12,.35);border-left:none;padding:8px 16px;letter-spacing:1px">1</div>
+        <div style="font-size:10px;font-weight:600;color:#c2410c">Laag (0=vloer)</div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
-        <div style="background:rgba(0,223,163,.12);color:#00805e;border:2px solid rgba(0,223,163,.4);border-left:none;border-radius:0 10px 10px 0;padding:14px 28px;letter-spacing:2px">02</div>
-        <div style="font-size:11px;font-weight:600;color:#00805e">Vak (positie)</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="background:rgba(0,223,163,.12);color:#00805e;border:1.5px solid rgba(0,223,163,.4);border-left:none;border-radius:0 6px 6px 0;padding:8px 16px;letter-spacing:1px">02</div>
+        <div style="font-size:10px;font-weight:600;color:#00805e">Vak (positie)</div>
       </div>
     </div>
-    <div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:center;font-size:13px;color:var(--tx2);border-top:1px solid var(--bd);padding-top:16px;width:100%">
+    <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--tx2);border-top:1px solid var(--bd);padding-top:10px;width:100%">
       <span><span style="color:#1d4ed8;font-weight:700">A</span><span style="color:#c2410c;font-weight:700">1</span><span style="color:#00805e;font-weight:700">02</span> = Rek A, Laag 1, Vak 02</span>
       <span><span style="color:#1d4ed8;font-weight:700">B</span><span style="color:#c2410c;font-weight:700">0</span><span style="color:#00805e;font-weight:700">05</span> = Rek B, Vloer (0), Vak 05</span>
     </div>
@@ -8754,28 +8754,32 @@ function wmsRenderLocaties(){
     return;
   }
 
-  // Tegels
-  const tegels=gefilterd.map(s=>{
-    const bg=s.bezet?'rgba(0,223,163,.1)':'var(--bg)';
-    const border=s.bezet?'rgba(0,223,163,.35)':'var(--bd)';
-    const codeKleur=s.bezet?'#00805e':'var(--tx)';
-    // Code visueel opsplitsen in rek / laag / vak
+  // Horizontale rijen
+  const rijen=gefilterd.map(s=>{
     const rekLetter=s.rek;
     const rest=s.code.slice(rekLetter.length);
     const laagChar=rest[0]||'';
     const vakChars=rest.slice(1);
-    const codeHtml=`<span style="color:#1d4ed8">${rekLetter}</span><span style="color:#c2410c">${laagChar}</span><span style="color:#00805e">${vakChars}</span>`;
-    const artHtml=s.bezet
-      ?`<div style="font-size:10px;font-weight:600;color:#00805e;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.art.sku||''}</div>
-         <div style="font-size:10px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3">${s.art.naam}</div>`
-      :`<div style="font-size:10px;color:var(--tx3);margin-top:3px;font-style:italic">leeg</div>`;
-    return`<div style="background:${bg};border:1px solid ${border};border-radius:var(--r);padding:9px 11px;min-width:105px;max-width:105px;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='none'">
-      <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:13px;letter-spacing:.3px">${codeHtml}</div>
-      ${artHtml}
+    const codeHtml=`<span style="font-family:'Poppins',sans-serif;font-weight:700;font-size:13px"><span style="color:#1d4ed8">${rekLetter}</span><span style="color:#c2410c">${laagChar}</span><span style="color:#00805e">${vakChars}</span></span>`;
+    const artikelHtml=s.bezet
+      ?`<div style="display:flex;align-items:center;gap:8px">
+          <span style="background:rgba(0,223,163,.12);color:#00805e;border:1px solid rgba(0,223,163,.3);border-radius:4px;padding:1px 7px;font-size:11px;font-weight:600">${s.art.sku||'—'}</span>
+          <span style="font-size:13px;font-weight:500;color:var(--tx)">${s.art.naam}</span>
+        </div>`
+      :`<span style="font-size:12px;color:var(--tx3);font-style:italic">Leeg</span>`;
+    const statusDot=s.bezet
+      ?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00DFA3;margin-right:6px"></span>`
+      :`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bd2);margin-right:6px"></span>`;
+    return`<div style="display:grid;grid-template-columns:120px 1fr auto;align-items:center;gap:16px;padding:11px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:6px;transition:border-color .15s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--bd)'">
+      <div style="display:flex;align-items:center">${statusDot}${codeHtml}</div>
+      <div>${artikelHtml}</div>
+      <div>
+        <button class="btn sm" onclick="wmsOpenLocatieDetail('${s.code}')"><i class="ti ti-eye"></i> Bekijk</button>
+      </div>
     </div>`;
   }).join('');
 
-  container.innerHTML=illustratie+stats+`<div style="display:flex;flex-wrap:wrap;gap:7px">${tegels}</div>`;
+  container.innerHTML=illustratie+stats+rijen;
 }
 function wmsRekHTML(rek,hlCode,clickable){
   if(!rek.secties||!rek.secties.length)return'<p style="color:var(--tx3);font-size:13px">Geen secties.</p>';
@@ -9118,9 +9122,44 @@ function wmsOpenGebouwModal(id){const g=id?wmsGebouwen.find(x=>x.id===id):null;d
 async function wmsSaveGebouw(){const naam=document.getElementById('wms-gebouw-naam').value.trim(),b=parseInt(document.getElementById('wms-gebouw-breedte').value)||20,l=parseInt(document.getElementById('wms-gebouw-lengte').value)||40;if(!naam){showToast('Naam is verplicht.');return;}const id=document.getElementById('wms-gebouw-id').value;if(id)await supabaseClient.from('wms_gebouwen').update({naam,breedte:b,lengte:l}).eq('id',id);else{const res=await supabaseClient.from('wms_gebouwen').insert({naam,breedte:b,lengte:l}).select().single();wmsActiveGebouwId=res.data.id;}const{data:g}=await supabaseClient.from('wms_gebouwen').select('*').order('naam');wmsGebouwen=g||[];wmsCloseModal('wms-gebouw-modal');wmsRenderGrondplan();showToast('Gebouw opgeslagen ✓');}
 async function wmsDeleteGebouw(id){if(!confirm('Gebouw verwijderen?'))return;await supabaseClient.from('wms_rek_posities').delete().eq('gebouw_id',id);await supabaseClient.from('wms_gebouwen').delete().eq('id',id);if(wmsActiveGebouwId===id)wmsActiveGebouwId=null;const{data:g}=await supabaseClient.from('wms_gebouwen').select('*').order('naam');wmsGebouwen=g||[];const{data:pD}=await supabaseClient.from('wms_rek_posities').select('*');wmsRekPosities=pD||[];wmsRenderGrondplan();showToast('Gebouw verwijderd');}
 function wmsLevNaam(id){if(!id)return'';const l=wmsLeveranciers.find(x=>x.id===id);return l?l.naam:'';}
-function wmsOpenModal(id){document.getElementById(id).classList.add('open');}
-function wmsCloseModal(id){document.getElementById(id).classList.remove('open');}
-function wmsSaveSlotArtikel(){wmsCloseModal('wms-slot-modal');}
+
+function wmsOpenLocatieDetail(code){
+  const art=wmsArtikelen.find(a=>{
+    const locs=wmsLocatiesVanArtikel(a);
+    return locs.some(lc=>lc.toLowerCase()===code.toLowerCase());
+  })||null;
+  const rek=wmsRekken.find(r=>code.toLowerCase().startsWith(r.naam.toLowerCase()));
+  const rest=rek?code.slice(rek.naam.length):'';
+  const laag=rest[0]||'?';
+  const vak=rest.slice(1)||'?';
+  const laagLabel=laag==='0'?'Vloer':'Laag '+laag;
+
+  const inhoud=art
+    ?`<div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:rgba(0,223,163,.08);border:1px solid rgba(0,223,163,.25);border-radius:var(--r)">
+          <i class="ti ti-package" style="font-size:24px;color:var(--green)"></i>
+          <div>
+            <div style="font-weight:700;font-size:14px">${art.naam}</div>
+            ${art.sku?`<div style="font-size:12px;color:var(--tx2)">SKU: ${art.sku}</div>`:''}
+          </div>
+        </div>
+        ${art.omschrijving?`<div style="font-size:13px;color:var(--tx2)">${art.omschrijving}</div>`:''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+          ${art.aantal_dozen!=null?`<div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px"><div style="color:var(--tx3);margin-bottom:2px">Voorraad</div><div style="font-weight:600">${art.aantal_dozen} doos${art.aantal_per_doos?' ('+art.aantal_per_doos*art.aantal_dozen+' st)':''}</div></div>`:''}
+          ${art.leverancier_id?`<div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px"><div style="color:var(--tx3);margin-bottom:2px">Leverancier</div><div style="font-weight:600">${wmsLevNaam(art.leverancier_id)}</div></div>`:''}
+          ${art.gewicht?`<div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px"><div style="color:var(--tx3);margin-bottom:2px">Gewicht</div><div style="font-weight:600">${art.gewicht} kg</div></div>`:''}
+          ${art.afmeting?`<div style="background:var(--bg2);border-radius:var(--r);padding:8px 10px"><div style="color:var(--tx3);margin-bottom:2px">Afmeting</div><div style="font-weight:600">${art.afmeting}</div></div>`:''}
+        </div>
+        ${art.notitie?`<div style="font-size:12px;color:var(--tx2);background:var(--bg2);border-radius:var(--r);padding:8px 10px"><i class="ti ti-note" style="margin-right:5px"></i>${art.notitie}</div>`:''}
+        <button class="btn sm" style="align-self:flex-start" onclick="wmsOpenArtikelModal('${art.id}');wmsCloseModal('wms-locatie-detail-modal')"><i class="ti ti-edit"></i> Artikel bewerken</button>
+      </div>`
+    :`<div style="text-align:center;padding:20px;color:var(--tx3)"><i class="ti ti-package-off" style="font-size:32px;display:block;margin-bottom:8px"></i><div style="font-size:13px">Deze locatie is leeg</div></div>`;
+
+  document.getElementById('wms-locatie-detail-code').textContent=code;
+  document.getElementById('wms-locatie-detail-meta').textContent=(rek?'Rek '+rek.naam+' · ':'')+laagLabel+' · Vak '+vak;
+  document.getElementById('wms-locatie-detail-inhoud').innerHTML=inhoud;
+  wmsOpenModal('wms-locatie-detail-modal');
+}
 
 </script>
 
@@ -9152,6 +9191,19 @@ function wmsSaveSlotArtikel(){wmsCloseModal('wms-slot-modal');}
 
 
 <!-- WMS MODALS -->
+<div class="wms-modal-overlay" id="wms-locatie-detail-modal">
+  <div class="wms-modal" style="max-width:440px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:18px;color:var(--tx)" id="wms-locatie-detail-code"></div>
+        <div style="font-size:12px;color:var(--tx3);margin-top:2px" id="wms-locatie-detail-meta"></div>
+      </div>
+      <button class="btn sm" onclick="wmsCloseModal('wms-locatie-detail-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="wms-locatie-detail-inhoud"></div>
+  </div>
+</div>
+
 <div class="wms-modal-overlay" id="wms-slot-modal">
   <div class="wms-modal">
     <div class="wms-modal-title" id="wms-slot-modal-title">Vak instellen</div>
