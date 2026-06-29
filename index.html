@@ -8855,7 +8855,7 @@ function wmsLocatieRijHTML(idx, code){
   return`<div id="wms-loc-rij-${idx}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:10px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r)">
     <div style="display:flex;gap:6px;flex:1;flex-wrap:wrap;align-items:center">
       ${rekSel}${laagSel}${vakSel}
-      <div style="min-width:90px">${badge}</div>
+      <div class="wms-loc-badge-wrap" style="min-width:90px">${badge}</div>
     </div>
     <button class="btn danger sm" onclick="wmsLocatieVerwijder(${idx})" type="button" title="Verwijder locatie"><i class="ti ti-trash"></i></button>
   </div>`;
@@ -8883,36 +8883,69 @@ function wmsLocRekChange(idx,sel){
   const rek=wmsRekken.find(r=>r.id===sel.value);
   const rij=document.getElementById('wms-loc-rij-'+idx);if(!rij)return;
   const selects=rij.querySelectorAll('select');
-  // Reset laag
-  const laagSel=selects[1];laagSel.innerHTML='<option value="">-- laag --</option>';laagSel.disabled=true;
+  // Reset en vul laag
+  const laagSel=selects[1];
+  laagSel.innerHTML='<option value="">-- laag --</option>';
+  laagSel.disabled=true;
   // Reset vak
-  const vakSel=selects[2];vakSel.innerHTML='<option value="">-- vak --</option>';vakSel.disabled=true;
+  const vakSel=selects[2];
+  vakSel.innerHTML='<option value="">-- vak --</option>';
+  vakSel.disabled=true;
+  // Reset badge
+  const badge=rij.querySelector('.wms-loc-badge-wrap');
+  if(badge)badge.innerHTML='<span style="color:var(--tx3);font-size:12px;font-style:italic">nog niet gekozen</span>';
   if(rek){
     const maxL=Math.max(...rek.secties.map(s=>s.lagen));
-    for(let l=0;l<maxL;l++){const opt=document.createElement('option');opt.value=l;opt.textContent=l===0?'Vloer':'L'+l;laagSel.appendChild(opt);}
+    for(let l=0;l<maxL;l++){
+      const opt=document.createElement('option');
+      opt.value=l;
+      opt.textContent=l===0?'Vloer':'L'+l;
+      laagSel.appendChild(opt);
+    }
     laagSel.disabled=false;
   }
-  wmsRenderLocatieLijst();
 }
 
 function wmsLocLaagChange(idx,sel){
   wmsArtikelLocaties[idx]='';
   const rij=document.getElementById('wms-loc-rij-'+idx);if(!rij)return;
   const selects=rij.querySelectorAll('select');
-  const rekId=selects[0].value,laag=sel.value,vakSel=selects[2];
-  vakSel.innerHTML='<option value="">-- vak --</option>';vakSel.disabled=true;
+  const rekId=selects[0].value,laag=sel.value;
+  const vakSel=selects[2];
+  vakSel.innerHTML='<option value="">-- kies vak --</option>';
+  vakSel.disabled=true;
+  // Reset badge
+  const badge=rij.querySelector('.wms-loc-badge-wrap');
+  if(badge)badge.innerHTML='<span style="color:var(--tx3);font-size:12px;font-style:italic">nog niet gekozen</span>';
   if(!rekId||laag==='')return;
   const rek=wmsRekken.find(r=>r.id===rekId);if(!rek)return;
-  const laagNum=parseInt(laag),total=rek.secties.reduce((s,sec)=>s+sec.per_laag,0);
-  const inUse=new Set(wmsArtikelen.flatMap(a=>a.locaties||[a.locatie]).filter(Boolean).map(lc=>lc.toLowerCase()));
-  for(let pos=1;pos<=total;pos++){const c=rek.naam+laagNum+String(pos).padStart(2,'0');const opt=document.createElement('option');opt.value=c;opt.textContent=String(pos).padStart(2,'0')+(inUse.has(c.toLowerCase())?' (bezet)':'');if(inUse.has(c.toLowerCase()))opt.style.color='var(--tx3)';vakSel.appendChild(opt);}
+  const laagNum=parseInt(laag);
+  const total=rek.secties.reduce((s,sec)=>s+sec.per_laag,0);
+  const inUse=new Set(
+    wmsArtikelen.flatMap(a=>wmsLocatiesVanArtikel(a))
+      .filter(Boolean).map(lc=>lc.toLowerCase())
+  );
+  for(let pos=1;pos<=total;pos++){
+    const code=rek.naam+laagNum+String(pos).padStart(2,'0');
+    const opt=document.createElement('option');
+    opt.value=code;
+    opt.textContent=String(pos).padStart(2,'0')+(inUse.has(code.toLowerCase())?' (bezet)':'');
+    if(inUse.has(code.toLowerCase()))opt.style.color='var(--tx3)';
+    vakSel.appendChild(opt);
+  }
   vakSel.disabled=false;
-  wmsRenderLocatieLijst();
 }
 
 function wmsLocVakChange(idx,sel){
-  wmsArtikelLocaties[idx]=sel.value;
-  wmsRenderLocatieLijst();
+  const code=sel.value;
+  wmsArtikelLocaties[idx]=code;
+  const rij=document.getElementById('wms-loc-rij-'+idx);if(!rij)return;
+  const badge=rij.querySelector('.wms-loc-badge-wrap');
+  if(badge){
+    badge.innerHTML=code
+      ?'<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(0,223,163,.12);color:#00805e;border:1px solid rgba(0,223,163,.3);border-radius:5px;padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap"><i class="ti ti-map-pin" style="font-size:11px"></i>'+code+'</span>'
+      :'<span style="color:var(--tx3);font-size:12px;font-style:italic">nog niet gekozen</span>';
+  }
 }
 
 // Verouderde single-locatie helpers (nog nodig voor rek-visueel in andere plaatsen)
