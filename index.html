@@ -9290,7 +9290,9 @@ function wmsOpenGebouwModal(id){const g=id?wmsGebouwen.find(x=>x.id===id):null;d
 async function wmsSaveGebouw(){const naam=document.getElementById('wms-gebouw-naam').value.trim(),b=parseInt(document.getElementById('wms-gebouw-breedte').value)||20,l=parseInt(document.getElementById('wms-gebouw-lengte').value)||40;if(!naam){showToast('Naam is verplicht.');return;}const id=document.getElementById('wms-gebouw-id').value;if(id)await supabaseClient.from('wms_gebouwen').update({naam,breedte:b,lengte:l}).eq('id',id);else{const res=await supabaseClient.from('wms_gebouwen').insert({naam,breedte:b,lengte:l}).select().single();wmsActiveGebouwId=res.data.id;}const{data:g}=await supabaseClient.from('wms_gebouwen').select('*').order('naam');wmsGebouwen=g||[];wmsCloseModal('wms-gebouw-modal');wmsRenderGrondplan();showToast('Gebouw opgeslagen ✓');}
 async function wmsDeleteGebouw(id){if(!confirm('Gebouw verwijderen?'))return;await supabaseClient.from('wms_rek_posities').delete().eq('gebouw_id',id);await supabaseClient.from('wms_gebouwen').delete().eq('id',id);if(wmsActiveGebouwId===id)wmsActiveGebouwId=null;const{data:g}=await supabaseClient.from('wms_gebouwen').select('*').order('naam');wmsGebouwen=g||[];const{data:pD}=await supabaseClient.from('wms_rek_posities').select('*');wmsRekPosities=pD||[];wmsRenderGrondplan();showToast('Gebouw verwijderd');}
 function wmsLevNaam(id){if(!id)return'';const l=wmsLeveranciers.find(x=>x.id===id);return l?l.naam:'';}
-
+function wmsOpenModal(id){const el=document.getElementById(id);if(el)el.classList.add('open');}
+function wmsCloseModal(id){const el=document.getElementById(id);if(el)el.classList.remove('open');}
+function wmsSaveSlotArtikel(){wmsCloseModal('wms-slot-modal');}
 function wmsOpenLocatieDetail(code){
   const art=wmsArtikelen.find(a=>{
     const locs=wmsLocatiesVanArtikel(a);
