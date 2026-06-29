@@ -656,7 +656,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
       <div id="wms-page-rekken" style="display:none">
         <div class="wms-page-header">
           <div><div class="wms-page-title">Rekken &amp; Secties</div><div class="wms-page-sub">Maak rekken aan met meerdere secties</div></div>
-          <button class="btn primary" onclick="wmsOpenRekModal()"><i class="ti ti-plus"></i> Nieuw rek</button>
+          <button class="btn primary" id="wms-nieuw-rek-btn" onclick="wmsOpenRekModal()"><i class="ti ti-plus"></i> Nieuw rek</button>
         </div>
         <div id="wms-admin-rekken-container"></div>
         <div id="wms-rekken-empty" class="wms-empty" style="display:none"><i class="ti ti-layout-rows"></i><p>Nog geen rekken aangemaakt.</p></div>
@@ -678,7 +678,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
       <div id="wms-page-grondplan" style="display:none">
         <div class="wms-page-header">
           <div><div class="wms-page-title">Grondplan</div><div class="wms-page-sub">Bovenaanzicht magazijn per gebouw</div></div>
-          <button class="btn primary" onclick="wmsOpenGebouwModal()"><i class="ti ti-plus"></i> Nieuw gebouw</button>
+          <button class="btn primary" id="wms-nieuw-gebouw-btn" onclick="wmsOpenGebouwModal()"><i class="ti ti-plus"></i> Nieuw gebouw</button>
         </div>
         <div id="wms-gebouw-tabs" class="wms-gebouw-tabs"></div>
         <div id="wms-grondplan-content"></div>
@@ -8596,7 +8596,11 @@ async function wmsInit(){
   ['tab-wms-rekken-dd','tab-wms-grondplan-dd','tab-wms-leveranciers-dd','tab-wms-dashboard-dd'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.style.display=wmsIsManager?'flex':'none';
   });
-  document.getElementById('wms-beheer-divider').style.display=wmsIsManager?'block':'none';
+  // Rekken & grondplan zichtbaar voor iedereen in operations (operator = lezen, manager = bewerken)
+  const kanOperations=currentRole==='admin'||(currentUser?.user_metadata?.afdeling||'')==='hoofdadmin'||(currentUser?.user_metadata?.afdeling||'')==='operations';
+  ['tab-wms-rekken-dd','tab-wms-grondplan-dd'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.style.display=kanOperations?'flex':'none';
+  });
   await wmsLoadAll();
 }
 async function wmsLoadAll(){
@@ -9024,8 +9028,28 @@ async function wmsSaveArtikel(){
 async function wmsDeleteArtikel(id){if(!confirm('Artikel verwijderen?'))return;await supabaseClient.from('wms_artikelen').delete().eq('id',id);await wmsLoadAll();wmsRenderArtikelen();showToast('Artikel verwijderd');}
 function wmsRenderAdminRekken(){
   const container=document.getElementById('wms-admin-rekken-container'),emptyEl=document.getElementById('wms-rekken-empty');
+  // Toon/verberg Nieuw rek knop op basis van rol
+  const nieuwBtn=document.getElementById('wms-nieuw-rek-btn');
+  if(nieuwBtn)nieuwBtn.style.display=wmsIsManager?'':'none';
   if(!wmsRekken.length){container.innerHTML='';emptyEl.style.display='block';return;}emptyEl.style.display='none';
-  container.innerHTML=wmsRekken.map(r=>{const allSlots=r.secties.flatMap(s=>s.slots),bezet=allSlots.filter(s=>s.artikel_id).length;return'<div class="wms-rek-blok"><div class="wms-rek-blok-header"><div><div class="wms-rek-naam">Rek '+r.naam+'</div><div class="wms-rek-meta">'+r.secties.length+' sectie(s) · '+allSlots.length+' vakken · '+bezet+' bezet</div></div><div style="display:flex;gap:7px;align-items:center"><button class="btn sm" onclick="wmsAddSectieToRek(\''+r.id+'\',\''+r.naam+'\')"><i class="ti ti-plus"></i> Sectie</button><button class="btn danger sm" onclick="wmsDeleteRek(\''+r.id+'\')"><i class="ti ti-x"></i> Verwijder</button></div></div><div class="wms-rek-secties">'+wmsRekHTML(r,null,false)+'</div><div style="padding:0 14px 12px;display:flex;gap:7px;flex-wrap:wrap">'+r.secties.map(s=>'<button class="btn sm" onclick="wmsOpenSectieEdit(\''+s.id+'\',\''+r.naam+'\','+s.sectie_nr+')"><i class="ti ti-edit"></i> Stuk '+s.sectie_nr+'</button>').join('')+'</div></div>';}).join('');
+  container.innerHTML=wmsRekken.map(r=>{
+    const allSlots=r.secties.flatMap(s=>s.slots),bezet=allSlots.filter(s=>s.artikel_id).length;
+    const beheerKnoppen=wmsIsManager
+      ?`<button class="btn sm" onclick="wmsAddSectieToRek('${r.id}','${r.naam}')"><i class="ti ti-plus"></i> Sectie</button>
+         <button class="btn danger sm" onclick="wmsDeleteRek('${r.id}')"><i class="ti ti-x"></i> Verwijder</button>`
+      :'';
+    const sectieKnoppen=wmsIsManager
+      ?r.secties.map(s=>`<button class="btn sm" onclick="wmsOpenSectieEdit('${s.id}','${r.naam}',${s.sectie_nr})"><i class="ti ti-edit"></i> Stuk ${s.sectie_nr}</button>`).join('')
+      :`<span style="font-size:12px;color:var(--tx3);font-style:italic;padding:4px 8px">${r.secties.length} sectie(s) · alleen-lezen</span>`;
+    return`<div class="wms-rek-blok">
+      <div class="wms-rek-blok-header">
+        <div><div class="wms-rek-naam">Rek ${r.naam}</div><div class="wms-rek-meta">${r.secties.length} sectie(s) · ${allSlots.length} vakken · ${bezet} bezet</div></div>
+        <div style="display:flex;gap:7px;align-items:center">${beheerKnoppen}</div>
+      </div>
+      <div class="wms-rek-secties">${wmsRekHTML(r,null,false)}</div>
+      <div style="padding:0 14px 12px;display:flex;gap:7px;flex-wrap:wrap">${sectieKnoppen}</div>
+    </div>`;
+  }).join('');
 }
 function wmsOpenRekModal(){document.getElementById('wms-rek-naam').value='';document.getElementById('wms-rek-start').value=1;wmsModalSecties=[{lagen:3,perLaag:4},{lagen:3,perLaag:4}];wmsRenderSectieList();wmsUpdateRekPreview();wmsOpenModal('wms-rek-modal');}
 function wmsRenderSectieList(){document.getElementById('wms-sectie-list').innerHTML=wmsModalSecties.map((sec,i)=>'<div class="wms-sectie-item"><div class="wms-sectie-nr">'+(i+1)+'</div><div style="display:flex;gap:9px;flex:1;align-items:center"><div><div style="font-size:11px;color:var(--tx2);margin-bottom:2px">Lagen</div><input class="wms-sectie-input-sm" type="number" min="1" max="10" value="'+sec.lagen+'" oninput="wmsModalSecties['+i+'].lagen=Math.max(1,parseInt(this.value)||1);wmsUpdateRekPreview()"></div><div><div style="font-size:11px;color:var(--tx2);margin-bottom:2px">Plekken/laag</div><input class="wms-sectie-input-sm" type="number" min="1" max="20" value="'+sec.perLaag+'" oninput="wmsModalSecties['+i+'].perLaag=Math.max(1,parseInt(this.value)||1);wmsUpdateRekPreview()"></div></div>'+(wmsModalSecties.length>1?'<button class="btn danger sm" onclick="wmsRemoveSectie('+i+')"><i class="ti ti-x"></i></button>':'')+' </div>').join('');}
@@ -9058,15 +9082,31 @@ function wmsRenderGrondplan(){
   }
   if(!wmsGebouwen.length){tabsEl.innerHTML='';contentEl.innerHTML='';emptyEl.style.display='block';return;}emptyEl.style.display='none';
   if(!wmsActiveGebouwId||!wmsGebouwen.find(g=>g.id===wmsActiveGebouwId))wmsActiveGebouwId=wmsGebouwen[0].id;
-  tabsEl.innerHTML=wmsGebouwen.map(g=>'<div class="wms-gebouw-tab'+(g.id===wmsActiveGebouwId?' active':'')+'" data-id="'+g.id+'" onclick="wmsSwitchGebouw(this)">'+g.naam+'</div>').join('')+'<button class="btn sm" onclick="wmsOpenGebouwModal()"><i class="ti ti-plus"></i> Gebouw</button>';
+  const nieuwGebouwBtn=document.getElementById('wms-nieuw-gebouw-btn');
+  if(nieuwGebouwBtn)nieuwGebouwBtn.style.display=wmsIsManager?'':'none';
+  tabsEl.innerHTML=wmsGebouwen.map(g=>'<div class="wms-gebouw-tab'+(g.id===wmsActiveGebouwId?' active':'')+'" data-id="'+g.id+'" onclick="wmsSwitchGebouw(this)">'+g.naam+'</div>').join('')+(wmsIsManager?'<button class="btn sm" onclick="wmsOpenGebouwModal()"><i class="ti ti-plus"></i> Gebouw</button>':'');
   const geb=wmsGebouwen.find(g=>g.id===wmsActiveGebouwId);if(!geb)return;
   wmsGpScale=Math.min(820/geb.breedte,820/geb.lengte,22);wmsGpScale=Math.max(wmsGpScale,7);
   const cW=Math.round(geb.breedte*wmsGpScale),cH=Math.round(geb.lengte*wmsGpScale);
   const geplaatst=wmsRekPosities.filter(p=>p.gebouw_id===wmsActiveGebouwId).map(p=>p.rek_id);
   const ongeplaatst=wmsRekken.filter(r=>!geplaatst.includes(r.id));
-  const onHtml=ongeplaatst.length?'<span style="font-size:12px;color:var(--tx2)">Nog plaatsen:</span>'+ongeplaatst.map(r=>'<span class="wms-niet-geplaatst" data-rekid="'+r.id+'" onclick="wmsPlaatsRek(this.dataset.rekid)">'+r.naam+'</span>').join(''):'<span style="font-size:12px;color:#00805e">✓ Alle rekken geplaatst</span>';
+  const onHtml=wmsIsManager
+    ?(ongeplaatst.length?'<span style="font-size:12px;color:var(--tx2)">Nog plaatsen:</span>'+ongeplaatst.map(r=>'<span class="wms-niet-geplaatst" data-rekid="'+r.id+'" onclick="wmsPlaatsRek(this.dataset.rekid)">'+r.naam+'</span>').join(''):'<span style="font-size:12px;color:#00805e">✓ Alle rekken geplaatst</span>')
+    :'';
   const hasPending=Object.keys(wmsGpPending).length>0;
-  contentEl.innerHTML='<div class="wms-grondplan-wrap"><div class="wms-grondplan-toolbar"><span style="font-size:13px;font-weight:600">'+geb.naam+'</span><span style="font-size:12px;color:var(--tx2)">'+geb.breedte+'m × '+geb.lengte+'m</span><button class="btn sm" data-gid="'+geb.id+'" onclick="wmsOpenGebouwModal(this.dataset.gid)"><i class="ti ti-edit"></i> Bewerken</button><button class="btn danger sm" data-gid="'+geb.id+'" onclick="wmsDeleteGebouw(this.dataset.gid)"><i class="ti ti-x"></i> Verwijder</button>'+onHtml+'<div style="margin-left:auto;display:flex;gap:7px;align-items:center"><button class="btn primary" style="'+(hasPending?'':'opacity:.4;pointer-events:none')+'" onclick="wmsSaveGrondplan()"><i class="ti ti-check"></i> Opslaan</button><button class="btn" onclick="wmsCancelGrondplan()">Annuleer</button></div></div><div class="wms-grondplan-canvas-wrap"><div id="wms-grondplan-canvas" style="width:'+cW+'px;height:'+cH+'px"></div></div><div style="padding:9px 14px;border-top:1px solid var(--bd);font-size:12px;color:var(--tx3)">Klik op 🔒 om een rek te ontgrendelen. Sleep om te verplaatsen.</div></div>';
+  const toolbarBeheer=wmsIsManager
+    ?`<button class="btn sm" data-gid="${geb.id}" onclick="wmsOpenGebouwModal(this.dataset.gid)"><i class="ti ti-edit"></i> Bewerken</button>
+       <button class="btn danger sm" data-gid="${geb.id}" onclick="wmsDeleteGebouw(this.dataset.gid)"><i class="ti ti-x"></i> Verwijder</button>
+       ${onHtml}
+       <div style="margin-left:auto;display:flex;gap:7px;align-items:center">
+         <button class="btn primary" style="${hasPending?'':'opacity:.4;pointer-events:none'}" onclick="wmsSaveGrondplan()"><i class="ti ti-check"></i> Opslaan</button>
+         <button class="btn" onclick="wmsCancelGrondplan()">Annuleer</button>
+       </div>`
+    :`<span style="font-size:12px;color:var(--tx3);font-style:italic"><i class="ti ti-eye" style="margin-right:4px"></i>Alleen-lezen weergave</span>`;
+  const voetnoot=wmsIsManager
+    ?'Klik op 🔒 om een rek te ontgrendelen. Sleep om te verplaatsen.'
+    :'Je hebt leesrechten. Neem contact op met een manager om het grondplan te wijzigen.';
+  contentEl.innerHTML='<div class="wms-grondplan-wrap"><div class="wms-grondplan-toolbar"><span style="font-size:13px;font-weight:600">'+geb.naam+'</span><span style="font-size:12px;color:var(--tx2)">'+geb.breedte+'m × '+geb.lengte+'m</span>'+toolbarBeheer+'</div><div class="wms-grondplan-canvas-wrap"><div id="wms-grondplan-canvas" style="width:'+cW+'px;height:'+cH+'px"></div></div><div style="padding:9px 14px;border-top:1px solid var(--bd);font-size:12px;color:var(--tx3)">'+voetnoot+'</div></div>';
   wmsBuildGpCanvas(geb,cW,cH);
 }
 function wmsBuildGpCanvas(geb,cW,cH){
@@ -9084,9 +9124,11 @@ function wmsAddGpRek(canvas,rek,pos,geb){
   rek.secties.forEach(sec=>{let rowsHTML='';for(let laag=sec.lagen-1;laag>=0;laag--){let slotsHTML='';for(let p2=0;p2<sec.per_laag;p2++){const code=rek.naam+laag+String(p2+1).padStart(2,'0');const bezet=!!wmsArtikelen.find(a=>{const locs=wmsLocatiesVanArtikel(a);return locs.some(lc=>lc.toLowerCase()===code.toLowerCase());});slotsHTML+='<div class="wms-gp-slot'+(bezet?' bezet':'')+'"></div>';}rowsHTML+='<div class="wms-gp-laag-row">'+slotsHTML+'</div>';}sectieHTML+='<div class="wms-gp-sectie-col"><div class="wms-gp-sectie-label">'+sec.sectie_nr+'</div>'+rowsHTML+'</div>';});
   const wrap=document.createElement('div');wrap.className='wms-gp-rek-wrap';wrap.style.position='relative';
   const inner=document.createElement('div');inner.className='wms-gp-rek-inner';inner.style.transform='rotate('+rot+'deg) scale('+sx+','+sy+')';inner.innerHTML='<div class="wms-gp-rek-header"><span>'+rek.naam+'</span><span style="font-size:9px;opacity:.7">'+allSlots.filter(s=>s.artikel_id).length+'/'+allSlots.length+'</span></div><div class="wms-gp-rek-body">'+sectieHTML+'</div>';
-  const lockOverlay=document.createElement('div');lockOverlay.className='wms-gp-lock-overlay';lockOverlay.innerHTML='<button class="wms-gp-lock-btn" onclick="wmsUnlockRek(\''+rek.id+'\')">🔓 Ontgrendelen</button>';
+  const lockOverlay=document.createElement('div');lockOverlay.className='wms-gp-lock-overlay';
+  lockOverlay.innerHTML=wmsIsManager?'<button class="wms-gp-lock-btn" onclick="wmsUnlockRek(\''+rek.id+'\')">🔓 Ontgrendelen</button>':'';
+  lockOverlay.style.display=wmsIsManager?'':'none';
   wrap.appendChild(inner);wrap.appendChild(lockOverlay);el.appendChild(wrap);canvas.appendChild(el);
-  if(isUnlocked)wmsEnableDrag(el,rek.id,geb);
+  if(isUnlocked&&wmsIsManager)wmsEnableDrag(el,rek.id,geb);
 }
 function wmsUnlockRek(rekId){wmsGpUnlocked.add(rekId);wmsGpSelected=rekId;wmsRenderGrondplan();}
 function wmsSetPending(rekId,updates){wmsGpPending[rekId]=Object.assign(wmsGpPending[rekId]||{},updates);}
