@@ -2633,6 +2633,10 @@ async function loadAll(){
   // Sales-configuratie (Thuisinstallatie offerte-sjabloon)
   await salesConfigLaden();
 
+  // Agenda-afspraken — nu een echte Supabase-tabel zodat collega's elkaars planning zien
+  // én een server-functie (bv. voor automatische e-mails) ze kan uitlezen.
+  await agLoadFromSupabase();
+
   setDbStatus('ok','verbonden');
   document.getElementById('db-setup-card').style.display='none';
   // Service role key automatisch herstellen als die nog niet lokaal staat
@@ -2697,7 +2701,7 @@ async function loadAll(){
           agAfspraken.push({id:agId,titel:'Keuring: '+inst.naam,datum:inst.datumKeur,uur:inst.uurKeur,type:'Keuring',resp:inst.resp,notitie:inst.adres,linkId:'keur-'+inst.id,linkLabel:inst.naam,linkType:'keuring'});
         }
       });
-      try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
+      agPersist();
     } else if(irows&&irows.length===0&&installaties.length>0){
       // Remote leeg maar lokaal hebben we data → upload
       for(const inst of installaties){await sbSaveInstallatie(inst);}
@@ -5142,7 +5146,7 @@ function agSave(){
   agRenderCalendar();
   agRenderAankomende();
   showToast(agEditId?'Afspraak bijgewerkt ✓':'Afspraak toegevoegd ✓');
-  try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
+  agPersist();
 }
 
 // Sluit dropdowns als buiten geklikt
@@ -5162,7 +5166,7 @@ function agDelete(){
   agCloseNieuw();
   agRenderCalendar();
   showToast('Afspraak verwijderd.');
-  try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
+  agPersist();
 }
 
 // ══════════════════════════════════════════════════════
@@ -5521,7 +5525,7 @@ function instDossierSave(sluiten=true){
     agAfspraken=agAfspraken.filter(a=>a.id!==agId);
     agAfspraken.push({id:agId,titel:'Keuring: '+data.naam,datum:data.datumKeur,uur:data.uurKeur,type:'Keuring',resp:data.resp,notitie:data.adres,linkId:'keur-'+data.id,linkLabel:data.naam,linkType:'keuring'});
   }
-  try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
+  agPersist();
   sbSaveInstallatie(data);
   if(sluiten){
     instDossierClose();
@@ -5541,7 +5545,7 @@ function instDossierDelete(){
   const sbid=inst?inst._sbid||null:null;
   installaties=installaties.filter(x=>x.id!==instDossierOpenId);
   agAfspraken=agAfspraken.filter(a=>a.id!=='inst-'+instDossierOpenId&&a.id!=='keur-'+instDossierOpenId);
-  try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
+  agPersist();
   // Verwijder via Supabase row id (_sbid), niet interne id
   if(sbUrl&&sbid){
     sbFetch('installaties?id=eq.'+sbid,{method:'DELETE'}).catch(e=>console.warn('sbDeleteInstallatie:',e.message));
@@ -8996,6 +9000,54 @@ async function salesConfigLaden(){
     const data=rows&&rows[0]?rows[0].data:null;
     if(data)salesThuisinstallatieConfig={...salesThuisinstallatieConfig,...data};
   }catch(e){console.warn('Kon sales-configuratie niet laden, gebruik standaardwaarden:',e.message);}
+}
+
+// ── AGENDA-AFSPRAKEN: Supabase-tabel "ag_afspraken" ────────────────────────
+// Vereist deze tabel (eenmalig aan te maken via Supabase SQL editor):
+//   CREATE TABLE IF NOT EXISTS ag_afspraken (
+//     id text PRIMARY KEY, titel text, datum date, uur text, type text,
+//     resp text, notitie text, linkid text, linklabel text, linktype text
+//   );
+async function agLoadFromSupabase(){
+  if(!sbUrl)return false;
+  try{
+    const rows=await sbFetch('ag_afspraken?order=datum.asc');
+    if(rows){
+      agAfspraken=rows.map(r=>({
+        id: /^-?\d+$/.test(String(r.id))?parseInt(r.id,10):r.id,
+        titel:r.titel||'', datum:r.datum||'', uur:r.uur||'', type:r.type||'',
+        resp:r.resp||'', notitie:r.notitie||'',
+        linkId:r.linkid||'', linkLabel:r.linklabel||'', linkType:r.linktype||''
+      }));
+      agNextId=Math.max(1,...agAfspraken.filter(a=>typeof a.id==='number').map(a=>a.id||0),0)+1;
+      try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
+    }
+    return true;
+  }catch(e){
+    console.warn('Kon agenda niet laden uit Supabase, val terug op lokale kopie:',e.message);
+    return false;
+  }
+}
+// Slaat de volledige huidige agAfspraken-lijst op: lokaal (snel, voor offline-gevoel) en
+// in Supabase (zodat collega's en server-functies dezelfde data zien). Vervangt alle vorige
+// losse localStorage.setItem('blitz_ag',...)-aanroepen door één centrale, gesynchroniseerde functie.
+async function agPersist(){
+  try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
+  if(!sbUrl)return;
+  try{
+    if(agAfspraken.length){
+      await sbFetch('ag_afspraken',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(agAfspraken.map(a=>({
+        id:String(a.id), titel:a.titel||'', datum:a.datum||null, uur:a.uur||'', type:a.type||'',
+        resp:a.resp||'', notitie:a.notitie||'', linkid:a.linkId||'', linklabel:a.linkLabel||'', linktype:a.linkType||''
+      })))});
+    }
+    const serverRows=await sbFetch('ag_afspraken?select=id');
+    const lokaleIds=new Set(agAfspraken.map(a=>String(a.id)));
+    const teVerwijderen=(serverRows||[]).map(r=>String(r.id)).filter(id=>!lokaleIds.has(id));
+    if(teVerwijderen.length){
+      await sbFetch('ag_afspraken?id=in.('+teVerwijderen.map(id=>encodeURIComponent(id)).join(',')+')',{method:'DELETE'});
+    }
+  }catch(e){console.warn('Agenda-synchronisatie naar Supabase mislukt (lokaal wel opgeslagen):',e.message);}
 }
 
 async function salesConfigOpslaan(){
