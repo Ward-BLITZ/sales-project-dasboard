@@ -637,15 +637,27 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
       <!-- WMS Artikelen -->
       <div id="wms-page-artikelen" style="display:none">
         <div class="wms-page-header">
-          <div><div class="wms-page-title">Artikelen</div><div class="wms-page-sub">Alle artikelen en hun locaties</div></div>
+          <div><div class="wms-page-title">Artikelen</div><div class="wms-page-sub">Eigen (Supabase) + AFAS Surplus artikelen gecombineerd</div></div>
           <button class="btn primary" onclick="wmsOpenArtikelModal()"><i class="ti ti-plus"></i> Nieuw artikel</button>
         </div>
-        <div style="display:flex;gap:10px;margin-bottom:18px">
-          <input class="wms-search" style="flex:1" id="wms-art-search" placeholder="Zoek op naam, SKU of leverancier..." oninput="wmsRenderArtikelen()">
+        <!-- AFAS statusbalk -->
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:12px;flex-wrap:wrap">
+          <i class="ti ti-building-factory" style="color:#1d4ed8;font-size:16px;flex-shrink:0"></i>
+          <span style="font-size:12px;font-weight:600;color:var(--tx2)">AFAS Surplus</span>
+          <span id="wms-afas-status" style="font-size:12px;color:var(--tx3)"><span style="color:var(--tx3)"><i class="ti ti-clock"></i> Nog niet geladen</span></span>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:var(--tx3)">Connector: <code style="background:var(--bg2);padding:1px 6px;border-radius:4px;font-size:11px" id="wms-afas-connector-lbl"></code></span>
+            <button class="btn sm" id="wms-afas-refresh-btn" onclick="wmsAfasStatus='idle';wmsAfasRefresh()"><i class="ti ti-refresh"></i> Vernieuwen</button>
+          </div>
+        </div>
+        <!-- Filterbalk bronnen + zoeken -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <div class="pills" id="wms-art-filterbalk"></div>
+          <input class="wms-search" style="flex:1;min-width:200px" id="wms-art-search" placeholder="Zoek op naam, SKU..." oninput="wmsRenderArtikelen()">
         </div>
         <div class="wms-card">
           <div class="wms-table-wrap">
-            <table class="wms-table"><thead><tr><th></th><th>SKU</th><th>Naam</th><th>Leverancier</th><th>Locatie</th><th>Voorraad</th><th></th></tr></thead>
+            <table class="wms-table"><thead><tr><th></th><th>SKU</th><th>Naam</th><th>Bron</th><th>Leverancier</th><th>Locatie</th><th>Voorraad</th><th></th></tr></thead>
             <tbody id="wms-artikelen-tbody"></tbody></table>
           </div>
           <div id="wms-artikelen-empty" class="wms-empty" style="display:none"><i class="ti ti-package"></i><p>Geen artikelen gevonden.</p></div>
@@ -8712,6 +8724,135 @@ let wmsGpUnlocked=new Set(),wmsGpSelected=null,wmsGpPending={};
 let wmsModalSecties=[];
 let wmsIsManager=false;
 
+// ── AFAS INTEGRATIE ──────────────────────────────────
+// Credentials staan NIET meer in de HTML — die zitten veilig in de Supabase Edge Function
+// Enkel de proxy-URL hieronder is nodig
+const AFAS_PROXY_URL = 'https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/super-handler';
+
+let wmsAfasArtikelen = [];
+let wmsAfasSamenstellingen = [];
+let wmsAfasStatus = 'idle';
+let wmsAfasSamenstellingStatus = 'idle';
+let wmsArtikelFilter = 'alle'; // 'alle' | 'supabase' | 'afas' | 'samenstelling'
+
+async function afasFetchConnector(connectorName, take=1000) {
+  const resp = await fetch(`${AFAS_PROXY_URL}?skip=0&take=${take}&connector=${encodeURIComponent(connectorName)}`, {
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    }
+  });
+  if (!resp.ok) throw new Error(`Proxy fout: HTTP ${resp.status}`);
+  const json = await resp.json();
+  if (json.error) throw new Error(json.error);
+  return json.rows || json.data?.rows || [];
+}
+
+async function afasLoadArtikelen() {
+  try {
+    const rows = await afasFetchConnector('Blitz_Voorraad_artikels', 1000);
+    if (rows.length) console.log('AFAS artikel velden beschikbaar:', Object.keys(rows[0]));
+    return rows.map(r => {
+      const sku = r.Artikelcode || r.artikelcode || r.itemCode || r.Itemcode || r.code || '';
+      const naam = r.Omschrijving || r.omschrijving || r.Description || r.description || r.naam || '(onbekend)';
+      const omschrijving = r.Artikelgroep || r.artikelgroep || r.ItemGroup || r.itemGroup || '';
+      return {
+        id: 'afas-' + (sku || Math.random()),
+        sku, naam, omschrijving,
+        _bron: 'afas',
+        leverancier_id: null, locaties: null, locatie: null,
+        aantal_per_doos: null, aantal_dozen: null, gewicht: null, afmeting: null, foto_url: null,
+      };
+    });
+  } catch(e) {
+    console.warn('AFAS fout:', e.message);
+    return null;
+  }
+}
+
+async function afasLoadSamenstellingen() {
+  try {
+    const rows = await afasFetchConnector('Blitz_laadstations', 5000);
+    if (rows.length) {
+      console.log('AFAS laadstations velden beschikbaar:', Object.keys(rows[0]));
+      console.log('Eerste 3 rijen Blitz_laadstations (volledig):', JSON.stringify(rows.slice(0,3), null, 2));
+      console.log('Totaal aantal laadstations opgehaald:', rows.length);
+    }
+    return rows.map(r => {
+      // Probeer meerdere mogelijke veldnamen — wordt verfijnd zodra we de echte velden zien in console
+      const sku = r.Itemcode || r.Code || r.Artikelcode || r.itemCode || r.code || '';
+      const naam = r.Omschrijving || r.Description || r.omschrijving || r.description || sku;
+      const verkoopprijs = r.Verkoopprijs || r.SalesPrice || r.Prijs || r.Price || null;
+      return {
+        id: 'samenstelling-' + (sku || Math.random()),
+        sku, naam,
+        omschrijving: 'Samenstelling (laadstation)',
+        verkoopprijs,
+        _bron: 'samenstelling',
+        componenten: [],
+        leverancier_id: null, locaties: null, locatie: null,
+        aantal_per_doos: null, aantal_dozen: null, gewicht: null, afmeting: null, foto_url: null,
+      };
+    });
+  } catch(e) {
+    console.warn('AFAS laadstations fout:', e.message);
+    return null;
+  }
+}
+
+async function wmsAfasRefresh() {
+  const btn = document.getElementById('wms-afas-refresh-btn');
+  const statusEl = document.getElementById('wms-afas-status');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Laden…'; }
+  wmsAfasStatus = 'loading';
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--tx3)"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> AFAS laden…</span>';
+
+  // Artikelen en samenstellingen parallel ophalen
+  const [artikelResult, samenstellingResult] = await Promise.all([
+    afasLoadArtikelen(),
+    afasLoadSamenstellingen(),
+  ]);
+
+  if (artikelResult === null) {
+    wmsAfasStatus = 'error';
+    wmsAfasArtikelen = [];
+  } else {
+    wmsAfasArtikelen = artikelResult;
+    wmsAfasStatus = 'ok';
+  }
+
+  if (samenstellingResult === null) {
+    wmsAfasSamenstellingStatus = 'error';
+    wmsAfasSamenstellingen = [];
+  } else {
+    wmsAfasSamenstellingen = samenstellingResult;
+    wmsAfasSamenstellingStatus = 'ok';
+  }
+
+  const nArt = wmsAfasArtikelen.length;
+  const nSam = wmsAfasSamenstellingen.length;
+  if (statusEl) {
+    if (artikelResult === null && samenstellingResult === null) {
+      statusEl.innerHTML = '<span style="color:#a32d2d"><i class="ti ti-alert-circle"></i> AFAS fout — zie console</span>';
+      showToast('⚠ AFAS kon niet geladen worden. Zie console voor details.');
+    } else {
+      statusEl.innerHTML = `<span style="color:#00805e"><i class="ti ti-circle-check"></i> ${nArt} artikel${nArt!==1?'en':''} + ${nSam} samenstelling${nSam!==1?'en':''}</span>`;
+    }
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-refresh"></i> Vernieuwen'; }
+  wmsRenderArtikelen();
+}
+
+function wmsCombinedArtikelen() {
+  const sb = wmsArtikelen.map(a => ({...a, _bron: 'supabase'}));
+  const sbSkus = new Set(sb.map(a => (a.sku||'').toLowerCase()).filter(Boolean));
+  const afasUniek = wmsAfasArtikelen.filter(a => !sbSkus.has((a.sku||'').toLowerCase()));
+  const samenstellingen = wmsAfasSamenstellingen;
+  if (wmsArtikelFilter === 'supabase') return sb;
+  if (wmsArtikelFilter === 'afas') return afasUniek;
+  if (wmsArtikelFilter === 'samenstelling') return samenstellingen;
+  return [...sb, ...afasUniek, ...samenstellingen];
+}
 async function wmsInit(){
   const meta=currentUser?.user_metadata||{};
   const afd=meta.afdeling||'';
@@ -8728,6 +8869,8 @@ async function wmsInit(){
     const el=document.getElementById(id);if(el)el.style.display=kanOperations?'flex':'none';
   });
   await wmsLoadAll();
+  const lbl=document.getElementById('wms-afas-connector-lbl');
+  if(lbl)lbl.textContent='Blitz_Voorraad_artikels';
 }
 async function wmsLoadAll(){
   if(!supabaseClient)return;
@@ -8753,6 +8896,10 @@ async function wmsLoadAll(){
       wmsRekPosities=pD.data||[];
     }
   }catch(e){console.warn('WMS load:',e.message);}
+  // Laad AFAS op de achtergrond als config aanwezig
+  if(wmsAfasStatus==='idle'){
+    wmsAfasRefresh();
+  }
 }
 function wmsSetPage(page){
   ['dashboard','locaties','artikelen','rekken','leveranciers','grondplan'].forEach(p=>{
@@ -8961,20 +9108,101 @@ function wmsPreviewHTML(naam,start,secties){
 }
 function wmsRenderArtikelen(){
   const q=(document.getElementById('wms-art-search')?.value||'').toLowerCase();
-  let list=wmsArtikelen;
+  let list=wmsCombinedArtikelen();
   if(q)list=list.filter(a=>a.naam.toLowerCase().includes(q)||(a.sku||'').toLowerCase().includes(q)||(a.omschrijving||'').toLowerCase().includes(q)||wmsLevNaam(a.leverancier_id).toLowerCase().includes(q));
+  // Update filterbalk tellers
+  const sbN=wmsArtikelen.length;
+  const sbSkus=new Set(wmsArtikelen.map(x=>(x.sku||'').toLowerCase()).filter(Boolean));
+  const afasN=wmsAfasArtikelen.filter(a=>!sbSkus.has((a.sku||'').toLowerCase())).length;
+  const samN=wmsAfasSamenstellingen.length;
+  const filterBarEl=document.getElementById('wms-art-filterbalk');
+  if(filterBarEl)filterBarEl.innerHTML=
+    '<button class="pill'+(wmsArtikelFilter==='alle'?' active all':'')+'" onclick="wmsArtikelFilter=\'alle\';wmsRenderArtikelen()">Alle ('+(sbN+afasN+samN)+')</button>'+
+    '<button class="pill'+(wmsArtikelFilter==='supabase'?' active':'')+'" onclick="wmsArtikelFilter=\'supabase\';wmsRenderArtikelen()"><i class=\"ti ti-database\" style=\"font-size:11px\"></i> Eigen ('+sbN+')</button>'+
+    '<button class="pill'+(wmsArtikelFilter==='afas'?' active':'')+'" onclick="wmsArtikelFilter=\'afas\';wmsRenderArtikelen()"><i class=\"ti ti-building-factory\" style=\"font-size:11px\"></i> AFAS ('+afasN+')</button>'+
+    '<button class="pill'+(wmsArtikelFilter==='samenstelling'?' active':'')+'" onclick="wmsArtikelFilter=\'samenstelling\';wmsRenderArtikelen()"><i class=\"ti ti-stack-2\" style=\"font-size:11px\"></i> Samenstellingen ('+samN+')</button>';
   const tbody=document.getElementById('wms-artikelen-tbody'),emptyEl=document.getElementById('wms-artikelen-empty');
   if(!list.length){tbody.innerHTML='';emptyEl.style.display='block';return;}emptyEl.style.display='none';
   tbody.innerHTML=list.map(a=>{
+    const isAfas=a._bron==='afas';
+    const isSamenstelling=a._bron==='samenstelling';
     const totaalSt=a.aantal_per_doos&&a.aantal_dozen?(a.aantal_per_doos*a.aantal_dozen)+' st':'';
-    const voorraad=a.aantal_dozen!=null&&a.aantal_dozen!==''?a.aantal_dozen+' doos'+(totaalSt?' ('+totaalSt+')':''):'—';
-    const foto=a.foto_url?'<img src="'+a.foto_url+'" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--bd)">':'<div style="width:34px;height:34px;background:var(--bg2);border-radius:4px;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><i class="ti ti-photo" style="color:var(--tx3);font-size:16px"></i></div>';
+    const voorraad=(isAfas||isSamenstelling)?'<span style="color:var(--tx3);font-style:italic;font-size:11px">via AFAS</span>':(a.aantal_dozen!=null&&a.aantal_dozen!==''?a.aantal_dozen+' doos'+(totaalSt?' ('+totaalSt+')':''):'—');
+    const fotoIcon=isSamenstelling?'ti-stack-2':(isAfas?'ti-building-factory':'ti-photo');
+    const foto=a.foto_url?'<img src="'+a.foto_url+'" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--bd)">':'<div style="width:34px;height:34px;background:var(--bg2);border-radius:4px;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><i class="ti '+fotoIcon+'" style="color:var(--tx3);font-size:16px"></i></div>';
     const locs=wmsLocatiesVanArtikel(a);
-    const locHtml=locs.length
-      ?locs.map(lc=>'<span class="wms-loc-badge" style="margin:1px 2px 1px 0"><i class="ti ti-map-pin" style="font-size:10px"></i> '+lc+'</span>').join('')
-      :'<span class="wms-loc-empty">niet toegewezen</span>';
-    return'<tr><td>'+foto+'</td><td style="color:var(--tx3);font-size:12px">'+(a.sku||'—')+'</td><td><div style="font-weight:600">'+a.naam+'</div>'+(a.omschrijving?'<div style="color:var(--tx3);font-size:11px">'+a.omschrijving+'</div>':'')+'</td><td>'+(a.leverancier_id?'<span class="wms-sup-badge">'+wmsLevNaam(a.leverancier_id)+'</span>':'<span style="color:var(--tx3)">—</span>')+'</td><td style="max-width:160px">'+locHtml+'</td><td style="font-size:12px;font-weight:600">'+voorraad+'</td><td style="text-align:right;white-space:nowrap"><button class="btn sm" style="margin-right:5px" onclick="wmsOpenArtikelModal(\''+a.id+'\')">Bewerken</button><button class="btn danger sm" onclick="wmsDeleteArtikel(\''+a.id+'\')">Verwijder</button></td></tr>';
+    const locHtml=isSamenstelling?'<span style="color:var(--tx3);font-size:11px">n.v.t.</span>':(locs.length?locs.map(lc=>'<span class="wms-loc-badge" style="margin:1px 2px 1px 0"><i class="ti ti-map-pin" style="font-size:10px"></i> '+lc+'</span>').join(''):'<span class="wms-loc-empty">niet toegewezen</span>');
+    const bronBadge=isSamenstelling
+      ?'<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(168,85,247,.1);color:#7c3aed;border:1px solid rgba(168,85,247,.25);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700"><i class="ti ti-stack-2" style="font-size:10px"></i> Samenstelling</span>'
+      :isAfas
+      ?'<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(59,130,246,.1);color:#1d4ed8;border:1px solid rgba(59,130,246,.25);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700"><i class="ti ti-building-factory" style="font-size:10px"></i> AFAS</span>'
+      :'<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(0,223,163,.1);color:#00805e;border:1px solid rgba(0,223,163,.25);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700"><i class="ti ti-database" style="font-size:10px"></i> Eigen</span>';
+    const enc=encodeURIComponent(JSON.stringify({sku:a.sku,naam:a.naam,omschrijving:a.omschrijving}));
+    const enc2=encodeURIComponent(JSON.stringify({sku:a.sku,naam:a.naam,omschrijving:a.omschrijving}));
+    const actieKnoppen=isSamenstelling
+      ?'<button class="btn sm primary" onclick="wmsImporteerVanAfas(\''+a.id+'\',\''+enc2+'\')"><i class="ti ti-download"></i> Importeer</button>'
+      :isAfas
+      ?'<button class="btn sm primary" onclick="wmsImporteerVanAfas(\''+a.id+'\',\''+enc+'\')"><i class="ti ti-download"></i> Importeer</button>'
+      :'<button class="btn sm" style="margin-right:5px" onclick="wmsOpenArtikelModal(\''+a.id+'\')">Bewerken</button><button class="btn danger sm" onclick="wmsDeleteArtikel(\''+a.id+'\')">Verwijder</button>';
+    return'<tr style="'+(isSamenstelling?'background:rgba(168,85,247,.03)':isAfas?'background:rgba(59,130,246,.03)':'')+'">'
+      +'<td>'+foto+'</td>'
+      +'<td style="color:var(--tx3);font-size:12px">'+(a.sku||'—')+'</td>'
+      +'<td><div style="font-weight:600">'+a.naam+'</div>'+(a.omschrijving?'<div style="color:var(--tx3);font-size:11px">'+a.omschrijving+'</div>':'')+'</td>'
+      +'<td>'+bronBadge+'</td>'
+      +'<td>'+((!isAfas&&!isSamenstelling&&a.leverancier_id)?'<span class="wms-sup-badge">'+wmsLevNaam(a.leverancier_id)+'</span>':'<span style="color:var(--tx3)">—</span>')+'</td>'
+      +'<td style="max-width:160px">'+locHtml+'</td>'
+      +'<td style="font-size:12px;font-weight:600">'+voorraad+'</td>'
+      +'<td style="text-align:right;white-space:nowrap">'+actieKnoppen+'</td>'
+      +'</tr>';
   }).join('');
+}
+function wmsToonComponenten(samenstellingId){
+  const item=wmsAfasSamenstellingen.find(s=>s.id===samenstellingId);
+  if(!item)return;
+  const lijst=(item.componenten||[]).map(c=>
+    '<tr><td style="padding:6px 10px;color:var(--tx3);font-size:12px">'+(c.sku||'—')+'</td>'+
+    '<td style="padding:6px 10px">'+(c.naam||'—')+'</td>'+
+    '<td style="padding:6px 10px;text-align:right;font-weight:600">'+(c.aantal||1)+'</td></tr>'
+  ).join('');
+  const html=
+    '<div style="padding:4px 0">'+
+    '<div style="font-weight:700;margin-bottom:10px;font-size:15px"><i class="ti ti-stack-2" style="color:#7c3aed"></i> '+item.naam+' <span style="color:var(--tx3);font-weight:400;font-size:12px">('+item.sku+')</span></div>'+
+    (item.componenten?.length
+      ? '<table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--bd)"><th style="text-align:left;padding:6px 10px;font-size:11px;color:var(--tx3)">SKU</th><th style="text-align:left;padding:6px 10px;font-size:11px;color:var(--tx3)">Component</th><th style="text-align:right;padding:6px 10px;font-size:11px;color:var(--tx3)">Aantal</th></tr></thead><tbody>'+lijst+'</tbody></table>'
+      : '<p style="color:var(--tx3);font-size:13px">Geen componenten gevonden voor deze samenstelling.</p>')+
+    '</div>';
+  wmsShowInfoModal('Samenstelling componenten', html);
+}
+function wmsShowInfoModal(title, html){
+  let modal=document.getElementById('wms-info-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='wms-info-modal';
+    modal.className='wms-modal-overlay';
+    modal.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;align-items:center;justify-content:center';
+    modal.innerHTML='<div style="background:var(--bg);border-radius:var(--rl);max-width:480px;width:90%;max-height:80vh;overflow:auto;padding:20px;position:relative"><button onclick="document.getElementById(\'wms-info-modal\').style.display=\'none\'" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--tx3)"><i class="ti ti-x"></i></button><div id="wms-info-modal-body"></div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none';});
+  }
+  document.getElementById('wms-info-modal-body').innerHTML=html;
+  modal.style.display='flex';
+}
+function wmsImporteerVanAfas(afasId,encodedData){
+  try{
+    const data=JSON.parse(decodeURIComponent(encodedData));
+    document.getElementById('wms-artikel-modal-title').textContent='AFAS artikel importeren';
+    document.getElementById('wms-artikel-id').value='';
+    document.getElementById('wms-art-sku').value=data.sku||'';
+    document.getElementById('wms-art-naam').value=data.naam||'';
+    document.getElementById('wms-art-omschrijving').value=data.omschrijving||'';
+    document.getElementById('wms-art-notitie').value='Geïmporteerd vanuit AFAS';
+    ['wms-art-per-doos','wms-art-dozen','wms-art-gewicht','wms-art-afmeting'].forEach(fid=>{const el=document.getElementById(fid);if(el)el.value='';});
+    const levSel=document.getElementById('wms-art-leverancier');
+    levSel.innerHTML='<option value="">-- geen --</option>'+wmsLeveranciers.map(l=>'<option value="'+l.id+'">'+l.naam+'</option>').join('');
+    wmsArtikelLocaties=[];wmsRenderLocatieLijst();
+    wmsOpenModal('wms-artikel-modal');
+    showToast('AFAS artikel geladen — vul aan en sla op.');
+  }catch(e){showToast('Fout bij importeren: '+e.message);}
 }
 function wmsOpenArtikelModal(id){
   const a=id?wmsArtikelen.find(x=>x.id===id):null;
