@@ -1108,7 +1108,8 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
     <div class="modal-footer" style="flex-shrink:0">
       <button class="btn danger" id="inst-dossier-del-btn" style="display:none;margin-right:auto" onclick="instDossierDelete()"><i class="ti ti-trash"></i> Verwijderen</button>
       <button class="btn" onclick="instDossierClose()">Sluiten</button>
-      <button class="btn primary" onclick="instDossierSave()"><i class="ti ti-check"></i> Opslaan</button>
+      <button class="btn" onclick="instDossierSave(false)"><i class="ti ti-check"></i> Opslaan</button>
+      <button class="btn primary" onclick="instDossierSave(true)"><i class="ti ti-checks"></i> Opslaan &amp; sluiten</button>
     </div>
   </div>
 </div>
@@ -1913,7 +1914,8 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="btn danger" id="m-delete-btn" style="display:none;margin-right:auto" onclick="deleteProject()"><i class="ti ti-trash"></i> Verwijderen</button>
       <button class="btn" style="border-color:rgba(232,93,4,.4);color:#e85d04" id="m-naar-inst-btn" onclick="b2bDoorstuurInstallatie()"><i class="ti ti-tool"></i> → Installatie</button>
       <button class="btn" onclick="closeModalSafe()">Annuleren</button>
-      <button class="btn primary" onclick="saveProject()"><i class="ti ti-check"></i> Opslaan</button>
+      <button class="btn" onclick="saveProject(false)"><i class="ti ti-check"></i> Opslaan</button>
+      <button class="btn primary" onclick="saveProject(true)"><i class="ti ti-checks"></i> Opslaan &amp; sluiten</button>
     </div>
   </div>
 </div>
@@ -1959,7 +1961,8 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="btn danger" onclick="b2cVerwijderLead(b2cOpenLeadId)" style="margin-right:auto"><i class="ti ti-trash"></i> Lead verwijderen</button>
       <button class="btn" style="border-color:rgba(232,93,4,.4);color:#e85d04" onclick="doorstuurNaarInstallatie('b2c',b2cOpenLeadId)"><i class="ti ti-tool"></i> → Installatie</button>
       <button class="btn" onclick="b2cCloseDetail()">Sluiten</button>
-      <button class="btn primary" onclick="b2cSaveLeadEdit()"><i class="ti ti-check"></i> Opslaan</button>
+      <button class="btn" onclick="b2cSaveLeadEdit(false)"><i class="ti ti-check"></i> Opslaan</button>
+      <button class="btn primary" onclick="b2cSaveLeadEdit(true)"><i class="ti ti-checks"></i> Opslaan &amp; sluiten</button>
     </div>
   </div>
 </div>
@@ -3224,7 +3227,7 @@ function onPctChange(v){
   document.getElementById('m-status').value=pctToStatus(pct);
 }
 
-async function saveProject(){
+async function saveProject(sluiten=true){
   const naam=document.getElementById('m-naam').value.trim();
   if(!naam){showToast('Geef een projectnaam in.');return;}
   const si=parseInt(document.getElementById('m-status').value);
@@ -3261,21 +3264,30 @@ async function saveProject(){
   const savedEditingIdx=editingIdx;
   // Bij nieuw verkocht (pct=100) → gewonnen flow tonen
   const isNieuwVerkocht=pct===100&&!wasSold;
-  closeModal();showToast('Project opgeslagen.');
+  if(sluiten){closeModal();}
+  showToast('Project opgeslagen.');
   if(pct===100&&!wasSold){prevSoldSet.add(naam);fireConfetti(project);}
   try{
     const newId=await sbSaveProject(project);
     if(newId&&!project.id)project.id=newId;
-    if(!sbUrl){
-      if(savedEditingIdx!==null)projects[savedEditingIdx]=project;
-      else projects.push(project);
-      lsSave();renderAll();
+    if(savedEditingIdx!==null)projects[savedEditingIdx]=project;
+    else projects.push(project);
+    lsSave();renderAll();
+    if(!sluiten){
+      // Venster blijft open: zorg dat we naar hetzelfde (nu opgeslagen) project blijven
+      // verwijzen, zodat een volgende "Opslaan" dit record bijwerkt i.p.v. te dupliceren.
+      editingId=project.id;
+      editingIdx=savedEditingIdx!==null?savedEditingIdx:projects.length-1;
     }
   }catch{
     if(savedEditingIdx!==null)projects[savedEditingIdx]=project;
     else projects.push(project);
     lsSave();renderAll();
     showToast('Lokaal opgeslagen.');
+    if(!sluiten){
+      editingId=project.id;
+      editingIdx=savedEditingIdx!==null?savedEditingIdx:projects.length-1;
+    }
   }
   // Gewonnen flow triggeren als nieuw verkocht
   if(isNieuwVerkocht){
@@ -5467,7 +5479,7 @@ function instDossierFaseChange(fase){
   siOpvRender();
 }
 
-function instDossierSave(){
+function instDossierSave(sluiten=true){
   const voornaam=document.getElementById('id-voornaam').value.trim();
   if(!voornaam){showToast('Voornaam is verplicht.');return;}
   const existing=installaties.find(x=>x.id===instDossierOpenId);
@@ -5511,7 +5523,13 @@ function instDossierSave(){
   }
   try{localStorage.setItem('blitz_ag',JSON.stringify(agAfspraken));}catch{}
   sbSaveInstallatie(data);
-  instDossierClose();
+  if(sluiten){
+    instDossierClose();
+  }else{
+    // Venster blijft open: zorg dat we naar hetzelfde (nu opgeslagen) dossier blijven
+    // verwijzen, zodat een volgende "Opslaan" dit record bijwerkt i.p.v. een nieuw aan te maken.
+    instDossierOpenId=data.id;
+  }
   instRenderBoard();
   siOpvRender();
   showToast(existing?'Dossier opgeslagen ✓':'Installatie aangemaakt ✓');
@@ -7153,7 +7171,7 @@ function b2cRenderInfo(l){
   },0);
 }
 
-function b2cSaveLeadEdit(){
+function b2cSaveLeadEdit(sluiten=true){
   const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
   const get=id=>{const el=document.getElementById(id);return el?el.value.trim():null;};
   const changed=[];
@@ -7177,8 +7195,12 @@ function b2cSaveLeadEdit(){
   document.getElementById('b2c-detail-titel').textContent=b2cNaam(l);
   b2cRenderLeads();
   sbSaveB2cLead(l);
-  b2cCloseDetail();
-  if(changed.length)showToast('Lead opgeslagen ✓ ('+changed.join(', ')+')');
+  if(sluiten){
+    b2cCloseDetail();
+  }else{
+    b2cRenderInfo(l);
+  }
+  showToast(changed.length?'Lead opgeslagen ✓ ('+changed.join(', ')+')':'Lead opgeslagen ✓');
 }
 
 // ── B2C OPVOLGINGSAGENDA ──────────────────────────────
