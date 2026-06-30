@@ -1931,9 +1931,9 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     </div>
     <div class="inner-tabs" style="flex-shrink:0">
       <button class="inner-tab active" id="b2c-dtab-info" onclick="b2cShowDetailTab('info')"><i class="ti ti-info-circle" style="margin-right:5px"></i>Dossier</button>
+      <button class="inner-tab" id="b2c-dtab-offerte" onclick="b2cShowDetailTab('offerte')"><i class="ti ti-receipt" style="margin-right:5px"></i>Offerte</button>
       <button class="inner-tab" id="b2c-dtab-screening" onclick="b2cShowDetailTab('screening')"><i class="ti ti-clipboard-list" style="margin-right:5px"></i>Screening</button>
       <button class="inner-tab" id="b2c-dtab-contract" onclick="b2cShowDetailTab('contract')"><i class="ti ti-file-invoice" style="margin-right:5px"></i>Contract</button>
-      <button class="inner-tab" id="b2c-dtab-offerte" onclick="b2cShowDetailTab('offerte')"><i class="ti ti-receipt" style="margin-right:5px"></i>Offerte</button>
       <button class="inner-tab" id="b2c-dtab-documenten" onclick="b2cShowDetailTab('documenten')"><i class="ti ti-paperclip" style="margin-right:5px"></i>Documenten</button>
     </div>
     <div style="flex:1;overflow-y:auto">
@@ -2273,6 +2273,18 @@ function logEntry(tekst){
   return {datum:today(),tijdstip:nowTijdstip(),gebruiker,tekst};
 }
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3500);}
+// Gedrag voor numerieke invoervelden (prijzen, kortingen, aantallen): klik je in een veld met
+// waarde 0, dan wordt het leeggemaakt zodat je meteen kan typen. Staat er al een ander getal in,
+// dan wordt dat volledig geselecteerd zodat typen het overschrijft (je kan nog altijd klikken om
+// ertussen te gaan staan of met de pijltjestoetsen navigeren). Verlaat je het veld leeg, dan valt
+// het terug op 0 zodat berekeningen kloppen.
+function numFocusHandler(el){
+  const v=parseFloat(el.value);
+  if(isNaN(v)||v===0){ el.value=''; } else { el.select(); }
+}
+function numBlurHandler(el){
+  if(el.value.trim()==='') el.value='0';
+}
 function filteredLopend(){return activeFilter==='all'?projects:projects.filter(p=>p.resp===activeFilter);}
 function respNames(afdeling){
   // afdeling = 'sales' | 'service' | null (= alles)
@@ -2368,7 +2380,16 @@ function showTab(name){
   if(name==='si-agenda'){siAgRender();}
   if(name==='rapportage'){renderRapportage();}
   if(name==='wms'){document.getElementById('pane-wms').style.display='block';}
-  if(name==='sales'){salesBeheerRender();}
+  if(name==='sales'){
+    salesBeheerRender();
+    // Artikelcatalogus (Supabase + AFAS) wordt elders lazy geladen (bv. bij het openen van een
+    // offerte). Als je rechtstreeks naar Beheer → Sales gaat zonder dat ooit gedaan te hebben,
+    // is die catalogus nog leeg — dan vindt de artikelzoeker niets en lijkt koppelen niet te werken.
+    // Daarom hier expliciet laden en de lijst opnieuw tekenen zodra de data binnen is.
+    if(typeof b2bZorgArtikelDataGeladen==='function'){
+      b2bZorgArtikelDataGeladen().then(()=>{ if(document.getElementById('sales-content')) salesBeheerRender(); });
+    }
+  }
   updateNavDdActive(name);
 }
 
@@ -7012,6 +7033,7 @@ function b2cRenderInfo(l){
           <div class="field" style="margin-bottom:10px"><label><i class="ti ti-mail" style="margin-right:3px"></i>E-mail</label><input id="bi-email" value="${l.email||''}" type="email" style="font-size:13px"></div>
         </div>
         <div class="field" style="margin-bottom:10px"><label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Installatieadres</label><input id="bi-adres" value="${l.adres||''}" placeholder="Straat, nr, gemeente..." style="font-size:13px"></div>
+        <div class="field" style="margin-bottom:10px"><label><i class="ti ti-receipt" style="margin-right:3px"></i>BTW-nummer <span style="color:var(--tx3);font-weight:400">(optioneel — bv. zelfstandige klant)</span></label><input id="bi-btw" value="${l.btw||''}" placeholder="BE 0123.456.789" style="font-size:13px"></div>
 
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin:14px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--bd)"><i class="ti ti-settings" style="margin-right:5px"></i>Lead details</div>
         <div class="field" style="margin-bottom:10px">
@@ -7140,6 +7162,7 @@ function b2cSaveLeadEdit(){
   const ntel=get('bi-tel');if(ntel!==null&&ntel!==(l.tel||'')){l.tel=ntel;changed.push('telefoon');}
   const nemail=get('bi-email');if(nemail!==null&&nemail!==(l.email||'')){l.email=nemail;changed.push('e-mail');}
   const nadres=get('bi-adres');if(nadres!==null&&nadres!==(l.adres||'')){l.adres=nadres;changed.push('adres');}
+  const nbtw=get('bi-btw');if(nbtw!==null&&nbtw!==(l.btw||'')){l.btw=nbtw;changed.push('BTW-nummer');}
   const nbron=get('bi-bron');if(nbron!==null&&nbron!==(l.bron||'')){l.bron=nbron;changed.push('bron');}
   const nwarmte=get('bi-warmte')||get('bi-warmte-top');if(nwarmte&&nwarmte!==(l.warmte||'')){l.warmte=nwarmte;changed.push('warmte');}
   const nnotities=get('bi-notities');if(nnotities!==null&&nnotities!==(l.notities||'')){l.notities=nnotities;changed.push('notities');}
@@ -8933,7 +8956,7 @@ let salesThuisinstallatieConfig = {
     {label:'P1MB', sku:'P1MB', type:'modbus', kortingPct:100},
     {label:'I10234', sku:'I10234', type:'modbus', kortingPct:100},
     {label:'I10305', sku:'I10305', type:'modbus', kortingPct:100},
-    {label:'Niko Home Control (I100283)', sku:'I100283', type:'ems', kortingPct:72.73},
+    {label:'Niko Home Control (I10283)', sku:'I10283', type:'ems', kortingPct:72.73},
   ],
   keuringSku:'KR', keuringOmschrijving:'Keuring', keuringPrijs:175,
   installatiePrijsEms:445,
@@ -8955,11 +8978,23 @@ async function salesConfigLaden(){
 
 async function salesConfigOpslaan(){
   try{
-    await sbFetch('settings',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({key:'sales_thuisinstallatie',data:salesThuisinstallatieConfig})});
-    showToast('Sales-configuratie opgeslagen.');
+    console.log('Sales-configuratie — wordt opgeslagen. Faceplate-kortingen:',salesThuisinstallatieConfig.faceplateOpties.map(o=>({label:o.label,sku:o.sku,kortingPct:o.kortingPct})),'Loadbal-kortingen:',salesThuisinstallatieConfig.loadBalancingOpties.map(o=>({label:o.label,sku:o.sku,kortingPct:o.kortingPct})));
+    // Eén POST met upsert (resolution=merge-duplicates) op de primary key 'key' — zelfde, bewezen
+    // patroon als sbSaveResps(). Geen extra SELECT vooraf nodig (die kan zelf weer mislukken door
+    // leesrechten en gaf hierdoor net een vals-negatieve foutmelding).
+    const res=await sbFetch('settings',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({key:'sales_thuisinstallatie',data:salesThuisinstallatieConfig})});
+    const opgeslagen=res&&res[0]?res[0].data:null;
+    const klopt=opgeslagen&&Array.isArray(opgeslagen.loadBalancingOpties)&&opgeslagen.loadBalancingOpties.length===salesThuisinstallatieConfig.loadBalancingOpties.length&&Array.isArray(opgeslagen.faceplateOpties)&&opgeslagen.faceplateOpties.length===salesThuisinstallatieConfig.faceplateOpties.length;
+    console.log('Sales-configuratie — wat de server teruggeeft (controleer hier de kortingPct-waarden):',opgeslagen);
+    if(klopt){
+      showToast('Sales-configuratie opgeslagen.');
+    }else{
+      console.error('Onverwacht antwoord bij het opslaan van de sales-configuratie:',res);
+      showToast('⚠ Opslaan gaf een onverwacht antwoord — zie console voor details.');
+    }
   }catch(e){
-    console.warn('Kon sales-configuratie niet opslaan:',e.message);
-    showToast('⚠ Opslaan mislukt — zie console.');
+    console.error('Kon sales-configuratie niet opslaan:',e.message);
+    showToast('⚠ Opslaan mislukt: '+e.message);
   }
 }
 
@@ -8986,11 +9021,11 @@ function salesBeheerRender(){
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
         <div class="field" style="margin:0"><label>Keuring — artikelcode</label><input value="${(c.keuringSku||'').replace(/"/g,'&quot;')}" oninput="salesVasteUpdate('keuringSku',this.value)"></div>
         <div class="field" style="margin:0"><label>Keuring — omschrijving</label><input value="${(c.keuringOmschrijving||'').replace(/"/g,'&quot;')}" oninput="salesVasteUpdate('keuringOmschrijving',this.value)"></div>
-        <div class="field" style="margin:0"><label>Keuring — prijs (€)</label><input type="number" step="0.01" value="${c.keuringPrijs}" oninput="salesVasteUpdate('keuringPrijs',parseFloat(this.value)||0)"></div>
+        <div class="field" style="margin:0"><label>Keuring — prijs (€)</label><input type="number" step="0.01" value="${c.keuringPrijs}" onfocus="numFocusHandler(this)" onblur="numBlurHandler(this)" oninput="salesVasteUpdate('keuringPrijs',parseFloat(this.value)||0)"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
-        <div class="field" style="margin:0"><label>Installatieprijs — EMS (€)</label><input type="number" step="0.01" value="${c.installatiePrijsEms}" oninput="salesVasteUpdate('installatiePrijsEms',parseFloat(this.value)||0)"></div>
-        <div class="field" style="margin:0"><label>Installatieprijs — Modbus / P1 (€)</label><input type="number" step="0.01" value="${c.installatiePrijsModbus}" oninput="salesVasteUpdate('installatiePrijsModbus',parseFloat(this.value)||0)"></div>
+        <div class="field" style="margin:0"><label>Installatieprijs — EMS (€)</label><input type="number" step="0.01" value="${c.installatiePrijsEms}" onfocus="numFocusHandler(this)" onblur="numBlurHandler(this)" oninput="salesVasteUpdate('installatiePrijsEms',parseFloat(this.value)||0)"></div>
+        <div class="field" style="margin:0"><label>Installatieprijs — Modbus / P1 (€)</label><input type="number" step="0.01" value="${c.installatiePrijsModbus}" onfocus="numFocusHandler(this)" onblur="numBlurHandler(this)" oninput="salesVasteUpdate('installatiePrijsModbus',parseFloat(this.value)||0)"></div>
       </div>
     </div>
 
@@ -9004,53 +9039,127 @@ function salesBeheerRender(){
   salesRenderTypeverkoopLijst();
 }
 
+// Geeft elk item een stabiel _id zodat bewerken/verwijderen altijd het juiste item raakt,
+// ook als de volgorde of lengte van de lijst ondertussen wijzigde (voorkomt dat een
+// verwijdering "onder" een ander item per ongeluk het verkeerde item treft).
+function salesUidGen(){ return 'o'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function salesZorgIds(lijst){ (lijst||[]).forEach(o=>{ if(!o._id)o._id=salesUidGen(); }); }
+
+let salesZoekTimeoutPerVeld={};
+let salesZoekResultatenPerVeld={};
+
+function salesArtikelZoekDropdown(scope, itemId, query){
+  // scope: 'faceplate' | 'loadbal' — bepaalt welke lijst en welk render-/update-pad gebruikt wordt
+  const veldKey=scope+'-'+itemId;
+  clearTimeout(salesZoekTimeoutPerVeld[veldKey]);
+  const dd=document.getElementById('sales-zoek-dd-'+veldKey);
+  const input=document.getElementById('sales-zoek-input-'+veldKey);
+  if(!dd||!input)return;
+  const q=(query||'').trim().toLowerCase();
+  if(q.length<1){dd.style.display='none';dd.innerHTML='';return;}
+  salesZoekTimeoutPerVeld[veldKey]=setTimeout(()=>{
+    const alle=b2bAlleArtikelenVoorZoeken();
+    const matches=alle.filter(a=>(a.naam||'').toLowerCase().includes(q)||(a.sku||'').toLowerCase().includes(q)).slice(0,20);
+    salesZoekResultatenPerVeld[veldKey]=matches;
+    const rect=input.getBoundingClientRect();
+    dd.style.left=rect.left+'px';dd.style.width=rect.width+'px';dd.style.top=(rect.bottom+4)+'px';
+    if(!matches.length){dd.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--tx3)">Geen artikelen gevonden.</div>';dd.style.display='block';return;}
+    dd.innerHTML=matches.map((a,mIdx)=>{
+      const heeftPrijs=a.verkoopprijs!=null&&a.verkoopprijs!=='';
+      const prijsTekst=heeftPrijs?'€ '+parseFloat(a.verkoopprijs).toFixed(2):'<span style="color:var(--tx3)">geen prijs</span>';
+      return `<div onmousedown="event.preventDefault();salesArtikelZoekKies('${scope}','${itemId}',${mIdx})"
+        style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;font-size:12px"
+        onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">
+        <span style="color:var(--tx3);min-width:90px">${(a.sku||'—')}</span>
+        <span style="flex:1;font-weight:500">${a.naam||''}</span>
+        <span style="white-space:nowrap;font-weight:600">${prijsTekst}</span>
+      </div>`;
+    }).join('');
+    dd.style.display='block';
+  },120);
+}
+function salesArtikelZoekVerberg(scope,itemId){
+  const veldKey=scope+'-'+itemId;
+  setTimeout(()=>{ const dd=document.getElementById('sales-zoek-dd-'+veldKey); if(dd){dd.style.display='none';dd.innerHTML='';} },180);
+}
+function salesArtikelZoekKies(scope,itemId,mIdx){
+  // onmousedown (i.p.v. onclick) + preventDefault zorgt dat dit altijd vóór de blur van het
+  // zoekveld uitgevoerd wordt — zo kan een klik op een resultaat nooit "gemist" worden.
+  const veldKey=scope+'-'+itemId;
+  const a=(salesZoekResultatenPerVeld[veldKey]||[])[mIdx];
+  if(!a){console.warn('Geen artikel gevonden op deze positie in de zoekresultaten — dropdown was mogelijk verlopen.');return;}
+  const lijst=scope==='faceplate'?salesThuisinstallatieConfig.faceplateOpties:salesThuisinstallatieConfig.loadBalancingOpties;
+  const o=lijst.find(x=>x._id===itemId);
+  if(!o){console.warn('Kon het bewerkte item niet terugvinden (onverwacht).');return;}
+  o.sku=a.sku||'';
+  if(!o.label||o.label.trim()==='') o.label=a.naam||a.sku||'';
+  const dd=document.getElementById('sales-zoek-dd-'+veldKey);
+  if(dd){dd.style.display='none';dd.innerHTML='';}
+  if(scope==='faceplate') salesRenderFaceplateLijst(); else salesRenderLoadbalLijst();
+  showToast('Gekoppeld aan '+(a.sku||'')+(a.naam?' — '+a.naam:'')+'. Klik op "Wijzigingen opslaan" om dit te bewaren.');
+}
+
 function salesRenderFaceplateLijst(){
   const el=document.getElementById('sales-faceplate-lijst');if(!el)return;
   const c=salesThuisinstallatieConfig;
-  el.innerHTML=c.faceplateOpties.map((o,idx)=>{
+  salesZorgIds(c.faceplateOpties);
+  el.innerHTML=c.faceplateOpties.map((o)=>{
     const art=salesArtikelOpSku(o.sku);
-    const naamTekst=art?.naam ? art.naam : '<span style="color:var(--tx3)">niet gevonden in catalogus</span>';
+    const naamTekst=art?.naam ? art.naam : (o.sku?'<span style="color:#a32d2d">niet gevonden in catalogus — controleer de artikelcode</span>':'<span style="color:var(--tx3)">geen artikel gekoppeld</span>');
+    const veldKey='faceplate-'+o._id;
     return `
     <div style="margin-bottom:8px">
       <div style="display:flex;gap:8px;align-items:center">
-        <input value="${(o.label||'').replace(/"/g,'&quot;')}" placeholder="Kleurnaam (bv. Black)" oninput="salesFaceplateUpdate(${idx},'label',this.value)" style="flex:1">
-        <input value="${(o.sku||'').replace(/"/g,'&quot;')}" placeholder="Artikelcode (bv. BPSFP1)" oninput="salesFaceplateUpdate(${idx},'sku',this.value)" style="width:160px">
-        <input type="number" step="0.01" value="${o.kortingPct!=null?o.kortingPct:100}" oninput="salesFaceplateUpdate(${idx},'kortingPct',parseFloat(this.value)||0)" style="width:90px" title="Korting %">
-        <button onclick="salesFaceplateVerwijder(${idx})" style="background:none;border:none;cursor:pointer;color:#a32d2d" title="Verwijderen"><i class="ti ti-trash"></i></button>
+        <input value="${(o.label||'').replace(/"/g,'&quot;')}" placeholder="Kleurnaam (bv. Black)" oninput="salesFaceplateUpdate('${o._id}','label',this.value)" style="flex:1">
+        <div style="width:200px;position:relative">
+          <input id="sales-zoek-input-${veldKey}" value="${(o.sku||'').replace(/"/g,'&quot;')}" placeholder="Zoek artikel op naam/code..." autocomplete="off"
+            oninput="salesFaceplateUpdate('${o._id}','sku',this.value);salesArtikelZoekDropdown('faceplate','${o._id}',this.value)"
+            onblur="salesArtikelZoekVerberg('faceplate','${o._id}')">
+          <div id="sales-zoek-dd-${veldKey}" style="display:none;position:fixed;z-index:9999;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 8px 28px rgba(0,0,0,.22);max-height:240px;overflow-y:auto"></div>
+        </div>
+        <input type="number" step="0.01" value="${o.kortingPct!=null?o.kortingPct:100}" onfocus="numFocusHandler(this)" onblur="numBlurHandler(this)" oninput="salesFaceplateUpdate('${o._id}','kortingPct',parseFloat(this.value)||0)" style="width:90px" title="Korting %">
+        <button onclick="salesFaceplateVerwijder('${o._id}')" style="background:none;border:none;cursor:pointer;color:#a32d2d" title="Verwijderen"><i class="ti ti-trash"></i></button>
       </div>
       <div style="font-size:11px;color:var(--tx2);margin-top:3px;padding-left:2px"><i class="ti ti-tag" style="font-size:11px"></i> ${naamTekst}</div>
     </div>`;
   }).join('');
 }
-function salesFaceplateUpdate(idx,veld,waarde){ salesThuisinstallatieConfig.faceplateOpties[idx][veld]=waarde; }
-function salesFaceplateAdd(){ salesThuisinstallatieConfig.faceplateOpties.push({label:'',sku:'',kortingPct:100}); salesRenderFaceplateLijst(); }
-function salesFaceplateVerwijder(idx){ salesThuisinstallatieConfig.faceplateOpties.splice(idx,1); salesRenderFaceplateLijst(); }
+function salesFaceplateUpdate(id,veld,waarde){ const o=salesThuisinstallatieConfig.faceplateOpties.find(x=>x._id===id); if(o)o[veld]=waarde; }
+function salesFaceplateAdd(){ salesThuisinstallatieConfig.faceplateOpties.push({_id:salesUidGen(),label:'',sku:'',kortingPct:100}); salesRenderFaceplateLijst(); }
+function salesFaceplateVerwijder(id){ const lijst=salesThuisinstallatieConfig.faceplateOpties; const i=lijst.findIndex(x=>x._id===id); if(i>-1)lijst.splice(i,1); salesRenderFaceplateLijst(); }
 
 function salesRenderLoadbalLijst(){
   const el=document.getElementById('sales-loadbal-lijst');if(!el)return;
   const c=salesThuisinstallatieConfig;
-  el.innerHTML=c.loadBalancingOpties.map((o,idx)=>{
+  salesZorgIds(c.loadBalancingOpties);
+  el.innerHTML=c.loadBalancingOpties.map((o)=>{
     const art=salesArtikelOpSku(o.sku);
-    const naamTekst=art?.naam ? art.naam : '<span style="color:var(--tx3)">niet gevonden in catalogus</span>';
+    const naamTekst=art?.naam ? art.naam : (o.sku?'<span style="color:#a32d2d">niet gevonden in catalogus — controleer de artikelcode</span>':'<span style="color:var(--tx3)">geen artikel gekoppeld</span>');
+    const veldKey='loadbal-'+o._id;
     return `
     <div style="margin-bottom:8px">
       <div style="display:flex;gap:8px;align-items:center">
-        <input value="${(o.label||'').replace(/"/g,'&quot;')}" placeholder="Label (zichtbaar in keuzelijst)" oninput="salesLoadbalUpdate(${idx},'label',this.value)" style="flex:1.4">
-        <input value="${(o.sku||'').replace(/"/g,'&quot;')}" placeholder="Artikelcode" oninput="salesLoadbalUpdate(${idx},'sku',this.value)" style="width:120px">
-        <select onchange="salesLoadbalUpdate(${idx},'type',this.value)" style="width:120px">
+        <input value="${(o.label||'').replace(/"/g,'&quot;')}" placeholder="Label (zichtbaar in keuzelijst)" oninput="salesLoadbalUpdate('${o._id}','label',this.value)" style="flex:1.4">
+        <div style="width:160px;position:relative">
+          <input id="sales-zoek-input-${veldKey}" value="${(o.sku||'').replace(/"/g,'&quot;')}" placeholder="Zoek artikel op naam/code..." autocomplete="off"
+            oninput="salesLoadbalUpdate('${o._id}','sku',this.value);salesArtikelZoekDropdown('loadbal','${o._id}',this.value)"
+            onblur="salesArtikelZoekVerberg('loadbal','${o._id}')">
+          <div id="sales-zoek-dd-${veldKey}" style="display:none;position:fixed;z-index:9999;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 8px 28px rgba(0,0,0,.22);max-height:240px;overflow-y:auto"></div>
+        </div>
+        <select onchange="salesLoadbalUpdate('${o._id}','type',this.value)" style="width:120px">
           <option value="ems" ${o.type==='ems'?'selected':''}>EMS</option>
           <option value="modbus" ${o.type==='modbus'?'selected':''}>Modbus / P1</option>
         </select>
-        <input type="number" step="0.01" value="${o.kortingPct}" oninput="salesLoadbalUpdate(${idx},'kortingPct',parseFloat(this.value)||0)" style="width:90px" title="Korting %">
-        <button onclick="salesLoadbalVerwijder(${idx})" style="background:none;border:none;cursor:pointer;color:#a32d2d" title="Verwijderen"><i class="ti ti-trash"></i></button>
+        <input type="number" step="0.01" value="${o.kortingPct}" onfocus="numFocusHandler(this)" onblur="numBlurHandler(this)" oninput="salesLoadbalUpdate('${o._id}','kortingPct',parseFloat(this.value)||0)" style="width:90px" title="Korting %">
+        <button onclick="salesLoadbalVerwijder('${o._id}')" style="background:none;border:none;cursor:pointer;color:#a32d2d" title="Verwijderen"><i class="ti ti-trash"></i></button>
       </div>
       <div style="font-size:11px;color:var(--tx2);margin-top:3px;padding-left:2px"><i class="ti ti-tag" style="font-size:11px"></i> ${naamTekst}</div>
     </div>`;
   }).join('');
 }
-function salesLoadbalUpdate(idx,veld,waarde){ salesThuisinstallatieConfig.loadBalancingOpties[idx][veld]=waarde; }
-function salesLoadbalAdd(){ salesThuisinstallatieConfig.loadBalancingOpties.push({label:'',sku:'',type:'ems',kortingPct:0}); salesRenderLoadbalLijst(); }
-function salesLoadbalVerwijder(idx){ salesThuisinstallatieConfig.loadBalancingOpties.splice(idx,1); salesRenderLoadbalLijst(); }
+function salesLoadbalUpdate(id,veld,waarde){ const o=salesThuisinstallatieConfig.loadBalancingOpties.find(x=>x._id===id); if(o)o[veld]=waarde; }
+function salesLoadbalAdd(){ salesThuisinstallatieConfig.loadBalancingOpties.push({_id:salesUidGen(),label:'',sku:'',type:'ems',kortingPct:0}); salesRenderLoadbalLijst(); }
+function salesLoadbalVerwijder(id){ const lijst=salesThuisinstallatieConfig.loadBalancingOpties; const i=lijst.findIndex(x=>x._id===id); if(i>-1)lijst.splice(i,1); salesRenderLoadbalLijst(); }
 
 function salesRenderTypeverkoopLijst(){
   const el=document.getElementById('sales-typeverkoop-lijst');if(!el)return;
@@ -9059,7 +9168,7 @@ function salesRenderTypeverkoopLijst(){
     <div style="border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:8px">
       <div style="font-size:12px;font-weight:600;margin-bottom:6px">${o.label}</div>
       <div style="display:grid;grid-template-columns:80px 1fr 1fr;gap:10px">
-        <div class="field" style="margin:0"><label style="font-size:11px">BTW %</label><input type="number" value="${o.btw}" oninput="salesTypeverkoopUpdate(${idx},'btw',parseFloat(this.value)||0)"></div>
+        <div class="field" style="margin:0"><label style="font-size:11px">BTW %</label><input type="number" value="${o.btw}" onfocus="numFocusHandler(this)" onblur="numBlurHandler(this)" oninput="salesTypeverkoopUpdate(${idx},'btw',parseFloat(this.value)||0)"></div>
         <div class="field" style="margin:0"><label style="font-size:11px">Installatie-artikelcode</label><input value="${(o.installSku||'').replace(/"/g,'&quot;')}" oninput="salesTypeverkoopUpdate(${idx},'installSku',this.value)"></div>
         <div class="field" style="margin:0"><label style="font-size:11px">Installatie-omschrijving</label><input value="${(o.installOmschrijving||'').replace(/"/g,'&quot;')}" oninput="salesTypeverkoopUpdate(${idx},'installOmschrijving',this.value)"></div>
       </div>
@@ -9169,10 +9278,10 @@ async function b2bZorgArtikelDataGeladen() {
 }
 
 function b2bVolgendOffertenummer() {
-  // Nummering start bij 30000001 en loopt op (formaat: 3000 + 4 cijfers)
+  // Nummering start bij 3000101 en loopt op.
   // Gedeelde teller tussen B2B-projecten én B2C-leads, zodat er nooit dubbele
   // offertenummers ontstaan tussen beide systemen.
-  const BASIS = 30000000;
+  const BASIS = 3000100;
   let hoogste = BASIS;
   (typeof projects !== 'undefined' ? projects : []).forEach(p => {
     const nr = parseInt(p?.offerte?.offertenummer || p?.offertenr || '', 10);
@@ -9245,6 +9354,7 @@ function b2bRenderOfferteTab(){
       <div style="display:flex;gap:18px;margin-top:4px;flex-wrap:wrap">
         ${(l?.email||'').trim()?'<span><i class="ti ti-mail" style="font-size:12px"></i> '+l.email.trim()+'</span>':''}
         ${(l?.tel||'').trim()?'<span><i class="ti ti-phone" style="font-size:12px"></i> '+l.tel.trim()+'</span>':''}
+        ${(l?.btw||'').trim()?'<span><i class="ti ti-receipt" style="font-size:12px"></i> BTW: '+l.btw.trim()+'</span>':''}
       </div>
       <div style="font-size:11px;color:var(--tx3);margin-top:6px"><i class="ti ti-info-circle"></i> Wijzig klantgegevens in het Dossier-tabblad — die worden automatisch overgenomen op de offerte.</div>`;
 
@@ -9388,11 +9498,11 @@ function b2bRenderGroeperingen(){
       <tr>
         <td style="padding:6px 4px;width:160px"><input value="${(it.sku||'').replace(/"/g,'&quot;')}" oninput="b2bItemUpdate(${gIdx},${iIdx},'sku',this.value)" style="font-size:12px;padding:5px 7px;width:100%;box-sizing:border-box"></td>
         <td style="padding:6px 4px;min-width:220px"><input value="${(it.omschrijving||'').replace(/"/g,'&quot;')}" oninput="b2bItemUpdate(${gIdx},${iIdx},'omschrijving',this.value)" style="font-size:12px;padding:5px 7px;width:100%;box-sizing:border-box"></td>
-        <td style="padding:6px 4px;width:60px"><input type="number" value="${it.aantal!=null?it.aantal:1}" min="0" step="0.01" oninput="b2bItemUpdate(${gIdx},${iIdx},'aantal',parseFloat(this.value)||0)" style="font-size:12px;padding:5px 7px;text-align:right"></td>
+        <td style="padding:6px 4px;width:60px"><input type="number" value="${it.aantal!=null?it.aantal:1}" min="0" step="0.01" onfocus="numFocusHandler(this)" onblur="numBlurHandler(this)" oninput="b2bItemUpdate(${gIdx},${iIdx},'aantal',parseFloat(this.value)||0)" style="font-size:12px;padding:5px 7px;text-align:right"></td>
         <td style="padding:6px 4px;width:68px"><input value="${(it.eenheid||'Stuks').replace(/"/g,'&quot;')}" oninput="b2bItemUpdate(${gIdx},${iIdx},'eenheid',this.value)" style="font-size:12px;padding:5px 7px"></td>
-        <td style="padding:6px 4px;width:90px"><div style="position:relative"><span style="position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--tx3);pointer-events:none">€</span><input type="number" value="${it.prijs!=null?it.prijs:0}" min="0" step="0.01" oninput="b2bItemUpdate(${gIdx},${iIdx},'prijs',parseFloat(this.value)||0)" style="font-size:12px;padding:5px 7px 5px 18px;text-align:right;width:100%;box-sizing:border-box"></div></td>
-        <td style="padding:6px 4px;width:74px"><div style="position:relative"><input id="${ns}-kpct-${gIdx}-${iIdx}" type="number" value="${it.kortingPct!=null?it.kortingPct:0}" min="0" max="100" step="1" oninput="b2bKortingPctUpdate(${gIdx},${iIdx},parseFloat(this.value)||0)" style="font-size:12px;padding:5px 18px 5px 7px;text-align:right;width:100%;box-sizing:border-box" title="Korting %"><span style="position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--tx3);pointer-events:none">%</span></div></td>
-        <td style="padding:6px 4px;width:92px"><div style="position:relative"><span style="position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--tx3);pointer-events:none">€</span><input id="${ns}-keuro-${gIdx}-${iIdx}" type="number" value="${it.kortingEuro!=null?it.kortingEuro:0}" min="0" step="0.01" oninput="b2bKortingEuroUpdate(${gIdx},${iIdx},parseFloat(this.value)||0)" style="font-size:12px;padding:5px 7px 5px 18px;text-align:right;width:100%;box-sizing:border-box" title="Korting €"></div></td>
+        <td style="padding:6px 4px;width:90px"><div style="position:relative"><span style="position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--tx3);pointer-events:none">€</span><input type="number" value="${it.prijs!=null?it.prijs:0}" min="0" step="0.01" onfocus="numFocusHandler(this)" onblur="numBlurHandler(this)" oninput="b2bItemUpdate(${gIdx},${iIdx},'prijs',parseFloat(this.value)||0)" style="font-size:12px;padding:5px 7px 5px 18px;text-align:right;width:100%;box-sizing:border-box"></div></td>
+        <td style="padding:6px 4px;width:74px"><div style="position:relative"><input id="${ns}-kpct-${gIdx}-${iIdx}" type="number" value="${it.kortingPct!=null?it.kortingPct:0}" min="0" max="100" step="1" onfocus="numFocusHandler(this)" onblur="numBlurHandler(this)" oninput="b2bKortingPctUpdate(${gIdx},${iIdx},parseFloat(this.value)||0)" style="font-size:12px;padding:5px 18px 5px 7px;text-align:right;width:100%;box-sizing:border-box" title="Korting %"><span style="position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--tx3);pointer-events:none">%</span></div></td>
+        <td style="padding:6px 4px;width:92px"><div style="position:relative"><span style="position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--tx3);pointer-events:none">€</span><input id="${ns}-keuro-${gIdx}-${iIdx}" type="number" value="${it.kortingEuro!=null?it.kortingEuro:0}" min="0" step="0.01" onfocus="numFocusHandler(this)" onblur="numBlurHandler(this)" oninput="b2bKortingEuroUpdate(${gIdx},${iIdx},parseFloat(this.value)||0)" style="font-size:12px;padding:5px 7px 5px 18px;text-align:right;width:100%;box-sizing:border-box" title="Korting €"></div></td>
         <td style="padding:6px 4px;width:64px">
           <select onchange="b2bItemUpdate(${gIdx},${iIdx},'btwPercentage',this.value===''?null:parseFloat(this.value))" style="font-size:12px;padding:5px 4px">
             <option value="" ${btwWaarde===''?'selected':''}>Algemeen</option>
@@ -9446,7 +9556,9 @@ function b2bRegelBedrag(it){
   const aantal=it.aantal!=null?it.aantal:1;
   const prijs=it.prijs!=null?it.prijs:0;
   let bedrag=aantal*prijs;
-  if(it.kortingPct)bedrag=bedrag*(1-(it.kortingPct/100));
+  // kortingPct en kortingEuro zijn altijd aan elkaar gekoppeld (b2bKortingPctUpdate/
+  // b2bKortingEuroUpdate houden ze gesynchroniseerd) — kortingEuro is dus altijd al het
+  // werkelijke kortingsbedrag. Beide toepassen zou de korting dubbel aftrekken.
   if(it.kortingEuro)bedrag=bedrag-it.kortingEuro;
   return Math.max(0,bedrag);
 }
@@ -9821,7 +9933,7 @@ async function b2bOfferteGenereren(){
       await sbSaveB2cLead(host).catch(()=>{});
       // PDF-generator verwacht {klant, adres, offerte} — bij een B2C-lead bestaat dat niet
       // als zodanig, dus we bouwen een kleine adapter met dezelfde velden.
-      b2bGenereerOffertePDF({ klant: b2cNaam(host), adres: host.adres||'', offerte: host.offerte });
+      b2bGenereerOffertePDF({ klant: b2cNaam(host), adres: host.adres||'', btw: host.btw||'', offerte: host.offerte });
     } else {
       lsSave&&lsSave();
       await sbSaveProject(host).catch(()=>{});
@@ -9854,7 +9966,10 @@ function b2bGenereerOffertePDF(project){
   doc.text('B L I T Z', margin, y);
   y += 38;
 
-  // Eigen gegevens links / klant rechts
+  // Eigen gegevens links / klant ("begunstigde") rechts.
+  // De klant-adresregel komt als 1 vrije tekst binnen (bv. "Teststraat 10, 2221 Heist-op-den-Berg"),
+  // we splitsen die op de eerste komma in straat+nr en postcode+stad, zodat de opmaak dezelfde
+  // structuur krijgt als ons eigen blok: Naam / (BTW-nummer) / Straat & Nr / Postcode & Stad / Land.
   doc.setFontSize(10);
   doc.setFont('helvetica','bold');
   doc.setTextColor(...BLACK);
@@ -9862,16 +9977,32 @@ function b2bGenereerOffertePDF(project){
   const klantNaam = (project.klant || '(klant)').toUpperCase();
   doc.text(klantNaam, pageWidth - margin, y, {align:'right'});
   y += 14;
+
+  const adresRaw = (project.adres||'').trim();
+  let klantStraat = '', klantPostcodeStad = '';
+  if(adresRaw.includes(',')){
+    const komma = adresRaw.indexOf(',');
+    klantStraat = adresRaw.slice(0,komma).trim();
+    klantPostcodeStad = adresRaw.slice(komma+1).trim();
+  } else {
+    klantStraat = adresRaw;
+  }
+  const klantRegels = [];
+  if(project.btw) klantRegels.push('BTW: '+project.btw);
+  if(klantStraat) klantRegels.push(klantStraat.toUpperCase());
+  if(klantPostcodeStad) klantRegels.push(klantPostcodeStad.toUpperCase());
+  klantRegels.push('België');
+  const eigenRegels = ['Heirbaan 395','9150 KRUIBEKE','België'];
+
   doc.setFont('helvetica','normal');
   doc.setTextColor(...GRAY);
-  doc.text('Heirbaan 395', margin, y);
-  doc.text((project.adres||'').toUpperCase()||' ', pageWidth - margin, y, {align:'right'});
-  y += 14;
-  doc.text('9150 KRUIBEKE', margin, y);
-  y += 14;
-  doc.text('België', margin, y);
-  doc.text('België', pageWidth - margin, y, {align:'right'});
-  y += 36;
+  const aantalRegels = Math.max(eigenRegels.length, klantRegels.length);
+  for(let r=0;r<aantalRegels;r++){
+    if(eigenRegels[r]) doc.text(eigenRegels[r], margin, y);
+    if(klantRegels[r]) doc.text(klantRegels[r], pageWidth - margin, y, {align:'right'});
+    y += 14;
+  }
+  y += 22;
 
   // ── OFFERTE titel ──
   doc.setFont('helvetica','bold');
