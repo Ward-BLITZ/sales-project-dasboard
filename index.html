@@ -602,6 +602,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
       <button class="nav-dd-item" id="tab-crm" onclick="showTab('crm');closeAllNavDd()"><i class="ti ti-building"></i> CRM</button>
       <button class="nav-dd-item" id="tab-instellingen" onclick="showTab('instellingen');closeAllNavDd()"><i class="ti ti-settings"></i> Instellingen</button>
       <button class="nav-dd-item" id="tab-gebruikers" onclick="showTab('gebruikers');closeAllNavDd()" style="display:none"><i class="ti ti-users"></i> Gebruikers</button>
+      <button class="nav-dd-item" id="tab-sales" onclick="showTab('sales');closeAllNavDd()" style="display:none"><i class="ti ti-receipt-2"></i> Sales</button>
     </div>
   </div>
 
@@ -2106,6 +2107,19 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 
+
+<!-- SALES BEHEER: THUISINSTALLATIE OFFERTE-SJABLOON -->
+<div id="pane-sales" class="page" style="display:none;max-width:1100px">
+  <div style="margin-bottom:1.25rem">
+    <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">Sales — Thuisinstallatie offerte-sjabloon</div>
+    <div style="font-size:12px;color:var(--tx2)">Stel hier de artikelen, prijzen en kortingen in die gebruikt worden bij het automatisch genereren van een "Thuisinstallatie"-offerte bij een B2C-lead.</div>
+  </div>
+  <div id="sales-content"></div>
+  <div style="display:flex;justify-content:flex-end;margin-top:20px">
+    <button class="btn primary" onclick="salesConfigOpslaan()"><i class="ti ti-device-floppy"></i> Wijzigingen opslaan</button>
+  </div>
+</div>
+
 <!-- RAPPORTAGE -->
 <div id="pane-rapportage" class="page" style="display:none;max-width:1400px">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1.5rem">
@@ -2332,7 +2346,7 @@ function showTab(name){
 }
 
 function showTab(name){
-  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda','rapportage','wms'].forEach(id=>{
+  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda','rapportage','wms','sales'].forEach(id=>{
     const pane=document.getElementById('pane-'+id);
     if(pane)pane.style.display=(id===name)?'block':'none';
     const tb=document.getElementById('tab-'+id);
@@ -2354,6 +2368,7 @@ function showTab(name){
   if(name==='si-agenda'){siAgRender();}
   if(name==='rapportage'){renderRapportage();}
   if(name==='wms'){document.getElementById('pane-wms').style.display='block';}
+  if(name==='sales'){salesBeheerRender();}
   updateNavDdActive(name);
 }
 
@@ -2590,6 +2605,9 @@ async function loadAll(){
   const rawR=(srow&&srow[0])?(srow[0].data.list||[]):[];
   resps=rawR.map(r=>typeof r==='string'?{naam:r,rol:''}:r);
   try{localStorage.setItem('blitz_resps',JSON.stringify(resps));}catch{}
+
+  // Sales-configuratie (Thuisinstallatie offerte-sjabloon)
+  await salesConfigLaden();
 
   setDbStatus('ok','verbonden');
   document.getElementById('db-setup-card').style.display='none';
@@ -4040,6 +4058,11 @@ async function onLoggedIn(user){
   // Gebruikers-tab: hoofdadmin + managers zien dit
   const kanGebruikersBeheer=currentRole==='admin'||rol==='manager';
   document.getElementById('tab-gebruikers').style.display=kanGebruikersBeheer?'inline-flex':'none';
+
+  // Sales-tab (Thuisinstallatie offerte-sjabloon beheren): hoofdadmin + sales manager
+  const kanSalesBeheer=currentRole==='admin'||currentRole==='sales_manager';
+  const tabSalesEl=document.getElementById('tab-sales');
+  if(tabSalesEl)tabSalesEl.style.display=kanSalesBeheer?'inline-flex':'none';
 
   // CRM tab: iedereen met crm_lezen recht
   const crmTab=document.getElementById('tab-crm');
@@ -6847,6 +6870,7 @@ function b2cOpenDetail(id){
   document.getElementById('b2c-detail-titel').textContent=b2cNaam(l);
   document.getElementById('b2c-detail-overlay').classList.add('open');
   b2bOfferteState=null; b2bOfferteHostType='lead'; b2bOfferteNS='b2cof';
+  salesWizardState={ laadstationSku:'', laadstationNaam:'', laadstationPrijs:0, faceplateIdx:0, loadbalIdx:0, typeverkoopIdx:0 };
   b2cShowDetailTab('info');
 }
 
@@ -8892,6 +8916,159 @@ let b2bOfferteState = null; // huidige offerte in bewerking (kopie van project.o
 let b2bOfferteHostType = 'project'; // 'project' (B2B) | 'lead' (B2C) — bepaalt waar de offerte opgeslagen wordt
 let b2bOfferteNS = 'off'; // namespace voor DOM-ids, zodat B2B- en B2C-offerteformulier nooit dezelfde ids gebruiken
 
+// ── SALES: THUISINSTALLATIE OFFERTE-SJABLOON (beheerbaar via Beheer → Sales) ──
+let salesWizardState = { laadstationSku:'', laadstationNaam:'', laadstationPrijs:0, faceplateIdx:0, loadbalIdx:0, typeverkoopIdx:0 };
+let salesThuisinstallatieConfig = {
+  faceplateOpties: [
+    {label:'Black', sku:'BPSFP1', kortingPct:100},
+    {label:'Alu Grey', sku:'BPSFP2', kortingPct:100},
+    {label:'White', sku:'BPSFP3', kortingPct:100},
+    {label:'Wine Red', sku:'BPSFP5', kortingPct:100},
+    {label:'Sapphire Blue', sku:'BPSFP6', kortingPct:100},
+    {label:'Fir Green', sku:'BPSFP7', kortingPct:100},
+  ],
+  loadBalancingOpties: [
+    {label:'I10216', sku:'I10216', type:'modbus', kortingPct:100},
+    {label:'I10217', sku:'I10217', type:'modbus', kortingPct:100},
+    {label:'P1MB', sku:'P1MB', type:'modbus', kortingPct:100},
+    {label:'I10234', sku:'I10234', type:'modbus', kortingPct:100},
+    {label:'I10305', sku:'I10305', type:'modbus', kortingPct:100},
+    {label:'Niko Home Control (I100283)', sku:'I100283', type:'ems', kortingPct:72.73},
+  ],
+  keuringSku:'KR', keuringOmschrijving:'Keuring', keuringPrijs:175,
+  installatiePrijsEms:445,
+  installatiePrijsModbus:454,
+  typeVerkoopOpties: [
+    {key:'b2b', label:'B2B verkoop (btw verlegd 0%)', btw:0, installSku:'IM', installOmschrijving:'B2B standaardinstallatie'},
+    {key:'pct6', label:'Particuliere installatie 6% (huis ouder dan 10 jaar)', btw:6, installSku:'', installOmschrijving:'6% PARTICULIERE INSTALLATIE'},
+    {key:'pct21', label:'Particuliere installatie 21% (huis jonger dan 10 jaar)', btw:21, installSku:'', installOmschrijving:'Particuliere Installatie (21% PARTICULIERE INSTALLATIE)'},
+  ],
+};
+
+async function salesConfigLaden(){
+  try{
+    const rows=await sbFetch('settings?key=eq.sales_thuisinstallatie');
+    const data=rows&&rows[0]?rows[0].data:null;
+    if(data)salesThuisinstallatieConfig={...salesThuisinstallatieConfig,...data};
+  }catch(e){console.warn('Kon sales-configuratie niet laden, gebruik standaardwaarden:',e.message);}
+}
+
+async function salesConfigOpslaan(){
+  try{
+    await sbFetch('settings',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({key:'sales_thuisinstallatie',data:salesThuisinstallatieConfig})});
+    showToast('Sales-configuratie opgeslagen.');
+  }catch(e){
+    console.warn('Kon sales-configuratie niet opslaan:',e.message);
+    showToast('⚠ Opslaan mislukt — zie console.');
+  }
+}
+
+function salesBeheerRender(){
+  const el=document.getElementById('sales-content');
+  if(!el)return;
+  const c=salesThuisinstallatieConfig;
+  el.innerHTML=`
+    <div style="border:1px solid var(--bd);border-radius:var(--rl);padding:16px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="ti ti-palette" style="margin-right:5px;color:var(--green)"></i>Faceplate-kleuren</div>
+      <div id="sales-faceplate-lijst"></div>
+      <button class="btn sm" onclick="salesFaceplateAdd()" style="margin-top:8px"><i class="ti ti-plus"></i> Kleur toevoegen</button>
+    </div>
+
+    <div style="border:1px solid var(--bd);border-radius:var(--rl);padding:16px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="ti ti-bolt" style="margin-right:5px;color:var(--green)"></i>Load Balancing (EMS / P1 / Modbus)</div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Type bepaalt welke installatieprijs gebruikt wordt (EMS = € ${c.installatiePrijsEms.toFixed(2)}, Modbus/P1 = € ${c.installatiePrijsModbus.toFixed(2)}). Korting % wordt automatisch toegepast op deze regel in de offerte.</div>
+      <div id="sales-loadbal-lijst"></div>
+      <button class="btn sm" onclick="salesLoadbalAdd()" style="margin-top:8px"><i class="ti ti-plus"></i> Optie toevoegen</button>
+    </div>
+
+    <div style="border:1px solid var(--bd);border-radius:var(--rl);padding:16px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="ti ti-clipboard-check" style="margin-right:5px;color:var(--green)"></i>Keuring &amp; installatieprijzen</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+        <div class="field" style="margin:0"><label>Keuring — artikelcode</label><input value="${(c.keuringSku||'').replace(/"/g,'&quot;')}" oninput="salesVasteUpdate('keuringSku',this.value)"></div>
+        <div class="field" style="margin:0"><label>Keuring — omschrijving</label><input value="${(c.keuringOmschrijving||'').replace(/"/g,'&quot;')}" oninput="salesVasteUpdate('keuringOmschrijving',this.value)"></div>
+        <div class="field" style="margin:0"><label>Keuring — prijs (€)</label><input type="number" step="0.01" value="${c.keuringPrijs}" oninput="salesVasteUpdate('keuringPrijs',parseFloat(this.value)||0)"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+        <div class="field" style="margin:0"><label>Installatieprijs — EMS (€)</label><input type="number" step="0.01" value="${c.installatiePrijsEms}" oninput="salesVasteUpdate('installatiePrijsEms',parseFloat(this.value)||0)"></div>
+        <div class="field" style="margin:0"><label>Installatieprijs — Modbus / P1 (€)</label><input type="number" step="0.01" value="${c.installatiePrijsModbus}" oninput="salesVasteUpdate('installatiePrijsModbus',parseFloat(this.value)||0)"></div>
+      </div>
+    </div>
+
+    <div style="border:1px solid var(--bd);border-radius:var(--rl);padding:16px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="ti ti-receipt" style="margin-right:5px;color:var(--green)"></i>Type verkoop — BTW &amp; installatie-artikel</div>
+      <div id="sales-typeverkoop-lijst"></div>
+    </div>
+  `;
+  salesRenderFaceplateLijst();
+  salesRenderLoadbalLijst();
+  salesRenderTypeverkoopLijst();
+}
+
+function salesRenderFaceplateLijst(){
+  const el=document.getElementById('sales-faceplate-lijst');if(!el)return;
+  const c=salesThuisinstallatieConfig;
+  el.innerHTML=c.faceplateOpties.map((o,idx)=>{
+    const art=salesArtikelOpSku(o.sku);
+    const naamTekst=art?.naam ? art.naam : '<span style="color:var(--tx3)">niet gevonden in catalogus</span>';
+    return `
+    <div style="margin-bottom:8px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input value="${(o.label||'').replace(/"/g,'&quot;')}" placeholder="Kleurnaam (bv. Black)" oninput="salesFaceplateUpdate(${idx},'label',this.value)" style="flex:1">
+        <input value="${(o.sku||'').replace(/"/g,'&quot;')}" placeholder="Artikelcode (bv. BPSFP1)" oninput="salesFaceplateUpdate(${idx},'sku',this.value)" style="width:160px">
+        <input type="number" step="0.01" value="${o.kortingPct!=null?o.kortingPct:100}" oninput="salesFaceplateUpdate(${idx},'kortingPct',parseFloat(this.value)||0)" style="width:90px" title="Korting %">
+        <button onclick="salesFaceplateVerwijder(${idx})" style="background:none;border:none;cursor:pointer;color:#a32d2d" title="Verwijderen"><i class="ti ti-trash"></i></button>
+      </div>
+      <div style="font-size:11px;color:var(--tx2);margin-top:3px;padding-left:2px"><i class="ti ti-tag" style="font-size:11px"></i> ${naamTekst}</div>
+    </div>`;
+  }).join('');
+}
+function salesFaceplateUpdate(idx,veld,waarde){ salesThuisinstallatieConfig.faceplateOpties[idx][veld]=waarde; }
+function salesFaceplateAdd(){ salesThuisinstallatieConfig.faceplateOpties.push({label:'',sku:'',kortingPct:100}); salesRenderFaceplateLijst(); }
+function salesFaceplateVerwijder(idx){ salesThuisinstallatieConfig.faceplateOpties.splice(idx,1); salesRenderFaceplateLijst(); }
+
+function salesRenderLoadbalLijst(){
+  const el=document.getElementById('sales-loadbal-lijst');if(!el)return;
+  const c=salesThuisinstallatieConfig;
+  el.innerHTML=c.loadBalancingOpties.map((o,idx)=>{
+    const art=salesArtikelOpSku(o.sku);
+    const naamTekst=art?.naam ? art.naam : '<span style="color:var(--tx3)">niet gevonden in catalogus</span>';
+    return `
+    <div style="margin-bottom:8px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input value="${(o.label||'').replace(/"/g,'&quot;')}" placeholder="Label (zichtbaar in keuzelijst)" oninput="salesLoadbalUpdate(${idx},'label',this.value)" style="flex:1.4">
+        <input value="${(o.sku||'').replace(/"/g,'&quot;')}" placeholder="Artikelcode" oninput="salesLoadbalUpdate(${idx},'sku',this.value)" style="width:120px">
+        <select onchange="salesLoadbalUpdate(${idx},'type',this.value)" style="width:120px">
+          <option value="ems" ${o.type==='ems'?'selected':''}>EMS</option>
+          <option value="modbus" ${o.type==='modbus'?'selected':''}>Modbus / P1</option>
+        </select>
+        <input type="number" step="0.01" value="${o.kortingPct}" oninput="salesLoadbalUpdate(${idx},'kortingPct',parseFloat(this.value)||0)" style="width:90px" title="Korting %">
+        <button onclick="salesLoadbalVerwijder(${idx})" style="background:none;border:none;cursor:pointer;color:#a32d2d" title="Verwijderen"><i class="ti ti-trash"></i></button>
+      </div>
+      <div style="font-size:11px;color:var(--tx2);margin-top:3px;padding-left:2px"><i class="ti ti-tag" style="font-size:11px"></i> ${naamTekst}</div>
+    </div>`;
+  }).join('');
+}
+function salesLoadbalUpdate(idx,veld,waarde){ salesThuisinstallatieConfig.loadBalancingOpties[idx][veld]=waarde; }
+function salesLoadbalAdd(){ salesThuisinstallatieConfig.loadBalancingOpties.push({label:'',sku:'',type:'ems',kortingPct:0}); salesRenderLoadbalLijst(); }
+function salesLoadbalVerwijder(idx){ salesThuisinstallatieConfig.loadBalancingOpties.splice(idx,1); salesRenderLoadbalLijst(); }
+
+function salesRenderTypeverkoopLijst(){
+  const el=document.getElementById('sales-typeverkoop-lijst');if(!el)return;
+  const c=salesThuisinstallatieConfig;
+  el.innerHTML=c.typeVerkoopOpties.map((o,idx)=>`
+    <div style="border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">${o.label}</div>
+      <div style="display:grid;grid-template-columns:80px 1fr 1fr;gap:10px">
+        <div class="field" style="margin:0"><label style="font-size:11px">BTW %</label><input type="number" value="${o.btw}" oninput="salesTypeverkoopUpdate(${idx},'btw',parseFloat(this.value)||0)"></div>
+        <div class="field" style="margin:0"><label style="font-size:11px">Installatie-artikelcode</label><input value="${(o.installSku||'').replace(/"/g,'&quot;')}" oninput="salesTypeverkoopUpdate(${idx},'installSku',this.value)"></div>
+        <div class="field" style="margin:0"><label style="font-size:11px">Installatie-omschrijving</label><input value="${(o.installOmschrijving||'').replace(/"/g,'&quot;')}" oninput="salesTypeverkoopUpdate(${idx},'installOmschrijving',this.value)"></div>
+      </div>
+    </div>`).join('');
+}
+function salesTypeverkoopUpdate(idx,veld,waarde){ salesThuisinstallatieConfig.typeVerkoopOpties[idx][veld]=waarde; }
+
+function salesVasteUpdate(veld,waarde){ salesThuisinstallatieConfig[veld]=waarde; }
+
 function b2bOfferteGetHost(){
   // Geeft het object terug waarop de huidige offerte betrekking heeft: een B2B-project
   // of een B2C-lead, afhankelijk van vanuit welk scherm de offerte geopend werd.
@@ -9058,6 +9235,7 @@ function b2bRenderOfferteTab(){
   // (zodat wijzigingen meteen meekomen); bij een B2C-lead lezen we rechtstreeks uit het
   // lead-object, want dat heeft een ander formulier met andere veld-ids.
   let klantHtml;
+  let wizardHtml='';
   if(isLead){
     const l=b2bOfferteGetHost();
     const naam=l?b2cNaam(l):'(geen klantnaam)';
@@ -9069,6 +9247,43 @@ function b2bRenderOfferteTab(){
         ${(l?.tel||'').trim()?'<span><i class="ti ti-phone" style="font-size:12px"></i> '+l.tel.trim()+'</span>':''}
       </div>
       <div style="font-size:11px;color:var(--tx3);margin-top:6px"><i class="ti ti-info-circle"></i> Wijzig klantgegevens in het Dossier-tabblad — die worden automatisch overgenomen op de offerte.</div>`;
+
+    const cfg=salesThuisinstallatieConfig;
+    wizardHtml=`
+    <div style="border:1px solid var(--bd2);border-radius:var(--rl);padding:16px;margin-bottom:20px;background:rgba(0,223,163,.04)">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:12px"><i class="ti ti-home-bolt" style="margin-right:5px;color:var(--green)"></i>Sjabloon: Thuisinstallatie</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="field" style="margin:0;position:relative">
+          <label>1. Type laadstation</label>
+          <input id="${ns}-wiz-laadstation-input" placeholder="Zoek op naam of artikelcode..." autocomplete="off" value="${(salesWizardState.laadstationNaam||'').replace(/"/g,'&quot;')}" oninput="salesWizardZoekLaadstation(this.value)">
+          <div id="${ns}-wiz-laadstation-dd" style="display:none;position:fixed;z-index:9999;background:var(--bg);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 8px 28px rgba(0,0,0,.22);max-height:240px;overflow-y:auto"></div>
+        </div>
+        <div class="field" style="margin:0">
+          <label>2. Kleur faceplate</label>
+          <select onchange="salesWizardState.faceplateIdx=parseInt(this.value)">
+            ${cfg.faceplateOpties.map((o,i)=>`<option value="${i}" ${salesWizardState.faceplateIdx===i?'selected':''}>${o.label} (${o.sku})</option>`).join('')}
+          </select>
+        </div>
+        <div class="field" style="margin:0">
+          <label>3. Energie Managementsysteem / P1 / Modbus</label>
+          <select onchange="salesWizardState.loadbalIdx=parseInt(this.value)">
+            ${cfg.loadBalancingOpties.map((o,i)=>{
+              const art=salesArtikelOpSku(o.sku);
+              const naam=art?.naam ? ' — '+art.naam : '';
+              return `<option value="${i}" ${salesWizardState.loadbalIdx===i?'selected':''}>${o.label}${naam}</option>`;
+            }).join('')}
+          </select>
+        </div>
+        <div class="field" style="margin:0">
+          <label>4. Type verkoop</label>
+          <select onchange="salesWizardState.typeverkoopIdx=parseInt(this.value)">
+            ${cfg.typeVerkoopOpties.map((o,i)=>`<option value="${i}" ${salesWizardState.typeverkoopIdx===i?'selected':''}>${o.label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <button class="btn primary" onclick="salesMaakThuisinstallatieOfferte()"><i class="ti ti-wand"></i> Maak offerte</button>
+      <div style="font-size:11px;color:var(--tx3);margin-top:8px"><i class="ti ti-info-circle"></i> Dit vult de 3 groeperingen hieronder automatisch met de juiste artikelen, prijzen en kortingen. Je kan alles nadien nog vrij aanpassen.</div>
+    </div>`;
   } else {
     klantHtml=`
       <div><strong>${(document.getElementById('m-klant')?.value||'(geen klantnaam)').trim()||'(geen klantnaam)'}</strong></div>
@@ -9087,6 +9302,8 @@ function b2bRenderOfferteTab(){
       <div class="field" style="margin:0"><label>Offertedatum</label><input type="date" id="${ns}-datum" value="${s.datum||''}" oninput="b2bOfferteVeldUpdate('datum',this.value)"></div>
       <div class="field" style="margin:0"><label>Referentie</label><input id="${ns}-referentie" value="${(s.referentie||'').replace(/"/g,'&quot;')}" placeholder="bv. contactpersoon" oninput="b2bOfferteVeldUpdate('referentie',this.value)"></div>
     </div>
+
+    ${wizardHtml}
 
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--bd)">
       <i class="ti ti-building-store" style="margin-right:5px"></i>Klantgegevens (uit dossier)
@@ -9372,6 +9589,14 @@ document.addEventListener('click', (e)=>{
     if(dd.contains(e.target)||e.target===input)return;
     dd.style.display='none';
   });
+  // Sluit de Thuisinstallatie-wizard laadstation-dropdown als er buiten geklikt wordt
+  document.querySelectorAll('[id$="-wiz-laadstation-dd"]').forEach(dd=>{
+    if(dd.style.display==='none')return;
+    const ns=dd.id.replace('-wiz-laadstation-dd','');
+    const input=document.getElementById(`${ns}-wiz-laadstation-input`);
+    if(dd.contains(e.target)||e.target===input)return;
+    dd.style.display='none';
+  });
 });
 // Herpositioneer open dropdowns bij scrollen binnen de modal (anders zweven ze los van de input)
 document.addEventListener('scroll', ()=>{
@@ -9414,6 +9639,124 @@ function b2bOfferteArtikelKiezen(gIdx,mIdx){
   const zoekInput=dd?.previousElementSibling;
   if(zoekInput&&zoekInput.tagName==='INPUT')zoekInput.value='';
   b2bRenderGroeperingen();
+}
+
+// ── SALES WIZARD: THUISINSTALLATIE ──────────────────────
+function salesArtikelOpSku(sku){
+  if(!sku)return null;
+  const all=b2bAlleArtikelenVoorZoeken();
+  return all.find(a=>(a.sku||'').toLowerCase()===String(sku).toLowerCase())||null;
+}
+function salesPrijsVanArtikel(a){
+  if(!a||a.verkoopprijs==null||a.verkoopprijs==='')return 0;
+  const raw=typeof a.verkoopprijs==='number'?a.verkoopprijs:parseFloat(String(a.verkoopprijs).replace(/\./g,'').replace(',', '.').replace(/[^0-9.\-]/g,''));
+  return isNaN(raw)?0:raw;
+}
+
+let salesWizardZoekTimeout=null;
+let salesWizardZoekResultaten=[];
+
+function salesWizardZoekLaadstation(query){
+  clearTimeout(salesWizardZoekTimeout);
+  const dd=document.getElementById(`${b2bOfferteNS}-wiz-laadstation-dd`);
+  if(!dd)return;
+  const q=(query||'').trim().toLowerCase();
+  salesWizardState.laadstationNaam=query;
+  if(q.length<1){dd.style.display='none';dd.innerHTML='';salesWizardZoekResultaten=[];return;}
+  salesWizardZoekTimeout=setTimeout(()=>{
+    const alle=b2bAlleArtikelenVoorZoeken();
+    const matches=alle.filter(a=>(a.naam||'').toLowerCase().includes(q)||(a.sku||'').toLowerCase().includes(q)).slice(0,20);
+    salesWizardZoekResultaten=matches;
+    const input=document.getElementById(`${b2bOfferteNS}-wiz-laadstation-input`);
+    if(input){
+      const rect=input.getBoundingClientRect();
+      dd.style.left=rect.left+'px';dd.style.width=rect.width+'px';dd.style.top=(rect.bottom+4)+'px';
+    }
+    if(!matches.length){dd.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--tx3)">Geen artikelen gevonden.</div>';dd.style.display='block';return;}
+    dd.innerHTML=matches.map((a,mIdx)=>{
+      const heeftPrijs=a.verkoopprijs!=null&&a.verkoopprijs!=='';
+      const prijsTekst=heeftPrijs?'€ '+parseFloat(a.verkoopprijs).toFixed(2):'<span style="color:var(--tx3)">geen prijs</span>';
+      return `<div onclick="salesWizardKiesLaadstation(${mIdx})"
+        style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;font-size:12px"
+        onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='none'">
+        <span style="color:var(--tx3);min-width:90px">${(a.sku||'—')}</span>
+        <span style="flex:1;font-weight:500">${a.naam||''}</span>
+        <span style="white-space:nowrap;font-weight:600">${prijsTekst}</span>
+      </div>`;
+    }).join('');
+    dd.style.display='block';
+  },120);
+}
+
+function salesWizardKiesLaadstation(mIdx){
+  const a=salesWizardZoekResultaten[mIdx];
+  if(!a)return;
+  salesWizardState.laadstationSku=a.sku||'';
+  salesWizardState.laadstationNaam=a.naam||a.sku||'';
+  salesWizardState.laadstationPrijs=salesPrijsVanArtikel(a);
+  const input=document.getElementById(`${b2bOfferteNS}-wiz-laadstation-input`);
+  if(input)input.value=salesWizardState.laadstationNaam;
+  const dd=document.getElementById(`${b2bOfferteNS}-wiz-laadstation-dd`);
+  if(dd){dd.style.display='none';dd.innerHTML='';}
+}
+
+function salesMaakThuisinstallatieOfferte(){
+  if(!b2bOfferteState)return;
+  if(!salesWizardState.laadstationSku){
+    showToast('Kies eerst een type laadstation via het zoekveld.');
+    return;
+  }
+  const heeftBestaandeItems=b2bOfferteState.groeperingen.some(g=>g.items&&g.items.length);
+  if(heeftBestaandeItems&&!confirm('Dit overschrijft de huidige offertelijnen met het Thuisinstallatie-sjabloon. Doorgaan?'))return;
+
+  const cfg=salesThuisinstallatieConfig;
+  const faceplate=cfg.faceplateOpties[salesWizardState.faceplateIdx]||cfg.faceplateOpties[0];
+  const loadbal=cfg.loadBalancingOpties[salesWizardState.loadbalIdx]||cfg.loadBalancingOpties[0];
+  const typeverkoop=cfg.typeVerkoopOpties[salesWizardState.typeverkoopIdx]||cfg.typeVerkoopOpties[0];
+
+  const maakItem=(sku,omschrijving,prijs,kortingPct)=>{
+    kortingPct=Math.max(0,Math.min(100,kortingPct||0));
+    const basis=1*prijs;
+    const kortingEuro=basis>0?parseFloat((basis*(kortingPct/100)).toFixed(2)):0;
+    return {sku:sku||'',omschrijving:omschrijving||'',aantal:1,eenheid:'Stuks',prijs:prijs||0,kortingPct,kortingEuro,btwPercentage:null};
+  };
+
+  // 1. Laadstation: gekozen laadstation + faceplate-kleur
+  const faceplateArtikel=salesArtikelOpSku(faceplate.sku);
+  const groepLaadstation={
+    naam:'Laadstation',
+    items:[
+      maakItem(salesWizardState.laadstationSku, salesWizardState.laadstationNaam, salesWizardState.laadstationPrijs, 0),
+      maakItem(faceplate.sku, faceplateArtikel?.naam || ('Faceplate '+faceplate.label), salesPrijsVanArtikel(faceplateArtikel), faceplate.kortingPct),
+    ],
+  };
+
+  // 2. Load Balancing: gekozen EMS/Modbus/P1-artikel met standaardkorting
+  const loadbalArtikel=salesArtikelOpSku(loadbal.sku);
+  const groepLoadBalancing={
+    naam:'Load Balancing',
+    items:[
+      maakItem(loadbal.sku, loadbalArtikel?.naam || loadbal.label, salesPrijsVanArtikel(loadbalArtikel), loadbal.kortingPct),
+    ],
+  };
+
+  // 3. Installatie & Keuring: vaste keuring + installatie naargelang type verkoop en EMS/Modbus
+  const installatiePrijs = loadbal.type==='modbus' ? cfg.installatiePrijsModbus : cfg.installatiePrijsEms;
+  const groepInstallatie={
+    naam:'Installatie & Keuring',
+    items:[
+      maakItem(cfg.keuringSku, cfg.keuringOmschrijving, cfg.keuringPrijs, 0),
+      maakItem(typeverkoop.installSku, typeverkoop.installOmschrijving, installatiePrijs, 0),
+    ],
+  };
+
+  b2bOfferteState.groeperingen=[groepLaadstation, groepLoadBalancing, groepInstallatie];
+  b2bOfferteState.btwPercentage=typeverkoop.btw;
+  const btwSelect=document.getElementById(`${b2bOfferteNS}-btw`);
+  if(btwSelect)btwSelect.value=String(typeverkoop.btw);
+
+  b2bRenderGroeperingen();
+  showToast('Thuisinstallatie-offerte automatisch opgemaakt — je kan alles hieronder nog aanpassen.');
 }
 
 function b2bAlleItems(){
