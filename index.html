@@ -1468,8 +1468,14 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
         <span style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700" id="ag-week-lbl"></span>
         <button class="cal-nav-btn" onclick="agWeekNext()"><i class="ti ti-chevron-right"></i></button>
       </div>
-      <div id="ag-week-scroll" style="flex:1;overflow-y:auto;border:1px solid var(--bd);border-radius:var(--rl);scrollbar-width:thin;min-height:0">
+      <!-- Uurrooster: 12 blokken zichtbaar -->
+      <div id="ag-week-scroll" style="overflow-y:auto;border:1px solid var(--bd);border-radius:var(--rl);scrollbar-width:thin;height:calc(12 * 48px + 38px);flex-shrink:0">
         <div id="ag-week-grid" style="display:grid;grid-template-columns:44px repeat(7,minmax(0,1fr));background:var(--bg)"></div>
+      </div>
+      <!-- Dagopvolgingen zonder uur: apart scrollbaar paneel -->
+      <div style="margin-top:8px;flex-shrink:0">
+        <div style="font-family:'Poppins',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:4px;padding:0 2px"><i class="ti ti-list" style="margin-right:4px"></i>Zonder uurplanning</div>
+        <div id="ag-week-dag-grid" style="display:grid;grid-template-columns:44px repeat(7,minmax(0,1fr));border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden;background:var(--bg);max-height:120px;overflow-y:auto;scrollbar-width:thin"></div>
       </div>
     </div>
   </div>
@@ -11441,6 +11447,8 @@ function wmsOpenLocatieDetail(code){
 let agView='maand'; // 'maand' of 'week'
 let agWeekStart=null; // Date van maandag van huidige week
 
+let agWeekScrollSaved = null; // bewaarde scroll positie
+
 function agSetView(v){
   agView=v;
   const mbtn=document.getElementById('ag-view-maand');
@@ -11453,13 +11461,11 @@ function agSetView(v){
   if(wp)wp.style.display=v==='week'?'flex':'none';
   document.body.style.overflow=v==='week'?'hidden':'';
   if(v==='week'){
-    // Bereken exacte hoogte: viewport - positie van het weekpane
     requestAnimationFrame(()=>{
-      const pane=document.getElementById('pane-agenda');
       const weekPane=document.getElementById('ag-view-week-pane');
       if(!weekPane)return;
       const rect=weekPane.getBoundingClientRect();
-      const h=window.innerHeight-rect.top-12; // 12px ondermarge
+      const h=window.innerHeight-rect.top-12;
       weekPane.style.height=h+'px';
       const sidebar=document.getElementById('ag-week-sidebar');
       const main=document.getElementById('ag-week-main');
@@ -11470,8 +11476,25 @@ function agSetView(v){
   }
 }
 
-// Herbereken bij venstergrootte wijziging
-window.addEventListener('resize',()=>{if(agView==='week')agSetView('week');});
+// Herbereken hoogte bij resize maar behoud scroll positie en render NIET opnieuw
+window.addEventListener('resize',()=>{
+  if(agView!=='week')return;
+  const weekPane=document.getElementById('ag-view-week-pane');
+  if(!weekPane||weekPane.style.display==='none')return;
+  const scroll=document.getElementById('ag-week-scroll');
+  const savedTop=scroll?scroll.scrollTop:null;
+  requestAnimationFrame(()=>{
+    const rect=weekPane.getBoundingClientRect();
+    const h=window.innerHeight-rect.top-12;
+    weekPane.style.height=h+'px';
+    const sidebar=document.getElementById('ag-week-sidebar');
+    const main=document.getElementById('ag-week-main');
+    if(sidebar)sidebar.style.height=h+'px';
+    if(main)main.style.height=h+'px';
+    // Herstel scroll positie
+    if(scroll&&savedTop!==null)scroll.scrollTop=savedTop;
+  });
+});
 
 function agRefreshView(){
   agSetView(agView);
@@ -11527,7 +11550,7 @@ function agRenderWeek(){
   });
 
   // Uurblokken 07:00 - 19:00 (buiten werkuren 07 en na 18)
-  for(let u=7;u<=19;u++){
+  for(let u=0;u<=23;u++){
     const uurStr=String(u).padStart(2,'0')+':00';
     const buiten=u<8||u>=18;
     const urBg=buiten?'rgba(0,0,0,0.03)':'var(--bg)';
@@ -11561,35 +11584,34 @@ function agRenderWeek(){
     });
   }
 
-  // Hele-dag rij onderaan
-  html+=`<div style="text-align:right;padding:4px 6px;font-size:10px;color:var(--tx3);border-right:1px solid var(--bd);border-top:2px solid var(--bd2);background:var(--bg2);font-style:italic">dag</div>`;
-  dagen.forEach(d=>{
-    const ds=d.toISOString().slice(0,10);
-    const isToday=ds===t;
-    const evs=afspraken.filter(a=>a.datum===ds&&!a.uur);
-    const opvs=[];
-    const respFDag=agRespFilter;
-    b2cLeads.filter(l=>respFDag==='alle'||l.resp===respFDag).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id})));
-    projects.filter(p=>respFDag==='alle'||p.resp===respFDag).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projId:p.id||p._rowid})));
-    const todosGeen=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&!td.uur&&(respFDag==='alle'||!td.resp||td.resp===respFDag));
-    const alles=[
-      ...evs.map(a=>({tekst:a.titel,kleur:AG_KLEUREN[a.type]||'var(--green)',agId:String(a.id)})),
-      ...opvs,
-      ...todosGeen.map(td=>({tekst:td.tekst,kleur:'#f59e0b',type:'todo',todoId:String(td.id)}))
-    ];
-    html+=`<div style="border-right:1px solid var(--bd);border-top:2px solid var(--bd2);background:${isToday?'rgba(0,223,163,.06)':'var(--bg2)'};min-height:36px;padding:2px;overflow:hidden">
-      ${alles.map(ev=>{
-        let attr='';
-        if(ev.agId)attr=`data-agid="${ev.agId}"`;
-        else if(ev.type==='b2c')attr=`data-leadid="${ev.leadId}"`;
-        else if(ev.type==='b2b')attr=`data-projid="${ev.projId}"`;
-        else if(ev.type==='todo')attr=`data-todoid="${ev.todoId}"`;
-        return`<div ${attr} style="font-size:10px;font-weight:600;background:${ev.kleur}22;border-left:2px solid ${ev.kleur};padding:1px 4px;border-radius:2px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" title="${ev.tekst}">${ev.tekst}</div>`;
-      }).join('')}
-    </div>`;
-  });
-
+  // Hele-dag items gaan naar apart dag-grid (zie ag-week-dag-grid)
   grid.innerHTML=html;
+
+  // Dag-grid: items zonder uurplanning in apart scrollbaar paneel
+  const dagGrid=document.getElementById('ag-week-dag-grid');
+  if(dagGrid){
+    let dagHtml='<div style="background:var(--bg2);border-right:1px solid var(--bd);padding:2px 4px;font-size:9px;color:var(--tx3);font-style:italic;min-height:32px"></div>';
+    dagen.forEach(d=>{
+      const ds=d.toISOString().slice(0,10);
+      const isToday=ds===t;
+      const evsDag=afspraken.filter(a=>a.datum===ds&&!a.uur);
+      const opvsDag=[];
+      const respFDag=agRespFilter;
+      b2cLeads.filter(l=>respFDag==='alle'||l.resp===respFDag).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvsDag.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id})));
+      projects.filter(p=>respFDag==='alle'||p.resp===respFDag).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvsDag.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projId:p.id||p._rowid})));
+      const todosDag=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&!td.uur&&(respFDag==='alle'||!td.resp||td.resp===respFDag));
+      const allesDag=[...evsDag.map(a=>({tekst:a.titel,kleur:AG_KLEUREN[a.type]||'var(--green)',agId:String(a.id)})),...opvsDag,...todosDag.map(td=>({tekst:td.tekst,kleur:'#f59e0b',type:'todo',todoId:String(td.id)}))];
+      dagHtml+=`<div style="border-right:1px solid var(--bd);background:${isToday?'rgba(0,223,163,.06)':'var(--bg)'};min-height:32px;padding:2px;overflow:hidden">
+        ${allesDag.map(ev=>{let a2='';if(ev.agId)a2='data-agid="'+ev.agId+'"';else if(ev.type==='b2c')a2='data-leadid="'+ev.leadId+'"';else if(ev.type==='b2b')a2='data-projid="'+ev.projId+'"';else if(ev.type==='todo')a2='data-todoid="'+ev.todoId+'"';return'<div '+a2+' style="font-size:10px;font-weight:600;background:'+ev.kleur+'22;border-left:2px solid '+ev.kleur+';padding:1px 4px;border-radius:2px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" title="'+ev.tekst+'">'+ev.tekst+'</div>';}).join('')}
+      </div>`;
+    });
+    dagGrid.innerHTML=dagHtml;
+    dagGrid.querySelectorAll('[data-agid]').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();agOpenEdit(el.dataset.agid);});});
+    dagGrid.querySelectorAll('[data-todoid]').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();todoOpenModal(el.dataset.todoid);});});
+    dagGrid.querySelectorAll('[data-leadid]').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const id=parseInt(el.dataset.leadid);showTab('b2c');setTimeout(()=>b2cOpenDetail(id),200);});});
+    dagGrid.querySelectorAll('[data-projid]').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();const pid=el.dataset.projid;const idx=projects.findIndex(p=>String(p.id)===String(pid)||String(p._rowid)===String(pid));if(idx>=0){showTab('lopend');setTimeout(()=>openModal(idx),200);}});});
+  }
+
 
   // Gewone afspraken → bewerk modal
   grid.querySelectorAll('[data-agid]').forEach(el=>{
@@ -11636,7 +11658,19 @@ function agRenderWeek(){
   });
 
   const scroll=document.getElementById('ag-week-scroll');
-  if(scroll)setTimeout(()=>{scroll.scrollTop=48;},50);
+  // Scroll naar 8u enkel bij eerste keer laden; daarna positie bewaren
+  if(scroll){
+    const savedPos=agWeekScrollSaved;
+    setTimeout(()=>{
+      if(savedPos!==null&&savedPos!==undefined){
+        scroll.scrollTop=savedPos;
+      } else {
+        scroll.scrollTop=7*48; // eerste keer: toon 07:00 bovenaan
+      }
+    },50);
+    // Bewaar scroll positie bij scrollen
+    scroll.onscroll=()=>{ agWeekScrollSaved=scroll.scrollTop; };
+  }
 
   agRenderWeekTodo(dagenStr);
 }
@@ -11824,7 +11858,7 @@ function agRenderWeek(){
   });
 
   // Uurblokken 07:00 - 19:00 (buiten werkuren 07 en na 18)
-  for(let u=7;u<=19;u++){
+  for(let u=0;u<=23;u++){
     const uurStr=String(u).padStart(2,'0')+':00';
     const buiten=u<8||u>=18;
     const urBg=buiten?'rgba(0,0,0,0.03)':'var(--bg)';
@@ -11933,7 +11967,19 @@ function agRenderWeek(){
   });
 
   const scroll=document.getElementById('ag-week-scroll');
-  if(scroll)setTimeout(()=>{scroll.scrollTop=48;},50);
+  // Scroll naar 8u enkel bij eerste keer laden; daarna positie bewaren
+  if(scroll){
+    const savedPos=agWeekScrollSaved;
+    setTimeout(()=>{
+      if(savedPos!==null&&savedPos!==undefined){
+        scroll.scrollTop=savedPos;
+      } else {
+        scroll.scrollTop=7*48; // eerste keer: toon 07:00 bovenaan
+      }
+    },50);
+    // Bewaar scroll positie bij scrollen
+    scroll.onscroll=()=>{ agWeekScrollSaved=scroll.scrollTop; };
+  }
 
   agRenderWeekTodo(dagenStr);
 }
