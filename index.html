@@ -1708,7 +1708,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 
 <!-- CRM MODAL -->
 <div class="modal-overlay" id="crm-modal">
-  <div class="modal-box" style="max-width:700px;max-height:90vh;display:flex;flex-direction:column">
+  <div class="modal-box" style="max-width:920px;width:95vw;max-height:90vh;display:flex;flex-direction:column">
     <div class="modal-header">
       <span class="modal-title" id="crm-modal-title">Nieuwe klant</span>
       <button class="modal-close" onclick="closeCrmModal()"><i class="ti ti-x"></i></button>
@@ -3850,18 +3850,13 @@ function crmRenderContacten(){
     return;
   }
   el.innerHTML=crmContacten.map((c,i)=>`
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:8px;padding:10px;background:var(--bg2);border-radius:var(--r);align-items:end">
-      <div class="field" style="margin:0"><label style="font-size:11px">Voornaam</label><input class="crm-cp-vnaam" value="${(c.voornaam||'').replace(/"/g,'&quot;')}" placeholder="Jan" style="font-size:12px" oninput="crmContacten[${i}].voornaam=this.value"></div>
-      <div class="field" style="margin:0"><label style="font-size:11px">Naam</label><input class="crm-cp-naam" value="${(c.naam||'').replace(/"/g,'&quot;')}" placeholder="Janssen" style="font-size:12px" oninput="crmContacten[${i}].naam=this.value"></div>
-      <div class="field" style="margin:0"><label style="font-size:11px">Telefoon</label><input class="crm-cp-tel" value="${(c.tel||'').replace(/"/g,'&quot;')}" placeholder="0499 123 456" type="tel" style="font-size:12px" oninput="crmContacten[${i}].tel=this.value"></div>
-      <div class="field" style="margin:0"><label style="font-size:11px">E-mail</label><input class="crm-cp-email" value="${(c.email||'').replace(/"/g,'&quot;')}" placeholder="jan@bedrijf.be" type="email" style="font-size:12px" oninput="crmContacten[${i}].email=this.value"></div>
-      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:1px">
-        <label style="font-size:11px;color:var(--tx2)">Rol</label>
-        <div style="display:flex;gap:4px">
-          <input class="crm-cp-rol" value="${(c.rol||'').replace(/"/g,'&quot;')}" placeholder="CEO..." style="font-size:12px;width:100px" oninput="crmContacten[${i}].rol=this.value">
-          <button class="btn sm danger" onclick="crmContactVerwijder(${i})" title="Verwijder"><i class="ti ti-trash"></i></button>
-        </div>
-      </div>
+    <div style="display:grid;grid-template-columns:140px 160px 150px 1fr 140px auto;gap:8px;margin-bottom:8px;padding:10px;background:var(--bg2);border-radius:var(--r);align-items:end">
+      <div class="field" style="margin:0"><label style="font-size:11px">Voornaam</label><input class="crm-cp-vnaam" value="${(c.voornaam||'').replace(/"/g,'&quot;')}" placeholder="Jan" style="font-size:12px;width:100%" oninput="crmContacten[${i}].voornaam=this.value"></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Naam</label><input class="crm-cp-naam" value="${(c.naam||'').replace(/"/g,'&quot;')}" placeholder="Janssen" style="font-size:12px;width:100%" oninput="crmContacten[${i}].naam=this.value"></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Telefoon</label><input class="crm-cp-tel" value="${(c.tel||'').replace(/"/g,'&quot;')}" placeholder="0499 123 456" type="tel" style="font-size:12px;width:100%" oninput="crmContacten[${i}].tel=this.value"></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">E-mail</label><input class="crm-cp-email" value="${(c.email||'').replace(/"/g,'&quot;')}" placeholder="jan@bedrijf.be" type="email" style="font-size:12px;width:100%" oninput="crmContacten[${i}].email=this.value"></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Rol / Functie</label><input class="crm-cp-rol" value="${(c.rol||'').replace(/"/g,'&quot;')}" placeholder="CEO..." style="font-size:12px;width:100%" oninput="crmContacten[${i}].rol=this.value"></div>
+      <button class="btn sm danger" onclick="crmContactVerwijder(${i})" title="Verwijder" style="margin-bottom:1px"><i class="ti ti-trash"></i></button>
     </div>`).join('');
 }
 
