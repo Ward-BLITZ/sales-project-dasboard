@@ -9351,26 +9351,50 @@ async function b2bZorgArtikelDataGeladen() {
   return b2bArtikelDataLaadPromise;
 }
 
-function b2bVolgendOffertenummer() {
-  // Nummering start bij 3000101 en loopt op.
-  // Gedeelde teller tussen B2B-projecten én B2C-leads, zodat er nooit dubbele
-  // offertenummers ontstaan tussen beide systemen.
-  const BASIS = 3000100;
-  let hoogste = BASIS;
+async function b2bVolgendOffertenummer() {
+  // Haal de centrale counter op uit Supabase (settings tabel, key='offerte_counter')
+  // Dit garandeert dat nummers opeenvolgend zijn en nooit dubbel gebruikt worden,
+  // ook als meerdere gebruikers tegelijk een offerte aanmaken.
+  const BASIS = 300000; // 3 + 5 cijfers: 300001, 300002, ...
+
+  if (typeof sbFetch === 'function' && sbUrl) {
+    try {
+      // Lees huidige waarde
+      const rows = await sbFetch('settings?key=eq.offerte_counter');
+      const huidig = (rows && rows[0]) ? (parseInt(rows[0].data?.waarde, 10) || BASIS) : BASIS;
+      const volgend = huidig + 1;
+
+      // Sla nieuwe waarde op (upsert met primaire sleutel)
+      await sbFetch('settings', {
+        method: 'POST',
+        headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({ key: 'offerte_counter', data: { waarde: volgend } })
+      });
+
+      return String(volgend);
+    } catch (e) {
+      console.warn('Offertenummer counter fout:', e.message);
+      // Fallback: lokale berekening als Supabase niet bereikbaar is
+    }
+  }
+
+  // Lokale fallback (als Supabase niet beschikbaar is)
+  const BASIS_FB = 300000;
+  let hoogste = BASIS_FB;
   (typeof projects !== 'undefined' ? projects : []).forEach(p => {
     const nr = parseInt(p?.offerte?.offertenummer || p?.offertenr || '', 10);
-    if (!isNaN(nr) && nr >= BASIS && nr > hoogste) hoogste = nr;
+    if (!isNaN(nr) && nr > hoogste) hoogste = nr;
   });
   (typeof b2cLeads !== 'undefined' ? b2cLeads : []).forEach(l => {
     const nr = parseInt(l?.offerte?.offertenummer || l?.offertenr || '', 10);
-    if (!isNaN(nr) && nr >= BASIS && nr > hoogste) hoogste = nr;
+    if (!isNaN(nr) && nr > hoogste) hoogste = nr;
   });
   return String(hoogste + 1);
 }
 
-function b2bNieuweOfferteState() {
+async function b2bNieuweOfferteState() {
   return {
-    offertenummer: b2bVolgendOffertenummer(),
+    offertenummer: await b2bVolgendOffertenummer(),
     datum: today ? today() : new Date().toISOString().slice(0,10),
     referentie: '',
     btwPercentage: 21,
@@ -9395,7 +9419,7 @@ function b2bShowDetailTab(tab){
   }
 }
 
-function b2bRenderOfferteTab(){
+async function b2bRenderOfferteTab(){
   const container=document.getElementById(b2bOfferteGetTabPaneId());
   if(!container)return;
   const ns=b2bOfferteNS;
@@ -9407,7 +9431,7 @@ function b2bRenderOfferteTab(){
     if(host&&host.offerte){
       b2bOfferteState=JSON.parse(JSON.stringify(host.offerte));
     } else {
-      b2bOfferteState=b2bNieuweOfferteState();
+      b2bOfferteState=await b2bNieuweOfferteState();
       if(host&&host.offertenr) b2bOfferteState.offertenummer=host.offertenr;
     }
   }
@@ -9508,13 +9532,26 @@ function b2bRenderOfferteTab(){
         <label>Opmerkingen op offerte</label>
         <textarea id="${ns}-opmerkingen" rows="3" placeholder="bv. Geldigheid 30 dagen, leveringstermijn, ..." oninput="b2bOfferteVeldUpdate('opmerkingen',this.value)">${(s.opmerkingen||'')}</textarea>
       </div>
-      <div class="field" style="margin:0">
-        <label>BTW percentage</label>
-        <select id="${ns}-btw" onchange="b2bOfferteVeldUpdate('btwPercentage',parseFloat(this.value));b2bRenderOfferteTotalen();">
-          <option value="21" ${s.btwPercentage===21?'selected':''}>21%</option>
-          <option value="6" ${s.btwPercentage===6?'selected':''}>6%</option>
-          <option value="0" ${s.btwPercentage===0?'selected':''}>0%</option>
-        </select>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="field" style="margin:0">
+          <label>BTW percentage</label>
+          <select id="${ns}-btw" onchange="b2bOfferteVeldUpdate('btwPercentage',parseFloat(this.value));b2bRenderOfferteTotalen();">
+            <option value="21" ${s.btwPercentage===21?'selected':''}>21%</option>
+            <option value="6" ${s.btwPercentage===6?'selected':''}>6%</option>
+            <option value="0" ${s.btwPercentage===0?'selected':''}>0%</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0">
+          <label>Factuurkorting <span style="color:var(--tx3);font-weight:400">(% op totaal excl. BTW)</span></label>
+          <div style="position:relative;display:flex;align-items:center">
+            <input id="${ns}-factuurkorting" type="number" min="0" max="100" step="0.01"
+              value="${s.factuurkorting!=null?s.factuurkorting:''}"
+              placeholder="bv. 5"
+              oninput="b2bOfferteVeldUpdate('factuurkorting',this.value===''?null:parseFloat(this.value));b2bRenderOfferteTotalen();"
+              style="padding-right:28px;width:100%;box-sizing:border-box">
+            <span style="position:absolute;right:10px;font-size:13px;color:var(--tx3);pointer-events:none">%</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -9956,22 +9993,28 @@ function b2bRenderOfferteTotalen(){
   const globaleBtw=b2bOfferteState.btwPercentage!=null?b2bOfferteState.btwPercentage:21;
   const items=b2bAlleItems();
   const totaalExcl=items.reduce((sum,it)=>sum+b2bRegelBedrag(it),0);
+  const kortingPct=b2bOfferteState.factuurkorting!=null&&b2bOfferteState.factuurkorting>0?parseFloat(b2bOfferteState.factuurkorting):0;
+  const kortingBedrag=kortingPct>0?totaalExcl*(kortingPct/100):0;
+  const totaalNaKorting=totaalExcl-kortingBedrag;
   // Groepeer BTW per percentage (items kunnen een eigen percentage hebben, anders het algemene)
   const btwGroepen={};
   items.forEach(it=>{
     const pct=(it.btwPercentage!=null&&it.btwPercentage!=='')?parseFloat(it.btwPercentage):globaleBtw;
     btwGroepen[pct]=(btwGroepen[pct]||0)+b2bRegelBedrag(it);
   });
+  // Pas factuurkorting proportioneel toe per BTW-groep
   const btwRegels=Object.keys(btwGroepen).sort((a,b)=>b-a).map(pct=>{
-    const basis=btwGroepen[pct];
+    const basis=kortingPct>0?btwGroepen[pct]*(1-kortingPct/100):btwGroepen[pct];
     const bedrag=basis*(parseFloat(pct)/100);
     return {pct:parseFloat(pct),bedrag};
   });
   const totaalBtw=btwRegels.reduce((s,r)=>s+r.bedrag,0);
-  const totaalIncl=totaalExcl+totaalBtw;
+  const totaalIncl=totaalNaKorting+totaalBtw;
   el.innerHTML=`
-    <div style="display:flex;justify-content:flex-end"><div style="min-width:240px">
+    <div style="display:flex;justify-content:flex-end"><div style="min-width:280px">
       <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>Totaal excl. BTW</span><strong>€ ${totaalExcl.toFixed(2)}</strong></div>
+      ${kortingBedrag>0?`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:#a32d2d"><span>Factuurkorting (${kortingPct}%)</span><strong>- € ${kortingBedrag.toFixed(2)}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-top:1px solid var(--bd2)"><span>Na korting excl. BTW</span><strong>€ ${totaalNaKorting.toFixed(2)}</strong></div>`:''}
       ${btwRegels.map(r=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>BTW (${r.pct}%)</span><strong>€ ${r.bedrag.toFixed(2)}</strong></div>`).join('')}
       <div style="display:flex;justify-content:space-between;padding:8px 0 0;margin-top:4px;border-top:1px solid var(--bd2);font-size:15px"><span style="font-weight:700">Totaal incl. BTW</span><strong style="color:var(--green)">€ ${totaalIncl.toFixed(2)}</strong></div>
     </div></div>`;
@@ -10031,7 +10074,7 @@ function b2bGenereerOffertePDF(project){
   const BLACK = [20, 20, 20];
   const GRAY = [120, 120, 120];
 
-  const s = project.offerte || b2bNieuweOfferteState();
+  const s = project.offerte || b2bOfferteState || {offertenummer:'—',datum:today?today():new Date().toISOString().slice(0,10),btwPercentage:21,groeperingen:[]};
 
   // ── Logo / Header ──
   doc.setFont('helvetica','bold');
@@ -10170,14 +10213,20 @@ function b2bGenereerOffertePDF(project){
 
   // BTW per percentage groeperen (items kunnen elk een eigen percentage hebben)
   const alleItemsPdf = (s.groeperingen||[]).flatMap(g=>g.items||[]);
+  const kortingPctPdf = s.factuurkorting!=null&&s.factuurkorting>0?parseFloat(s.factuurkorting):0;
+  const kortingBedragPdf = kortingPctPdf>0?totaalExcl*(kortingPctPdf/100):0;
+  const totaalNaKortingPdf = totaalExcl-kortingBedragPdf;
   const btwGroepenPdf = {};
   alleItemsPdf.forEach(it=>{
     const pct=(it.btwPercentage!=null&&it.btwPercentage!=='')?parseFloat(it.btwPercentage):btwPct;
     btwGroepenPdf[pct]=(btwGroepenPdf[pct]||0)+b2bRegelBedrag(it);
   });
-  const btwRegelsPdf=Object.keys(btwGroepenPdf).sort((a,b)=>b-a).map(pct=>({pct:parseFloat(pct),bedrag:btwGroepenPdf[pct]*(parseFloat(pct)/100)}));
+  const btwRegelsPdf=Object.keys(btwGroepenPdf).sort((a,b)=>b-a).map(pct=>{
+    const basis=kortingPctPdf>0?btwGroepenPdf[pct]*(1-kortingPctPdf/100):btwGroepenPdf[pct];
+    return {pct:parseFloat(pct),bedrag:basis*(parseFloat(pct)/100)};
+  });
   const totaalBtwPdf=btwRegelsPdf.reduce((s2,r)=>s2+r.bedrag,0);
-  const totaalIncl = totaalExcl + totaalBtwPdf;
+  const totaalIncl = totaalNaKortingPdf + totaalBtwPdf;
 
   // ── Totalen rechts ──
   if(y > doc.internal.pageSize.getHeight() - 140){ doc.addPage(); y = 50; }
@@ -10190,6 +10239,21 @@ function b2bGenereerOffertePDF(project){
   doc.setFont('helvetica','bold');
   doc.text('€ '+totaalExcl.toLocaleString('nl-BE',{minimumFractionDigits:2,maximumFractionDigits:2}), pageWidth-margin, y, {align:'right'});
   y += 16;
+  if(kortingBedragPdf>0){
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(163,45,45);
+    doc.text(`Factuurkorting (${kortingPctPdf}%)`, totalsX, y);
+    doc.setFont('helvetica','bold');
+    doc.text('- € '+kortingBedragPdf.toLocaleString('nl-BE',{minimumFractionDigits:2,maximumFractionDigits:2}), pageWidth-margin, y, {align:'right'});
+    y += 14;
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(...GRAY);
+    doc.text('Na korting excl. BTW', totalsX, y);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...BLACK);
+    doc.text('€ '+totaalNaKortingPdf.toLocaleString('nl-BE',{minimumFractionDigits:2,maximumFractionDigits:2}), pageWidth-margin, y, {align:'right'});
+    y += 16;
+  }
   btwRegelsPdf.forEach(r=>{
     doc.setFont('helvetica','normal');
     doc.setTextColor(...GRAY);
@@ -10204,6 +10268,8 @@ function b2bGenereerOffertePDF(project){
   doc.line(totalsX, y-2, pageWidth-margin, y-2);
   y += 18;
   doc.setFontSize(12);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(...BLACK);
   doc.text('Totaal incl. btw', totalsX, y);
   doc.setTextColor(...GREEN);
   doc.text('€ '+totaalIncl.toLocaleString('nl-BE',{minimumFractionDigits:2,maximumFractionDigits:2}), pageWidth-margin, y, {align:'right'});
