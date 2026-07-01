@@ -2818,7 +2818,7 @@ async function loadAll(){
   // Herrender agenda als die actief is (data was nog niet geladen bij eerste render)
   const agPane=document.getElementById('pane-agenda');
   if(agPane&&agPane.style.display!=='none'){
-    agUpdateRespDropdown();
+    // Dropdown NIET opnieuw vullen bij poll — dat overschrijft de gekozen filter
     if(typeof agView!=='undefined'&&agView==='week')agRenderWeek();
     else{agRenderCalendar();agRenderAankomende();}
   }
@@ -4766,15 +4766,17 @@ function agGetFiltered(){
 
 function agUpdateRespDropdown(){
   const sel=document.getElementById('ag-resp-filter');if(!sel)return;
-  const names=respNames(); // agenda = iedereen, geen filter op afdeling
+  const names=respNames();
   const userNaam=currentUser?.user_metadata?.naam||'';
   const sorted=[...names].sort((a,b)=>{
     if(a===userNaam)return -1;if(b===userNaam)return 1;return a.localeCompare(b);
   });
   sel.innerHTML='<option value="alle">Iedereen</option>'+sorted.map(r=>`<option value="${r}"${r===agRespFilter?' selected':''}>${r}${r===userNaam?' (jij)':''}</option>`).join('');
-  // Stel standaard in op ingelogde gebruiker
-  if(agRespFilter==='alle'&&userNaam&&names.includes(userNaam)){
-    sel.value=userNaam;agRespFilter=userNaam;
+  // Stel EENMALIG standaard in op ingelogde gebruiker — enkel als filter nog nooit manueel ingesteld is
+  if(!window._agRespFilterManuallySet && agRespFilter==='alle' && userNaam && names.includes(userNaam)){
+    sel.value=userNaam; agRespFilter=userNaam;
+  } else {
+    sel.value=agRespFilter;
   }
 }
 
@@ -4787,7 +4789,12 @@ function agRenderPills(){
   }).join('');
 }
 
-function agSetRespFilter(r){agRespFilter=r;agRenderCalendar();agRenderAankomende();if(typeof agView!=='undefined'&&agView==='week')agRenderWeek();}
+function agSetRespFilter(r){
+  agRespFilter=r;
+  window._agRespFilterManuallySet=true; // blokkeer auto-reset naar ingelogde user
+  agRenderCalendar();agRenderAankomende();
+  if(typeof agView!=='undefined'&&agView==='week')agRenderWeek();
+}
 function agSetTypeFilter(t){agTypeFilter=t;agRenderCalendar();agRenderAankomende();agRenderPills();}
 
 function agRenderCalendar(){
