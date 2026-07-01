@@ -10243,7 +10243,7 @@ function b2bGenereerOffertePDF(project){
     doc.setFont('helvetica','normal');
     doc.setFontSize(8);
     doc.setTextColor(...GRAY);
-    doc.text('03 250 12 29  |  hello@blitzpower.com  |  www.blitzpower.com  |  Heirbaan 395, 9150 Kruibeke  |  BTW: BE0768661454', margin, fy);
+    doc.text('03 361 64 00  |  hello@blitzpower.com  |  www.blitzpower.com  |  Heirbaan 395, 9150 Kruibeke  |  BTW: BE0768661454', margin, fy);
   }
 
   const bestandsnaam = `Offerte_${(project.klant||'klant').replace(/[^a-z0-9]/gi,'_')}_${s.offertenummer||'concept'}.pdf`;
@@ -10467,7 +10467,7 @@ function wmsRekHTML(rek,hlCode,clickable){
   return html+'</div>';
 }
 function wmsSectieSVG(rekNaam,lagen,perLaag,hlCode,maxLagen,offset){
-  const CW=60,CH=42,PAD=4,LW=38,topPad=18,drawLagen=maxLagen||lagen;
+  const CW=78,CH=58,PAD=4,LW=38,topPad=18,drawLagen=maxLagen||lagen,MAXCODES=4;
   const W=LW+perLaag*(CW+PAD)+PAD,H=topPad+drawLagen*(CH+PAD)+PAD;
   let s='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="display:block;flex-shrink:0"><rect width="'+W+'" height="'+H+'" fill="var(--bg2)" rx="5"/>';
   const realH=topPad+lagen*(CH+PAD)+PAD,realY=H-realH;
@@ -10479,14 +10479,25 @@ function wmsSectieSVG(rekNaam,lagen,perLaag,hlCode,maxLagen,offset){
     for(let cc=0;cc<perLaag;cc++){
       const globalPos=offset+cc+1,code=rekNaam+laag+String(globalPos).padStart(2,'0'),x=LW+cc*(CW+PAD)+PAD;
       const isHL=hlCode&&code.toLowerCase()===hlCode.toLowerCase();
-      const art=wmsArtikelen.find(a=>{const locs=wmsLocatiesVanArtikel(a);return locs.some(lc=>lc.toLowerCase()===code.toLowerCase());})||null;
-      const isOcc=!!art&&!isHL;
+      const arts=wmsArtikelen.filter(a=>{const locs=wmsLocatiesVanArtikel(a);return locs.some(lc=>lc.toLowerCase()===code.toLowerCase());});
+      const isOcc=arts.length>0&&!isHL;
       const fill=isHL?'#00DFA3':isOcc?'#E6FDF7':'var(--bg)',stroke=isHL?'#00a87a':isOcc?'rgba(0,223,163,.4)':'var(--bd)',codeCol=isHL?'#003d26':isOcc?'#0a8a63':'#94A3B8';
       s+='<g><rect x="'+x+'" y="'+y+'" width="'+CW+'" height="'+CH+'" rx="5" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+(isHL?2:1.5)+'"/>';
-      s+='<text x="'+(x+CW/2)+'" y="'+(y+15)+'" text-anchor="middle" font-family="Poppins,sans-serif" font-size="10" font-weight="'+(isHL?'800':'600')+'" fill="'+codeCol+'">'+code+'</text>';
-      if(isHL)s+='<text x="'+(x+CW/2)+'" y="'+(y+29)+'" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="#003d26">✓ geselecteerd</text>';
-      else if(art)s+='<text x="'+(x+CW/2)+'" y="'+(y+29)+'" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" fill="#0a8a63">'+(art.sku||art.naam||'').substring(0,8)+'</text>';
-      else s+='<text x="'+(x+CW/2)+'" y="'+(y+29)+'" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" fill="var(--tx3)">leeg</text>';
+      s+='<text x="'+(x+CW/2)+'" y="'+(y+13)+'" text-anchor="middle" font-family="Poppins,sans-serif" font-size="9" font-weight="'+(isHL?'800':'600')+'" fill="'+codeCol+'">'+code+'</text>';
+      if(isHL){
+        s+='<text x="'+(x+CW/2)+'" y="'+(y+27)+'" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" fill="#003d26">✓ geselecteerd</text>';
+      } else if(arts.length){
+        const toon=arts.slice(0,MAXCODES);
+        toon.forEach((a,ai)=>{
+          const label=(a.sku||a.naam||'').substring(0,11);
+          s+='<text x="'+(x+CW/2)+'" y="'+(y+25+ai*9)+'" text-anchor="middle" font-family="Inter,sans-serif" font-size="7.5" fill="#0a8a63">'+label+'</text>';
+        });
+        if(arts.length>MAXCODES){
+          s+='<text x="'+(x+CW/2)+'" y="'+(y+25+MAXCODES*9)+'" text-anchor="middle" font-family="Inter,sans-serif" font-size="7" font-weight="700" fill="#0a8a63">+'+(arts.length-MAXCODES)+' meer</text>';
+        }
+      } else {
+        s+='<text x="'+(x+CW/2)+'" y="'+(y+29)+'" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" fill="var(--tx3)">leeg</text>';
+      }
       s+='</g>';
     }
   }
