@@ -2814,6 +2814,14 @@ async function loadAll(){
     window._pendingUserLink=null;
     linkUserToResp(naam,email);
   }
+
+  // Herrender agenda als die actief is (data was nog niet geladen bij eerste render)
+  const agPane=document.getElementById('pane-agenda');
+  if(agPane&&agPane.style.display!=='none'){
+    agUpdateRespDropdown();
+    if(typeof agView!=='undefined'&&agView==='week')agRenderWeek();
+    else{agRenderCalendar();agRenderAankomende();}
+  }
 }
 
 async function sbSaveProject(p){
@@ -6394,9 +6402,10 @@ function startAppAfterLogin(userNaam='', userEmail=''){
   b2cInitDemo();
   if(typeof todoLoad!=='undefined')todoLoad();
   checkAutoMove();
-  // Laad gebruikers stil op achtergrond zodat respNames() gevuld is
-  loadGebruikers().catch(()=>{});
-  showTab('agenda');
+  // Laad gebruikers eerst, dan pas agenda tonen zodat dropdown gevuld is
+  loadGebruikers().catch(()=>{}).finally(()=>{
+    showTab('agenda');
+  });
 }
 
 function linkUserToResp(userNaam, userEmail){
@@ -11522,9 +11531,10 @@ function agRenderWeek(){
       const bg=buiten?(isToday?'rgba(0,223,163,.03)':'rgba(0,0,0,0.03)'):(isToday?'rgba(0,223,163,.05)':'var(--bg)');
       const evs=afspraken.filter(a=>a.datum===ds&&a.uur&&parseInt(a.uur)===u);
       const opvs=[];
-      b2cLeads.forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur&&parseInt(op.uur)===u).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id,uur:op.uur,einduur:op.einduur||''})));
-      projects.forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur&&parseInt(op.uur)===u).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projectId:p.id||p._rowid,uur:op.uur,einduur:op.einduur||''})));
-      const todosUur=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&td.uur&&parseInt(td.uur)===u);
+      const respF=agRespFilter;
+      b2cLeads.filter(l=>respF==='alle'||l.resp===respF).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur&&parseInt(op.uur)===u).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id,uur:op.uur,einduur:op.einduur||''})));
+      projects.filter(p=>respF==='alle'||p.resp===respF).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur&&parseInt(op.uur)===u).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projectId:p.id||p._rowid,uur:op.uur,einduur:op.einduur||''})));
+      const todosUur=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&td.uur&&parseInt(td.uur)===u&&(respF==='alle'||!td.resp||td.resp===respF));
       const alles=[
         ...evs.map(a=>({tekst:a.titel,kleur:AG_KLEUREN[a.type]||'var(--green)',agId:String(a.id),uur:a.uur,einduur:a.einduur||''})),
         ...opvs,
@@ -11551,12 +11561,24 @@ function agRenderWeek(){
     const isToday=ds===t;
     const evs=afspraken.filter(a=>a.datum===ds&&!a.uur);
     const opvs=[];
-    b2cLeads.forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882'})));
-    projects.forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7'})));
-    const todosGeen=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&!td.uur);
-    const alles=[...evs.map(a=>({tekst:a.titel,kleur:AG_KLEUREN[a.type]||'var(--green)'})),...opvs,...todosGeen.map(td=>({tekst:td.tekst,kleur:'#f59e0b'}))];
+    const respFDag=agRespFilter;
+    b2cLeads.filter(l=>respFDag==='alle'||l.resp===respFDag).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id})));
+    projects.filter(p=>respFDag==='alle'||p.resp===respFDag).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projId:p.id||p._rowid})));
+    const todosGeen=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&!td.uur&&(respFDag==='alle'||!td.resp||td.resp===respFDag));
+    const alles=[
+      ...evs.map(a=>({tekst:a.titel,kleur:AG_KLEUREN[a.type]||'var(--green)',agId:String(a.id)})),
+      ...opvs,
+      ...todosGeen.map(td=>({tekst:td.tekst,kleur:'#f59e0b',type:'todo',todoId:String(td.id)}))
+    ];
     html+=`<div style="border-right:1px solid var(--bd);border-top:2px solid var(--bd2);background:${isToday?'rgba(0,223,163,.06)':'var(--bg2)'};min-height:36px;padding:2px;overflow:hidden">
-      ${alles.map(ev=>`<div style="font-size:10px;font-weight:600;background:${ev.kleur}22;border-left:2px solid ${ev.kleur};padding:1px 4px;border-radius:2px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${ev.tekst}">${ev.tekst}</div>`).join('')}
+      ${alles.map(ev=>{
+        let attr='';
+        if(ev.agId)attr=`data-agid="${ev.agId}"`;
+        else if(ev.type==='b2c')attr=`data-leadid="${ev.leadId}"`;
+        else if(ev.type==='b2b')attr=`data-projid="${ev.projId}"`;
+        else if(ev.type==='todo')attr=`data-todoid="${ev.todoId}"`;
+        return`<div ${attr} style="font-size:10px;font-weight:600;background:${ev.kleur}22;border-left:2px solid ${ev.kleur};padding:1px 4px;border-radius:2px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" title="${ev.tekst}">${ev.tekst}</div>`;
+      }).join('')}
     </div>`;
   });
 
@@ -11806,9 +11828,10 @@ function agRenderWeek(){
       const bg=buiten?(isToday?'rgba(0,223,163,.03)':'rgba(0,0,0,0.03)'):(isToday?'rgba(0,223,163,.05)':'var(--bg)');
       const evs=afspraken.filter(a=>a.datum===ds&&a.uur&&parseInt(a.uur)===u);
       const opvs=[];
-      b2cLeads.forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur&&parseInt(op.uur)===u).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id,uur:op.uur,einduur:op.einduur||''})));
-      projects.forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur&&parseInt(op.uur)===u).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projectId:p.id||p._rowid,uur:op.uur,einduur:op.einduur||''})));
-      const todosUur=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&td.uur&&parseInt(td.uur)===u);
+      const respF=agRespFilter;
+      b2cLeads.filter(l=>respF==='alle'||l.resp===respF).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur&&parseInt(op.uur)===u).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id,uur:op.uur,einduur:op.einduur||''})));
+      projects.filter(p=>respF==='alle'||p.resp===respF).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur&&parseInt(op.uur)===u).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projectId:p.id||p._rowid,uur:op.uur,einduur:op.einduur||''})));
+      const todosUur=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&td.uur&&parseInt(td.uur)===u&&(respF==='alle'||!td.resp||td.resp===respF));
       const alles=[
         ...evs.map(a=>({tekst:a.titel,kleur:AG_KLEUREN[a.type]||'var(--green)',agId:String(a.id),uur:a.uur,einduur:a.einduur||''})),
         ...opvs,
@@ -11835,12 +11858,24 @@ function agRenderWeek(){
     const isToday=ds===t;
     const evs=afspraken.filter(a=>a.datum===ds&&!a.uur);
     const opvs=[];
-    b2cLeads.forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882'})));
-    projects.forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7'})));
-    const todosGeen=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&!td.uur);
-    const alles=[...evs.map(a=>({tekst:a.titel,kleur:AG_KLEUREN[a.type]||'var(--green)'})),...opvs,...todosGeen.map(td=>({tekst:td.tekst,kleur:'#f59e0b'}))];
+    const respFDag=agRespFilter;
+    b2cLeads.filter(l=>respFDag==='alle'||l.resp===respFDag).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id})));
+    projects.filter(p=>respFDag==='alle'||p.resp===respFDag).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projId:p.id||p._rowid})));
+    const todosGeen=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&!td.uur&&(respFDag==='alle'||!td.resp||td.resp===respFDag));
+    const alles=[
+      ...evs.map(a=>({tekst:a.titel,kleur:AG_KLEUREN[a.type]||'var(--green)',agId:String(a.id)})),
+      ...opvs,
+      ...todosGeen.map(td=>({tekst:td.tekst,kleur:'#f59e0b',type:'todo',todoId:String(td.id)}))
+    ];
     html+=`<div style="border-right:1px solid var(--bd);border-top:2px solid var(--bd2);background:${isToday?'rgba(0,223,163,.06)':'var(--bg2)'};min-height:36px;padding:2px;overflow:hidden">
-      ${alles.map(ev=>`<div style="font-size:10px;font-weight:600;background:${ev.kleur}22;border-left:2px solid ${ev.kleur};padding:1px 4px;border-radius:2px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${ev.tekst}">${ev.tekst}</div>`).join('')}
+      ${alles.map(ev=>{
+        let attr='';
+        if(ev.agId)attr=`data-agid="${ev.agId}"`;
+        else if(ev.type==='b2c')attr=`data-leadid="${ev.leadId}"`;
+        else if(ev.type==='b2b')attr=`data-projid="${ev.projId}"`;
+        else if(ev.type==='todo')attr=`data-todoid="${ev.todoId}"`;
+        return`<div ${attr} style="font-size:10px;font-weight:600;background:${ev.kleur}22;border-left:2px solid ${ev.kleur};padding:1px 4px;border-radius:2px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" title="${ev.tekst}">${ev.tekst}</div>`;
+      }).join('')}
     </div>`;
   });
 
