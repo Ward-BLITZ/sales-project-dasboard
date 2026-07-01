@@ -1611,6 +1611,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   <div class="crm-search">
     <input id="crm-search" type="text" placeholder="Zoek op naam, BTW, contactpersoon..." oninput="renderCrm()" style="max-width:400px">
     <button id="crm-partner-filter" class="btn sm" onclick="crmTogglePartnerFilter()" title="Toon enkel installatiepartners"><i class="ti ti-tools"></i> Partners</button>
+    <button class="btn sm" onclick="afasCrmSync()" title="Klanten en leveranciers uit AFAS importeren" id="crm-afas-sync-btn"><i class="ti ti-building-factory"></i> AFAS sync</button>
   </div>
   <div class="crm-hdr">
     <span>Bedrijf</span><span>BTW-nummer</span><span>Contactpersoon</span><span>Tel / E-mail</span><span></span>
@@ -1620,38 +1621,60 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 
 <!-- CRM MODAL -->
 <div class="modal-overlay" id="crm-modal">
-  <div class="modal-box" style="max-width:660px">
+  <div class="modal-box" style="max-width:700px;max-height:90vh;display:flex;flex-direction:column">
     <div class="modal-header">
       <span class="modal-title" id="crm-modal-title">Nieuwe klant</span>
       <button class="modal-close" onclick="closeCrmModal()"><i class="ti ti-x"></i></button>
     </div>
-    <div class="grid2">
-      <div class="field"><label>Bedrijfsnaam *</label><input id="crm-naam" placeholder="Delhaize NV"></div>
-      <div class="field"><label>BTW-nummer</label><input id="crm-btw" placeholder="BE 0123.456.789"></div>
+    <div style="flex:1;overflow-y:auto;padding-right:2px">
+      <!-- Bedrijfsgegevens -->
+      <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px"><i class="ti ti-building" style="color:var(--green);margin-right:5px"></i>Bedrijfsgegevens</div>
+      <div class="grid2">
+        <div class="field"><label>Bedrijfsnaam *</label><input id="crm-naam" placeholder="Delhaize NV"></div>
+        <div class="field"><label>BTW-nummer</label><input id="crm-btw" placeholder="BE 0123.456.789"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Algemeen telefoonnummer</label><input id="crm-tel" type="tel" placeholder="02 123 45 67"></div>
+        <div class="field"><label>Algemeen e-mailadres</label><input id="crm-email" type="email" placeholder="info@bedrijf.be"></div>
+      </div>
+      <div class="field">
+        <label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Adres</label>
+        <input id="crm-adres" placeholder="Straat, nr, gemeente...">
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Notities</label><textarea id="crm-notities" rows="2" placeholder="Extra informatie over deze klant..."></textarea></div>
+        <div class="field">
+          <label><i class="ti ti-tag" style="color:var(--green);margin-right:4px"></i>Type relatie</label>
+          <select id="crm-relatietype" onchange="crmRelatietypeChange(this.value)" style="width:100%">
+            <option value="">— Kies type —</option>
+            <option value="Klant">Klant</option>
+            <option value="EV Specialist">EV Specialist</option>
+            <option value="Electriciën">Electriciën</option>
+            <option value="Groot installateur">Groot installateur</option>
+            <option value="Bouwbedrijf">Bouwbedrijf</option>
+            <option value="Leverancier">Leverancier</option>
+            <option value="Distributeur">Distributeur</option>
+            <option value="Aannemer">Aannemer</option>
+            <option value="Overheid">Overheid</option>
+            <option value="Andere">Andere</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:var(--bg2);border-radius:var(--r)">
+        <input type="checkbox" id="crm-is-partner" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer">
+        <label for="crm-is-partner" style="cursor:pointer;font-size:13px;font-weight:600"><i class="ti ti-tools" style="color:var(--green);margin-right:4px"></i>Dit bedrijf is een installatiepartner</label>
+      </div>
+
+      <!-- Contactpersonen -->
+      <div style="border-top:1px solid var(--bd);padding-top:14px;margin-top:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px"><i class="ti ti-users" style="color:var(--green);margin-right:5px"></i>Contactpersonen</div>
+          <button class="btn sm" onclick="crmContactToevoegen()"><i class="ti ti-plus"></i> Toevoegen</button>
+        </div>
+        <div id="crm-contacten-lijst"></div>
+      </div>
     </div>
-    <div class="grid2">
-      <div class="field"><label>Algemeen telefoonnummer</label><input id="crm-tel" type="tel" placeholder="02 123 45 67"></div>
-      <div class="field"><label>Algemeen e-mailadres</label><input id="crm-email" type="email" placeholder="info@bedrijf.be"></div>
-    </div>
-    <div class="field">
-      <label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Adres</label>
-      <input id="crm-adres" placeholder="Straat, nr, gemeente...">
-    </div>
-    <div style="border-top:1px solid var(--bd);margin:14px 0 14px;padding-top:14px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:var(--tx2)"><i class="ti ti-user" style="margin-right:6px"></i>Vaste contactpersoon</div>
-    <div class="grid2">
-      <div class="field"><label>Naam contactpersoon</label><input id="crm-contact" placeholder="Jan Janssen"></div>
-      <div class="field"><label>Functie</label><input id="crm-functie" placeholder="Facility Manager"></div>
-    </div>
-    <div class="grid2">
-      <div class="field"><label>GSM contactpersoon</label><input id="crm-contactgsm" type="tel" placeholder="0499 123 456"></div>
-      <div class="field"><label>E-mail contactpersoon</label><input id="crm-contactemail" type="email" placeholder="jan@bedrijf.be"></div>
-    </div>
-    <div class="field"><label>Notities</label><textarea id="crm-notities" rows="2" placeholder="Extra informatie over deze klant..."></textarea></div>
-    <div style="display:flex;align-items:center;gap:10px;margin-top:4px;padding:10px 12px;background:var(--bg2);border-radius:var(--r)">
-      <input type="checkbox" id="crm-is-partner" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer">
-      <label for="crm-is-partner" style="cursor:pointer;font-size:13px;font-weight:600"><i class="ti ti-tools" style="color:var(--green);margin-right:4px"></i>Dit bedrijf is een installatiepartner</label>
-    </div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="border-top:1px solid var(--bd);padding-top:12px;margin-top:10px">
       <button class="btn danger" id="crm-del-btn" style="display:none;margin-right:auto" onclick="deleteCrmKlant()"><i class="ti ti-trash"></i> Verwijderen</button>
       <button class="btn" onclick="closeCrmModal()">Annuleren</button>
       <button class="btn primary" onclick="saveCrmKlant()"><i class="ti ti-check"></i> Opslaan</button>
@@ -3707,9 +3730,10 @@ function renderCrm(){
   const el=document.getElementById('crm-list');if(!el)return;
   const q=(document.getElementById('crm-search')?.value||'').toLowerCase();
   let list=klanten.filter(k=>{
-    if(crmPartnerFilter&&!k.isInstallatiepartner)return false;
+    if(crmPartnerFilter&&!k.isInstallatiepartner&&!CRM_AUTO_PARTNER_TYPES.has(k.relatietype))return false;
     if(!q)return true;
-    return(k.naam||'').toLowerCase().includes(q)||(k.btw||'').toLowerCase().includes(q)||(k.contact||'').toLowerCase().includes(q);
+    const contactZoek=Array.isArray(k.contacten)?k.contacten.map(c=>((c.voornaam||'')+' '+(c.naam||'')+' '+(c.tel||'')+' '+(c.email||'')+' '+(c.rol||'')).toLowerCase()).join(' '):(k.contact||'').toLowerCase();
+    return(k.naam||'').toLowerCase().includes(q)||(k.btw||'').toLowerCase().includes(q)||contactZoek.includes(q)||(k.adres||'').toLowerCase().includes(q)||(k.relatietype||'').toLowerCase().includes(q);
   });
   if(!list.length){
     el.innerHTML='<div class="empty-state"><i class="ti ti-building"></i>Geen klanten gevonden.</div>';return;
@@ -3717,14 +3741,69 @@ function renderCrm(){
   el.innerHTML=list.map((k)=>{
     const idx=klanten.indexOf(k);
     const partnerBadge=k.isInstallatiepartner?`<span style="font-size:10px;background:rgba(232,93,4,.12);color:#e85d04;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:4px"><i class="ti ti-tools" style="font-size:9px"></i> Partner</span>`:'';
+    const leverBadge=k.isLeverancier?`<span style="font-size:10px;background:rgba(83,74,183,.12);color:#534AB7;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:4px">Leverancier</span>`:'';
+    const typeBadge=k.relatietype?`<span style="font-size:10px;background:var(--bg2);color:var(--tx2);padding:1px 6px;border-radius:4px;border:1px solid var(--bd);margin-left:4px">${k.relatietype}</span>`:'';
+    const eersteContact=Array.isArray(k.contacten)&&k.contacten.length?k.contacten[0]:null;
+    const contactNaam=eersteContact?((eersteContact.voornaam||'')+' '+(eersteContact.naam||'')).trim():(k.contact||'');
+    const contactTel=eersteContact?eersteContact.tel:(k.contactgsm||k.tel||'');
+    const contactEmail=eersteContact?eersteContact.email:(k.contactemail||k.email||'');
+    const extraContacten=Array.isArray(k.contacten)&&k.contacten.length>1?` <span style="font-size:10px;color:var(--tx3)">+${k.contacten.length-1} meer</span>`:'';
     return`<div class="crm-row" onclick="openCrmModal(${idx})">
-      <div><div class="crm-naam">${k.naam||''}${partnerBadge}</div><div class="crm-sub">${k.btw||''}</div></div>
+      <div><div class="crm-naam">${k.naam||''}${typeBadge}${partnerBadge}${leverBadge}</div><div class="crm-sub">${k.btw||''}</div></div>
       <div class="crm-cell">${k.adres||''}</div>
-      <div><div class="crm-cell" style="font-weight:500">${k.contact||''}</div><div class="crm-sub">${k.functie||''}</div></div>
-      <div><div class="crm-cell">${k.contactgsm||k.tel||''}</div><div class="crm-sub">${k.contactemail||k.email||''}</div></div>
+      <div><div class="crm-cell" style="font-weight:500">${contactNaam}${extraContacten}</div><div class="crm-sub">${eersteContact?.rol||k.functie||''}</div></div>
+      <div><div class="crm-cell">${contactTel}</div><div class="crm-sub">${contactEmail}</div></div>
       <div style="display:flex;justify-content:flex-end"><button class="btn sm" onclick="event.stopPropagation();openCrmModal(${idx})"><i class="ti ti-edit"></i></button></div>
     </div>`;
   }).join('');
+}
+
+// Types die automatisch als installatiepartner worden gemarkeerd
+const CRM_AUTO_PARTNER_TYPES = new Set(['EV Specialist','Electriciën','Groot installateur','Bouwbedrijf','Aannemer']);
+
+function crmRelatietypeChange(type){
+  if(CRM_AUTO_PARTNER_TYPES.has(type)){
+    document.getElementById('crm-is-partner').checked = true;
+  }
+}
+
+let crmContacten = []; // werklijst tijdens modal open
+
+function crmRenderContacten(){
+  const el=document.getElementById('crm-contacten-lijst');if(!el)return;
+  if(!crmContacten.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--tx3);font-style:italic;padding:4px 0">Nog geen contactpersonen.</div>';
+    return;
+  }
+  el.innerHTML=crmContacten.map((c,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:8px;padding:10px;background:var(--bg2);border-radius:var(--r);align-items:end">
+      <div class="field" style="margin:0"><label style="font-size:11px">Voornaam</label><input class="crm-cp-vnaam" value="${(c.voornaam||'').replace(/"/g,'&quot;')}" placeholder="Jan" style="font-size:12px" oninput="crmContacten[${i}].voornaam=this.value"></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Naam</label><input class="crm-cp-naam" value="${(c.naam||'').replace(/"/g,'&quot;')}" placeholder="Janssen" style="font-size:12px" oninput="crmContacten[${i}].naam=this.value"></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">Telefoon</label><input class="crm-cp-tel" value="${(c.tel||'').replace(/"/g,'&quot;')}" placeholder="0499 123 456" type="tel" style="font-size:12px" oninput="crmContacten[${i}].tel=this.value"></div>
+      <div class="field" style="margin:0"><label style="font-size:11px">E-mail</label><input class="crm-cp-email" value="${(c.email||'').replace(/"/g,'&quot;')}" placeholder="jan@bedrijf.be" type="email" style="font-size:12px" oninput="crmContacten[${i}].email=this.value"></div>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:1px">
+        <label style="font-size:11px;color:var(--tx2)">Rol</label>
+        <div style="display:flex;gap:4px">
+          <input class="crm-cp-rol" value="${(c.rol||'').replace(/"/g,'&quot;')}" placeholder="CEO..." style="font-size:12px;width:100px" oninput="crmContacten[${i}].rol=this.value">
+          <button class="btn sm danger" onclick="crmContactVerwijder(${i})" title="Verwijder"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function crmContactToevoegen(){
+  crmContacten.push({voornaam:'',naam:'',tel:'',email:'',rol:''});
+  crmRenderContacten();
+  // Focus eerste veld van nieuw contact
+  setTimeout(()=>{
+    const rows=document.querySelectorAll('.crm-cp-vnaam');
+    if(rows.length)rows[rows.length-1].focus();
+  },50);
+}
+
+function crmContactVerwijder(i){
+  crmContacten.splice(i,1);
+  crmRenderContacten();
 }
 
 function openCrmModal(idx){
@@ -3737,42 +3816,58 @@ function openCrmModal(idx){
     document.getElementById('crm-tel').value=k.tel||'';
     document.getElementById('crm-email').value=k.email||'';
     document.getElementById('crm-adres').value=k.adres||'';
-    document.getElementById('crm-contact').value=k.contact||'';
-    document.getElementById('crm-functie').value=k.functie||'';
-    document.getElementById('crm-contactgsm').value=k.contactgsm||'';
-    document.getElementById('crm-contactemail').value=k.contactemail||'';
     document.getElementById('crm-notities').value=k.notities||'';
+    document.getElementById('crm-relatietype').value=k.relatietype||'';
     document.getElementById('crm-is-partner').checked=!!k.isInstallatiepartner;
     document.getElementById('crm-del-btn').style.display=heeftRecht('crm_bewerken')?'inline-flex':'none';
+    // Laad contactpersonen — migreer oude velden naar nieuw formaat
+    if(Array.isArray(k.contacten)&&k.contacten.length){
+      crmContacten=[...k.contacten];
+    } else if(k.contact){
+      // Migreer enkelvoudige contactpersoon
+      const delen=k.contact.trim().split(' ');
+      crmContacten=[{voornaam:delen[0]||'',naam:delen.slice(1).join(' ')||'',tel:k.contactgsm||'',email:k.contactemail||'',rol:k.functie||''}];
+    } else {
+      crmContacten=[];
+    }
   }else{
     document.getElementById('crm-modal-title').textContent='Nieuwe klant';
-    ['crm-naam','crm-btw','crm-tel','crm-email','crm-adres','crm-contact','crm-functie','crm-contactgsm','crm-contactemail','crm-notities'].forEach(id=>document.getElementById(id).value='');
+    ['crm-naam','crm-btw','crm-tel','crm-email','crm-adres','crm-notities'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('crm-relatietype').value='';
     document.getElementById('crm-is-partner').checked=false;
     document.getElementById('crm-del-btn').style.display='none';
+    crmContacten=[];
   }
+  crmRenderContacten();
   document.getElementById('crm-modal').classList.add('open');
 }
 
 function closeCrmModal(){
   document.getElementById('crm-modal').classList.remove('open');
-  editingCrmIdx=null;editingCrmId=null;
+  editingCrmIdx=null;editingCrmId=null;crmContacten=[];
 }
 
 async function saveCrmKlant(){
   const naam=document.getElementById('crm-naam').value.trim();
   if(!naam){showToast('Bedrijfsnaam is verplicht.');return;}
+  // Lees contacten rechtstreeks uit de inputvelden (voor onchange-mismatches)
+  const contacten=crmContacten.filter(c=>c.voornaam||c.naam||c.tel||c.email);
+  const eersteContact=contacten[0]||{};
   const k={
     naam,
     btw:document.getElementById('crm-btw').value.trim(),
     tel:document.getElementById('crm-tel').value.trim(),
     email:document.getElementById('crm-email').value.trim(),
     adres:document.getElementById('crm-adres').value.trim(),
-    contact:document.getElementById('crm-contact').value.trim(),
-    functie:document.getElementById('crm-functie').value.trim(),
-    contactgsm:document.getElementById('crm-contactgsm').value.trim(),
-    contactemail:document.getElementById('crm-contactemail').value.trim(),
     notities:document.getElementById('crm-notities').value.trim(),
-    isInstallatiepartner:document.getElementById('crm-is-partner').checked
+    relatietype:document.getElementById('crm-relatietype').value||'',
+    isInstallatiepartner:document.getElementById('crm-is-partner').checked,
+    contacten,
+    // Legacy velden voor achterwaartse compatibiliteit
+    contact:((eersteContact.voornaam||'')+' '+(eersteContact.naam||'')).trim(),
+    functie:eersteContact.rol||'',
+    contactgsm:eersteContact.tel||'',
+    contactemail:eersteContact.email||''
   };
   if(editingCrmId)k.id=editingCrmId;
   closeCrmModal();
@@ -8902,6 +8997,228 @@ async function afasLoadArtikelen() {
   }
 }
 
+
+// ── AFAS KLANTEN / DEBITEUREN (Infine_Debiteuren) ──────────────────────
+async function afasLoadKlanten() {
+  try {
+    const rows = await afasFetchConnector('Infine_Debiteuren', 5000);
+    if (!rows.length) return [];
+    console.log('AFAS debiteuren velden:', Object.keys(rows[0]));
+    console.log('AFAS debiteuren eerste rij VOLLEDIG:', JSON.stringify(rows[0], null, 2));
+    return rows.map(r => {
+      const straat = [r.Straat||'', r.Huisnummer||'', r['Toev._aan_huisnr.']||''].filter(Boolean).join(' ');
+      const adres = [straat, r.Postcode||'', r.Woonplaats||''].filter(Boolean).join(', ');
+      return {
+        _afasId:     String(r.Nummer||r.nummer||'').trim(),
+        _orgNummer:  String(r.Organisatienummer||r.OrganisatieNummer||r.Nummer||'').trim(),
+        naam:  r.Naam||r.naam||'',
+        btw:   r['Btw-nummer']||r.Btw_nummer||r['Btw-identificatienummer']||'',
+        tel:   r.Telefoon||r.telefoon||r['Telefoonnr.']||'',
+        email: r['E-mail']||r.Email||r.email||'',
+        adres,
+        isInstallatiepartner: false,
+        _bron: 'afas'
+      };
+    }).filter(k => k.naam);
+  } catch(e) {
+    console.warn('AFAS debiteuren fout:', e.message);
+    return [];
+  }
+}
+
+// ── AFAS LEVERANCIERS / CREDITEUREN (Infine_Crediteuren) ─────────────────
+async function afasLoadLeveranciers() {
+  try {
+    const rows = await afasFetchConnector('Infine_Crediteuren', 2000);
+    if (!rows.length) return [];
+    console.log('AFAS crediteuren velden:', Object.keys(rows[0]));
+    return rows.map(r => {
+      const straat = [r.Straat||'', r.Huisnummer||'', r['Toev._aan_huisnr.']||''].filter(Boolean).join(' ');
+      const adres = [straat, r.Postcode||'', r.Woonplaats||''].filter(Boolean).join(', ');
+      return {
+        _afasId:    String(r.Nummer||r.Relatienummer||r.nummer||'').trim(),
+        _orgNummer: String(r.Organisatienummer||r.OrganisatieNummer||r.Nummer||r.Relatienummer||'').trim(),
+        naam: r.Naam||r.naam||'',
+        btw: r['Btw-nummer']||r.Btw_nummer||r['Btw-identificatienummer']||'',
+        tel: r.Telefoon||r.telefoon||r['Telefoonnr.']||'',
+        email: r['E-mail']||r.Email||r.email||'',
+        adres,
+        isLeverancier: true,
+        isInstallatiepartner: false,
+        _bron: 'afas'
+      };
+    }).filter(l => l.naam);
+  } catch(e) {
+    console.warn('AFAS crediteuren fout:', e.message);
+    return [];
+  }
+}
+
+// ── AFAS CONTACTPERSONEN (AFASPocket_Contacts → Profit_Contacts fallback) ──
+async function afasLoadContacten() {
+  // Probeer connectors in volgorde tot er één werkt
+  const connectors = ['AFASPocket_Contacts', 'Profit_Contacts'];
+  for (const connector of connectors) {
+    try {
+      console.log(`Probeer connector: ${connector}`);
+      const rows = await afasFetchConnector(connector, 5000);
+      if (!rows || !rows.length) { console.log(`${connector}: leeg resultaat`); continue; }
+      console.log(`${connector} gelukt! Velden:`, Object.keys(rows[0]));
+      console.log(`${connector} eerste rij VOLLEDIG:`, JSON.stringify(rows[0], null, 2));
+      return rows.map(r => ({
+        // OrgNumber = relatienummer van het bedrijf (koppelveld met debiteuren/crediteuren)
+        _relatieNr: String(r.OrgNumber || r.BcCo || r.Nummer || '').trim(),
+        voornaam: (r.FullName || r.Name || '').split(' ')[0] || '',
+        naam: (r.FullName || r.Name || '').split(' ').slice(1).join(' ') || r.Name || '',
+        tel: r.TelWork || r.MobWork || r.TelPrivate || r.MobPrivate || '',
+        email: r.MailWork || r.MailPrivate || '',
+        rol: r.Function || r.FunctionCard || r.Department || '',
+      })).filter(c => c.voornaam || c.naam);
+    } catch(e) {
+      console.warn(`${connector} fout: ${e.message} — probeer volgende...`);
+    }
+  }
+  console.warn('Alle contact-connectors faalden — geen contactpersonen geladen.');
+  return [];
+}
+
+// Sync AFAS klanten en leveranciers naar lokale klanten-array
+async function afasSyncKlantenEnLeveranciers() {
+  const [afasKlanten, afasLevs, afasContacten] = await Promise.all([
+    afasLoadKlanten(),
+    afasLoadLeveranciers(),
+    afasLoadContacten()
+  ]);
+
+  // Debug: toon unieke relatienummers uit contacten vs debiteuren
+  const relNrsContacten = new Set(afasContacten.map(c => c._relatieNr).filter(Boolean));
+  const relNrsDebiteuren = new Set(afasKlanten.map(k => k._afasId).filter(Boolean));
+  const relNrsCrediteuren = new Set(afasLevs.map(l => l._afasId).filter(Boolean));
+  console.log(`Pocket_Contacts: ${afasContacten.length} contacten, ${relNrsContacten.size} unieke relatienrs:`, [...relNrsContacten].slice(0,10));
+  console.log(`Debiteuren: ${afasKlanten.length} records, relatienrs:`, [...relNrsDebiteuren].slice(0,10));
+  console.log(`Crediteuren: ${afasLevs.length} records, relatienrs:`, [...relNrsCrediteuren].slice(0,10));
+  // Check overlap
+  const overlap = [...relNrsContacten].filter(r => relNrsDebiteuren.has(r) || relNrsCrediteuren.has(r));
+  console.log(`Overlap (gelinkte contacten): ${overlap.length} van ${relNrsContacten.size}`);
+  // Toon eerste 3 rijen van Pocket_Contacts RAW zodat we het koppelveld zien
+  console.log('Pocket_Contacts eerste 3 rijen RAW:', JSON.stringify(afasContacten.slice(0,3), null, 2));
+  // Toon eerste 3 debiteuren RAW zodat we het _afasId zien
+  console.log('Debiteuren eerste 3 _afasId:', afasKlanten.slice(0,3).map(k=>({naam:k.naam,_afasId:k._afasId})));
+  // Zoek BLULINC specifiek
+  const blulinc = afasKlanten.find(k => k.naam && k.naam.toLowerCase().includes('blulinc'));
+  if (blulinc) {
+    console.log('BLULINC debiteur _afasId:', blulinc._afasId);
+    console.log('BLULINC contacten in Pocket_Contacts:', afasContacten.filter(c => c._relatieNr === blulinc._afasId));
+    console.log('Alle contacten met _relatieNr die "blulinc" bevat:', afasContacten.filter(c => JSON.stringify(c).toLowerCase().includes('blulinc')));
+  }
+
+  // Bouw map van relatienummer → ALLE contactpersonen
+  const contactenPerRelatie = {};
+  for (const c of afasContacten) {
+    const key = c._relatieNr;
+    if (!key) continue;
+    if (!contactenPerRelatie[key]) contactenPerRelatie[key] = [];
+    // Sla het volledige contact op (niet enkel het eerste)
+    contactenPerRelatie[key].push({
+      voornaam: c.voornaam,
+      naam: c.naam,
+      tel: c.tel,
+      email: c.email,
+      rol: c.rol
+    });
+  }
+
+  const gecombineerd = [...afasKlanten, ...afasLevs];
+  if (!gecombineerd.length) return {klanten: 0, leveranciers: 0, updates: 0};
+
+  let nK = 0, nL = 0, nUpdate = 0;
+  for (const a of gecombineerd) {
+    const afasId = String(a._afasId||'').trim();
+    const orgNummer = String(a._orgNummer||a._afasId||'').trim();
+    // Contacten zoeken via OrgNumber (Profit_Contacts) dat kan matchen met _afasId OF _orgNummer
+    const alleContacten = [
+      ...(contactenPerRelatie[afasId] || []),
+      ...(contactenPerRelatie[orgNummer] || [])
+    ].filter((c, i, arr) => arr.findIndex(x => x.email === c.email && x.naam === c.naam) === i); // dedup
+
+    const bestaandIdx = klanten.findIndex(k =>
+      (afasId && k._afasId && String(k._afasId).trim() === afasId) ||
+      (a.btw && k.btw && a.btw.replace(/\s/g,'').toLowerCase() === k.btw.replace(/\s/g,'').toLowerCase()) ||
+      (a.naam && k.naam && a.naam.trim().toLowerCase() === k.naam.trim().toLowerCase())
+    );
+
+    // Legacy velden vullen vanuit eerste contact (voor backward compat)
+    const eersteContact = alleContacten[0] || {};
+    const legacyVelden = {
+      contact: ((eersteContact.voornaam||'')+' '+(eersteContact.naam||'')).trim(),
+      functie: eersteContact.rol || '',
+      contactgsm: eersteContact.tel || '',
+      contactemail: eersteContact.email || ''
+    };
+
+    if (bestaandIdx >= 0) {
+      const bestaand = klanten[bestaandIdx];
+      let gewijzigd = false;
+
+      if (a.naam  && a.naam  !== bestaand.naam)  { bestaand.naam  = a.naam;  gewijzigd = true; }
+      if (a.btw   && a.btw   !== bestaand.btw)   { bestaand.btw   = a.btw;   gewijzigd = true; }
+      if (a.tel   && a.tel   !== bestaand.tel)   { bestaand.tel   = a.tel;   gewijzigd = true; }
+      if (a.email && a.email !== bestaand.email) { bestaand.email = a.email; gewijzigd = true; }
+      if (a.adres && a.adres !== bestaand.adres) { bestaand.adres = a.adres; gewijzigd = true; }
+      if (afasId  && !bestaand._afasId)          { bestaand._afasId = afasId; gewijzigd = true; }
+      if (a.isLeverancier && !bestaand.isLeverancier) { bestaand.isLeverancier = true; gewijzigd = true; }
+
+      // Alle contacten updaten (vervang volledig door AFAS lijst)
+      if (alleContacten.length) {
+        bestaand.contacten = alleContacten;
+        Object.assign(bestaand, legacyVelden);
+        gewijzigd = true;
+      }
+
+      if (gewijzigd) {
+        nUpdate++;
+        try { await sbSaveKlant(bestaand); } catch(e) { console.warn('Update klant fout:', e.message); }
+      }
+    } else {
+      const nieuw = {
+        naam: a.naam, btw: a.btw, tel: a.tel, email: a.email,
+        adres: a.adres, isInstallatiepartner: false,
+        isLeverancier: a.isLeverancier || false,
+        _afasId: afasId,
+        contacten: alleContacten,
+        ...legacyVelden
+      };
+      try {
+        const newId = await sbSaveKlant(nieuw);
+        if (newId) nieuw.id = newId;
+        klanten.push(nieuw);
+        if (a.isLeverancier) nL++; else nK++;
+      } catch(e) { console.warn('Nieuw klant fout:', e.message); }
+    }
+  }
+  return {klanten: nK, leveranciers: nL, updates: nUpdate};
+}
+
+async function afasCrmSync() {
+  const btn = document.getElementById('crm-afas-sync-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Laden…'; }
+  showToast('AFAS klanten en leveranciers laden…');
+  try {
+    const {klanten: nK, leveranciers: nL, updates: nU} = await afasSyncKlantenEnLeveranciers();
+    renderCrm();
+    const delen = [];
+    if (nK > 0) delen.push(`${nK} nieuwe klant${nK !== 1 ? 'en' : ''}`);
+    if (nL > 0) delen.push(`${nL} nieuwe leverancier${nL !== 1 ? 's' : ''}`);
+    if (nU > 0) delen.push(`${nU} bijgewerkt`);
+    const msg = delen.length ? `✓ AFAS sync: ${delen.join(', ')}.` : 'Geen wijzigingen gevonden.';
+    showToast(msg);
+  } catch(e) {
+    showToast('⚠ AFAS sync mislukt: ' + e.message);
+    console.error('afasCrmSync:', e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-building-factory"></i> AFAS sync'; }
+  }
+}
 
 async function wmsAfasRefresh() {
   const btn = document.getElementById('wms-afas-refresh-btn');
