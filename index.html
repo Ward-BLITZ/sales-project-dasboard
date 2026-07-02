@@ -2666,22 +2666,33 @@ function prospNaarProject(){
     const pcEl=document.getElementById('m-postcode');if(pcEl)pcEl.value=p.postcode||'';
     const btwEl=document.getElementById('m-btw');if(btwEl)btwEl.value=p.btw||'';
     const adresEl=document.getElementById('m-adres');if(adresEl)adresEl.value=p.adres||'';
-    const ctEl=document.getElementById('m-contact');if(ctEl)ctEl.value=p.contactpersoon||p.contact||'';
-    const gsmEl=document.getElementById('m-contactgsm');if(gsmEl)gsmEl.value=p.gsm||p.tel||p.contactgsm||'';
-    const mailEl=document.getElementById('m-contactemail');if(mailEl)mailEl.value=p.email||p.contactemail||'';
+    // Contacten zitten in p.contacts array
+    const eersteContact=(p.contacts&&p.contacts.length)?p.contacts[0]:{};
+    const ctEl=document.getElementById('m-contact');if(ctEl)ctEl.value=eersteContact.naam||p.contact||'';
+    const gsmEl=document.getElementById('m-contactgsm');if(gsmEl)gsmEl.value=eersteContact.tel||p.gsm||p.tel||p.contactgsm||'';
+    const mailEl=document.getElementById('m-contactemail');if(mailEl)mailEl.value=eersteContact.email||p.email||p.contactemail||'';
+    // Notities: samenvoegen van prospect info + alle contacten
     const infoEl=document.getElementById('m-info');
     if(infoEl){
       const delen=[];
-      if(p.notitie)delen.push(p.notitie);
-      if(p.aantalLaadpalen)delen.push('Laadpalen: '+p.aantalLaadpalen);
-      if(p.soortInstallatie)delen.push('Installatie: '+p.soortInstallatie);
-      if(p.parking)delen.push('Parking: '+p.parking);
-      if(p.bron)delen.push('Bron: '+p.bron);
+      if(p.notities)delen.push(p.notities);
+      if(p.moeder)delen.push('Moederbedrijf: '+p.moeder);
+      if(p.project)delen.push('Project: '+p.project);
+      // Alle contactpersonen
+      if(p.contacts&&p.contacts.length>1){
+        delen.push('Contactpersonen:');
+        p.contacts.forEach(c=>{
+          const info=[c.naam,c.rol,c.tel,c.email].filter(Boolean).join(' | ');
+          if(info)delen.push('  - '+info);
+        });
+      } else if(eersteContact.rol){
+        delen.push('Functie: '+eersteContact.rol);
+      }
       if(delen.length)infoEl.value=delen.join('\n');
     }
     const prodEl=document.getElementById('m-product');if(prodEl&&p.project)prodEl.value=p.project;
     const omzetEl=document.getElementById('m-omzet');if(omzetEl&&p.omzet)omzetEl.value=p.omzet;
-  },150);
+  },200);
 }
 
 function prospCloseModal(){
@@ -11483,11 +11494,38 @@ function wmsUnlockRek(rekId){wmsGpUnlocked.add(rekId);wmsGpSelected=rekId;wmsRen
 function wmsSetPending(rekId,updates){wmsGpPending[rekId]=Object.assign(wmsGpPending[rekId]||{},updates);}
 function wmsEnableDrag(el,rekId,geb){
   el.addEventListener('mousedown',function(e){
-    if(e.target.classList.contains('wms-gp-lock-btn'))return;
-    const startX=e.clientX-el.offsetLeft,startY=e.clientY-el.offsetTop;
-    function onMove(e2){const nx=Math.max(0,Math.min(e2.clientX-startX,document.getElementById('wms-grondplan-canvas').offsetWidth-el.offsetWidth));const ny=Math.max(0,Math.min(e2.clientY-startY,document.getElementById('wms-grondplan-canvas').offsetHeight-el.offsetHeight));el.style.left=nx+'px';el.style.top=ny+'px';wmsSetPending(rekId,{x:Math.round(nx/wmsGpScale*10)/10,y:Math.round(ny/wmsGpScale*10)/10});const sb=document.querySelector('.wms-grondplan-toolbar .btn.primary');if(sb){sb.style.opacity='1';sb.style.pointerEvents='auto';}}
-    function onUp(){document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);}
-    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);e.preventDefault();
+    // Negeer klikken op knoppen (toolbar, lock)
+    if(e.target.tagName==='BUTTON'||e.target.closest('button'))return;
+    e.preventDefault();
+    e.stopPropagation();
+    const canvas=document.getElementById('wms-grondplan-canvas');
+    if(!canvas)return;
+    const canvasRect=canvas.getBoundingClientRect();
+    // Start offset = muis positie relatief aan canvas, minus element positie
+    const startMouseX=e.clientX-canvasRect.left;
+    const startMouseY=e.clientY-canvasRect.top;
+    const startElX=parseInt(el.style.left)||0;
+    const startElY=parseInt(el.style.top)||0;
+    const offsetX=startMouseX-startElX;
+    const offsetY=startMouseY-startElY;
+    el.style.cursor='grabbing';
+    function onMove(e2){
+      const mouseX=e2.clientX-canvasRect.left;
+      const mouseY=e2.clientY-canvasRect.top;
+      const nx=Math.max(0,Math.min(mouseX-offsetX,canvas.offsetWidth-el.offsetWidth));
+      const ny=Math.max(0,Math.min(mouseY-offsetY,canvas.offsetHeight-el.offsetHeight));
+      el.style.left=nx+'px';
+      el.style.top=ny+'px';
+      wmsSetPending(rekId,{x:Math.round(nx/wmsGpScale*10)/10,y:Math.round(ny/wmsGpScale*10)/10});
+      wmsMarkDirty();
+    }
+    function onUp(){
+      el.style.cursor='move';
+      document.removeEventListener('mousemove',onMove);
+      document.removeEventListener('mouseup',onUp);
+    }
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
   });
 }
 async function wmsSaveGrondplan(){
