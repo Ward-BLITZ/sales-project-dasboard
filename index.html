@@ -2654,19 +2654,34 @@ function prospDelete(){
 
 function prospNaarProject(){
   const p=prospects.find(x=>x.id===prospEditId);if(!p)return;
-  if(!confirm(`Prospect "${p.naam}" omzetten naar een B2B project? De prospect wordt dan verwijderd.`))return;
-  // Pre-fill the B2B project modal
+  if(!confirm(`Prospect "${p.naam}" omzetten naar een B2B project? De prospect wordt dan verwijderd zodra je het project opslaat.`))return;
   prospCloseModal();
+  // Bewaar prospect id zodat we het NA opslaan kunnen verwijderen
+  window._prospIdToDelete=p.id;
   openModal(null);
   setTimeout(()=>{
     const nEl=document.getElementById('m-naam');if(nEl)nEl.value=p.naam+(p.project?' — '+p.project:'');
     const kEl=document.getElementById('m-klant');if(kEl)kEl.value=p.naam;
     const rEl=document.getElementById('m-resp');if(rEl)rEl.value=p.resp||'';
     const pcEl=document.getElementById('m-postcode');if(pcEl)pcEl.value=p.postcode||'';
+    const btwEl=document.getElementById('m-btw');if(btwEl)btwEl.value=p.btw||'';
+    const adresEl=document.getElementById('m-adres');if(adresEl)adresEl.value=p.adres||'';
+    const ctEl=document.getElementById('m-contact');if(ctEl)ctEl.value=p.contactpersoon||p.contact||'';
+    const gsmEl=document.getElementById('m-contactgsm');if(gsmEl)gsmEl.value=p.gsm||p.tel||p.contactgsm||'';
+    const mailEl=document.getElementById('m-contactemail');if(mailEl)mailEl.value=p.email||p.contactemail||'';
+    const infoEl=document.getElementById('m-info');
+    if(infoEl){
+      const delen=[];
+      if(p.notitie)delen.push(p.notitie);
+      if(p.aantalLaadpalen)delen.push('Laadpalen: '+p.aantalLaadpalen);
+      if(p.soortInstallatie)delen.push('Installatie: '+p.soortInstallatie);
+      if(p.parking)delen.push('Parking: '+p.parking);
+      if(p.bron)delen.push('Bron: '+p.bron);
+      if(delen.length)infoEl.value=delen.join('\n');
+    }
+    const prodEl=document.getElementById('m-product');if(prodEl&&p.project)prodEl.value=p.project;
+    const omzetEl=document.getElementById('m-omzet');if(omzetEl&&p.omzet)omzetEl.value=p.omzet;
   },150);
-  sbDeleteProspect(p);
-  prospects=prospects.filter(x=>x.id!==prospEditId);
-  prospRender();showTab('lopend');
 }
 
 function prospCloseModal(){
@@ -3310,7 +3325,7 @@ function openModal(idx){
   document.getElementById('modal-overlay').classList.add('open');
 }
 
-function closeModal(){document.getElementById('modal-overlay').classList.remove('open');editingIdx=null;editingId=null;b2bOfferteState=null;}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');editingIdx=null;editingId=null;b2bOfferteState=null;window._prospIdToDelete=null;}
 function closeModalSafe(){closeModal();}
 
 function onStatusChange(){
@@ -3389,6 +3404,17 @@ async function saveProject(sluiten=true){
   // Gewonnen flow triggeren als nieuw verkocht
   if(isNieuwVerkocht){
     setTimeout(()=>b2bTriggerGewonnenFlow(project),400);
+  }
+  // Verwijder gekoppelde prospect NA succesvol opslaan (niet bij annuleren)
+  if(window._prospIdToDelete){
+    const pid=window._prospIdToDelete;
+    window._prospIdToDelete=null;
+    const prosp=prospects.find(x=>x.id===pid);
+    if(prosp){
+      sbDeleteProspect(prosp);
+      prospects=prospects.filter(x=>x.id!==pid);
+      prospRender();
+    }
   }
 }
 
@@ -11183,20 +11209,19 @@ function wmsLocRekChange(idx,sel){
   const rek=wmsRekken.find(r=>r.id===sel.value);
   const rij=document.getElementById('wms-loc-rij-'+idx);if(!rij)return;
   const selects=rij.querySelectorAll('select');
-  // Reset en vul laag
   const laagSel=selects[1];
   laagSel.innerHTML='<option value="">-- laag --</option>';
   laagSel.disabled=true;
-  // Reset vak
   const vakSel=selects[2];
   vakSel.innerHTML='<option value="">-- vak --</option>';
   vakSel.disabled=true;
-  // Reset badge
   const badge=rij.querySelector('.wms-loc-badge-wrap');
   if(badge)badge.innerHTML='<span style="color:var(--tx3);font-size:12px;font-style:italic">nog niet gekozen</span>';
   if(rek){
-    const maxL=Math.max(...rek.secties.map(s=>s.lagen));
-    for(let l=0;l<maxL;l++){
+    // Bepaal welke lagen beschikbaar zijn: enkel lagen die minstens één sectie heeft
+    // (niet het maximum — een laag is beschikbaar als minstens 1 sectie die laag heeft)
+    const minLagen=Math.min(...rek.secties.map(s=>s.lagen));
+    for(let l=0;l<minLagen;l++){
       const opt=document.createElement('option');
       opt.value=l;
       opt.textContent=l===0?'Vloer':'L'+l;
@@ -11214,25 +11239,36 @@ function wmsLocLaagChange(idx,sel){
   const vakSel=selects[2];
   vakSel.innerHTML='<option value="">-- kies vak --</option>';
   vakSel.disabled=true;
-  // Reset badge
   const badge=rij.querySelector('.wms-loc-badge-wrap');
   if(badge)badge.innerHTML='<span style="color:var(--tx3);font-size:12px;font-style:italic">nog niet gekozen</span>';
   if(!rekId||laag==='')return;
   const rek=wmsRekken.find(r=>r.id===rekId);if(!rek)return;
   const laagNum=parseInt(laag);
-  const total=rek.secties.reduce((s,sec)=>s+sec.per_laag,0);
   const inUse=new Set(
     wmsArtikelen.flatMap(a=>wmsLocatiesVanArtikel(a))
       .filter(Boolean).map(lc=>lc.toLowerCase())
   );
-  for(let pos=1;pos<=total;pos++){
-    const code=rek.naam+laagNum+String(pos).padStart(2,'0');
-    const opt=document.createElement('option');
-    opt.value=code;
-    opt.textContent=String(pos).padStart(2,'0')+(inUse.has(code.toLowerCase())?' (bezet)':'');
-    if(inUse.has(code.toLowerCase()))opt.style.color='var(--tx3)';
-    vakSel.appendChild(opt);
-  }
+  // Per sectie: enkel posities toevoegen als die sectie de gevraagde laag heeft
+  let pos=1;
+  rek.secties.forEach(sec=>{
+    const secLagen=sec.lagen||1;
+    const secPerLaag=sec.per_laag||1;
+    if(laagNum<secLagen){
+      // Deze sectie heeft de gevraagde laag → posities toevoegen
+      for(let p=0;p<secPerLaag;p++){
+        const code=rek.naam+laagNum+String(pos).padStart(2,'0');
+        const opt=document.createElement('option');
+        opt.value=code;
+        opt.textContent=String(pos).padStart(2,'0')+(inUse.has(code.toLowerCase())?' (bezet)':'');
+        if(inUse.has(code.toLowerCase()))opt.style.color='var(--tx3)';
+        vakSel.appendChild(opt);
+        pos++;
+      }
+    } else {
+      // Sectie heeft deze laag niet → sla posities over (maar tel pos mee voor consistentie)
+      pos+=secPerLaag;
+    }
+  });
   vakSel.disabled=false;
 }
 
@@ -11367,18 +11403,81 @@ function wmsBuildGpCanvas(geb,cW,cH){
 }
 function wmsAddGpRek(canvas,rek,pos,geb){
   const isUnlocked=wmsGpUnlocked.has(rek.id);
-  const el=document.createElement('div');el.className='wms-gp-rek'+(isUnlocked?' unlocked':'');el.id='wms-gp-rek-'+rek.id;el.dataset.rekid=rek.id;el.style.left=Math.round(pos.x*wmsGpScale)+'px';el.style.top=Math.round(pos.y*wmsGpScale)+'px';el.style.position='absolute';
-  const rot=pos.rotatie||0,sx=pos.schaalX||pos.schaal||1,sy=pos.schaalY||pos.schaal||1;
+  const el=document.createElement('div');
+  el.className='wms-gp-rek'+(isUnlocked?' unlocked':'');
+  el.id='wms-gp-rek-'+rek.id;
+  el.dataset.rekid=rek.id;
+  el.style.cssText='left:'+Math.round(pos.x*wmsGpScale)+'px;top:'+Math.round(pos.y*wmsGpScale)+'px;position:absolute;cursor:'+(isUnlocked?'move':'default');
+
+  const rot=pos.rotatie||0;
+  const schaal=pos.schaal||1;
+
   const allSlots=rek.secties.flatMap(s=>s.slots);
   let sectieHTML='';
-  rek.secties.forEach(sec=>{let rowsHTML='';for(let laag=sec.lagen-1;laag>=0;laag--){let slotsHTML='';for(let p2=0;p2<sec.per_laag;p2++){const code=rek.naam+laag+String(p2+1).padStart(2,'0');const bezet=!!wmsArtikelen.find(a=>{const locs=wmsLocatiesVanArtikel(a);return locs.some(lc=>lc.toLowerCase()===code.toLowerCase());});slotsHTML+='<div class="wms-gp-slot'+(bezet?' bezet':'')+'"></div>';}rowsHTML+='<div class="wms-gp-laag-row">'+slotsHTML+'</div>';}sectieHTML+='<div class="wms-gp-sectie-col"><div class="wms-gp-sectie-label">'+sec.sectie_nr+'</div>'+rowsHTML+'</div>';});
-  const wrap=document.createElement('div');wrap.className='wms-gp-rek-wrap';wrap.style.position='relative';
-  const inner=document.createElement('div');inner.className='wms-gp-rek-inner';inner.style.transform='rotate('+rot+'deg) scale('+sx+','+sy+')';inner.innerHTML='<div class="wms-gp-rek-header"><span>'+rek.naam+'</span><span style="font-size:9px;opacity:.7">'+allSlots.filter(s=>s.artikel_id).length+'/'+allSlots.length+'</span></div><div class="wms-gp-rek-body">'+sectieHTML+'</div>';
-  const lockOverlay=document.createElement('div');lockOverlay.className='wms-gp-lock-overlay';
-  lockOverlay.innerHTML=wmsIsManager?'<button class="wms-gp-lock-btn" onclick="wmsUnlockRek(\''+rek.id+'\')">🔓 Ontgrendelen</button>':'';
-  lockOverlay.style.display=wmsIsManager?'':'none';
-  wrap.appendChild(inner);wrap.appendChild(lockOverlay);el.appendChild(wrap);canvas.appendChild(el);
-  if(isUnlocked&&wmsIsManager)wmsEnableDrag(el,rek.id,geb);
+  rek.secties.forEach(sec=>{
+    let rowsHTML='';
+    for(let laag=sec.lagen-1;laag>=0;laag--){
+      let slotsHTML='';
+      for(let p2=0;p2<sec.per_laag;p2++){
+        const code=rek.naam+laag+String(p2+1).padStart(2,'0');
+        const bezet=!!wmsArtikelen.find(a=>wmsLocatiesVanArtikel(a).some(lc=>lc.toLowerCase()===code.toLowerCase()));
+        slotsHTML+='<div class="wms-gp-slot'+(bezet?' bezet':'')+'"></div>';
+      }
+      rowsHTML+='<div class="wms-gp-laag-row">'+slotsHTML+'</div>';
+    }
+    sectieHTML+='<div class="wms-gp-sectie-col"><div class="wms-gp-sectie-label">'+sec.sectie_nr+'</div>'+rowsHTML+'</div>';
+  });
+
+  const inner=document.createElement('div');
+  inner.className='wms-gp-rek-inner';
+  inner.style.transform='rotate('+rot+'deg) scale('+schaal+')';
+  inner.style.transformOrigin='top left';
+  inner.innerHTML='<div class="wms-gp-rek-header"><span>'+rek.naam+'</span><span style="font-size:9px;opacity:.7">'+allSlots.filter(s=>s.artikel_id).length+'/'+allSlots.length+'</span></div><div class="wms-gp-rek-body">'+sectieHTML+'</div>';
+  el.appendChild(inner);
+
+  if(!isUnlocked&&wmsIsManager){
+    // Lock overlay met ontgrendelknop
+    const overlay=document.createElement('div');
+    overlay.className='wms-gp-lock-overlay';
+    overlay.innerHTML='<button class="wms-gp-lock-btn" onclick="wmsUnlockRek(\''+rek.id+'\')">🔓 Bewerken</button>';
+    el.appendChild(overlay);
+  }
+
+  if(isUnlocked&&wmsIsManager){
+    // Toolbar met roteer + schaal knoppen
+    const toolbar=document.createElement('div');
+    toolbar.style.cssText='position:absolute;top:-28px;left:0;display:flex;gap:4px;z-index:10;white-space:nowrap';
+    toolbar.innerHTML=
+      '<button onclick="wmsGpRoteer(\''+rek.id+'\','+rot+',-45)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">↺ -45°</button>'+
+      '<button onclick="wmsGpRoteer(\''+rek.id+'\','+rot+',45)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">↻ +45°</button>'+
+      '<button onclick="wmsGpSchaal(\''+rek.id+'\','+schaal+',-0.1)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">－</button>'+
+      '<span style="font-size:10px;padding:2px 5px;background:#fff;border:1px solid #ccc;border-radius:3px">'+Math.round(schaal*100)+'%</span>'+
+      '<button onclick="wmsGpSchaal(\''+rek.id+'\','+schaal+',0.1)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">＋</button>'+
+      '<button onclick="wmsGpRoteer(\''+rek.id+'\','+rot+',0,true)" style="font-size:10px;padding:2px 6px;background:#a32d2d;color:#fff;border:none;border-radius:3px;cursor:pointer">↺ Reset</button>';
+    el.appendChild(toolbar);
+    wmsEnableDrag(el,rek.id,geb);
+  }
+
+  canvas.appendChild(el);
+}
+
+function wmsGpRoteer(rekId,huidig,delta,reset){
+  const nieuweRot=reset?0:((huidig+delta+360)%360);
+  wmsSetPending(rekId,{rotatie:nieuweRot});
+  wmsMarkDirty();
+  wmsRenderGrondplan();
+}
+
+function wmsGpSchaal(rekId,huidig,delta){
+  const nieuweSchaal=Math.max(0.3,Math.min(3,Math.round((huidig+delta)*10)/10));
+  wmsSetPending(rekId,{schaal:nieuweSchaal});
+  wmsMarkDirty();
+  wmsRenderGrondplan();
+}
+
+function wmsMarkDirty(){
+  const sb=document.querySelector('.wms-grondplan-toolbar .btn.primary');
+  if(sb){sb.style.opacity='1';sb.style.pointerEvents='auto';}
 }
 function wmsUnlockRek(rekId){wmsGpUnlocked.add(rekId);wmsGpSelected=rekId;wmsRenderGrondplan();}
 function wmsSetPending(rekId,updates){wmsGpPending[rekId]=Object.assign(wmsGpPending[rekId]||{},updates);}
@@ -11391,7 +11490,22 @@ function wmsEnableDrag(el,rekId,geb){
     document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);e.preventDefault();
   });
 }
-async function wmsSaveGrondplan(){if(!Object.keys(wmsGpPending).length){showToast('Niets te bewaren.');return;}await Promise.all(Object.keys(wmsGpPending).map(rekId=>supabaseClient.from('wms_rek_posities').update(wmsGpPending[rekId]).eq('rek_id',rekId).eq('gebouw_id',wmsActiveGebouwId)));wmsGpPending={};wmsGpUnlocked.clear();wmsGpSelected=null;const{data:p}=await supabaseClient.from('wms_rek_posities').select('*');wmsRekPosities=p||[];wmsRenderGrondplan();showToast('Grondplan opgeslagen ✓');}
+async function wmsSaveGrondplan(){
+  if(!Object.keys(wmsGpPending).length){showToast('Niets te bewaren.');return;}
+  await Promise.all(Object.keys(wmsGpPending).map(rekId=>{
+    const updates=wmsGpPending[rekId];
+    // Stuur enkel bestaande kolommen — geen schaalX/schaalY
+    const payload={};
+    if(updates.x!==undefined)payload.x=updates.x;
+    if(updates.y!==undefined)payload.y=updates.y;
+    if(updates.schaal!==undefined)payload.schaal=updates.schaal;
+    if(updates.rotatie!==undefined)payload.rotatie=updates.rotatie;
+    return supabaseClient.from('wms_rek_posities').update(payload).eq('rek_id',rekId).eq('gebouw_id',wmsActiveGebouwId);
+  }));
+  wmsGpPending={};wmsGpUnlocked.clear();wmsGpSelected=null;
+  const{data:p}=await supabaseClient.from('wms_rek_posities').select('*');
+  wmsRekPosities=p||[];wmsRenderGrondplan();showToast('Grondplan opgeslagen ✓');
+}
 function wmsCancelGrondplan(){wmsGpPending={};wmsGpUnlocked.clear();wmsGpSelected=null;wmsRenderGrondplan();showToast('Wijzigingen geannuleerd');}
 async function wmsPlaatsRek(rekId){
   if(wmsRekPosities.find(p=>p.rek_id===rekId&&p.gebouw_id===wmsActiveGebouwId)){showToast('Al geplaatst.');return;}
