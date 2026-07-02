@@ -10987,7 +10987,8 @@ function wmsRenderArtikelen(){
     const totaalSt=a.aantal_per_doos&&a.aantal_dozen?(a.aantal_per_doos*a.aantal_dozen)+' st':'';
     const voorraad=(isAfas||isSamenstelling)?'<span style="color:var(--tx3);font-style:italic;font-size:11px">via AFAS</span>':(a.aantal_dozen!=null&&a.aantal_dozen!==''?a.aantal_dozen+' doos'+(totaalSt?' ('+totaalSt+')':''):'—');
     const fotoIcon=isSamenstelling?'ti-stack-2':(isAfas?'ti-building-factory':'ti-photo');
-    const foto=a.foto_url?'<img src="'+a.foto_url+'" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--bd)">':'<div style="width:34px;height:34px;background:var(--bg2);border-radius:4px;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><i class="ti '+fotoIcon+'" style="color:var(--tx3);font-size:16px"></i></div>';
+    const fotoSrc=a.afbeelding||a.foto_url||null;
+    const foto=fotoSrc?'<img src="'+fotoSrc+'" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1px solid var(--bd)">':'<div style="width:34px;height:34px;background:var(--bg2);border-radius:4px;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center"><i class="ti '+fotoIcon+'" style="color:var(--tx3);font-size:16px"></i></div>';
     const locs=wmsLocatiesVanArtikel(a);
     const locHtml=isSamenstelling?'<span style="color:var(--tx3);font-size:11px">n.v.t.</span>':(locs.length?locs.map(lc=>'<span class="wms-loc-badge" style="margin:1px 2px 1px 0"><i class="ti ti-map-pin" style="font-size:10px"></i> '+lc+'</span>').join(''):'<span class="wms-loc-empty">niet toegewezen</span>');
     const bronBadge=isSamenstelling
@@ -11062,12 +11063,48 @@ function wmsImporteerVanAfas(afasId,encodedData){
     showToast('AFAS artikel geladen — vul aan en sla op.');
   }catch(e){showToast('Fout bij importeren: '+e.message);}
 }
+let wmsArtImgData = null; // base64 afbeelding tijdelijk in geheugen
+
+function wmsArtImgSelected(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  if(file.size > 2*1024*1024){ showToast('Afbeelding is te groot (max 2MB).'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    wmsArtImgData = e.target.result; // base64 string
+    const preview = document.getElementById('wms-art-img-preview');
+    preview.innerHTML = `<img src="${wmsArtImgData}" style="width:100%;height:100%;object-fit:cover">`;
+    document.getElementById('wms-art-img-verwijder').style.display = 'inline-flex';
+  };
+  reader.readAsDataURL(file);
+}
+
+function wmsArtImgVerwijder(){
+  wmsArtImgData = null;
+  document.getElementById('wms-art-img-input').value = '';
+  document.getElementById('wms-art-img-preview').innerHTML = '<i class="ti ti-photo" style="font-size:24px;color:var(--tx3)"></i>';
+  document.getElementById('wms-art-img-verwijder').style.display = 'none';
+}
+
+function wmsArtImgLoad(base64){
+  wmsArtImgData = base64 || null;
+  const preview = document.getElementById('wms-art-img-preview');
+  if(base64){
+    preview.innerHTML = `<img src="${base64}" style="width:100%;height:100%;object-fit:cover">`;
+    document.getElementById('wms-art-img-verwijder').style.display = 'inline-flex';
+  } else {
+    preview.innerHTML = '<i class="ti ti-photo" style="font-size:24px;color:var(--tx3)"></i>';
+    document.getElementById('wms-art-img-verwijder').style.display = 'none';
+  }
+}
+
 function wmsOpenArtikelModal(id){
   const a=id?wmsArtikelen.find(x=>x.id===id):null;
   document.getElementById('wms-artikel-modal-title').textContent=a?'Artikel bewerken':'Nieuw artikel';
   document.getElementById('wms-artikel-id').value=id||'';
   ['wms-art-sku','wms-art-naam','wms-art-omschrijving','wms-art-notitie','wms-art-per-doos','wms-art-dozen','wms-art-gewicht','wms-art-afmeting'].forEach(fid=>{const el=document.getElementById(fid);if(el)el.value='';});
-  if(a){document.getElementById('wms-art-sku').value=a.sku||'';document.getElementById('wms-art-naam').value=a.naam||'';document.getElementById('wms-art-omschrijving').value=a.omschrijving||'';document.getElementById('wms-art-notitie').value=a.notitie||'';document.getElementById('wms-art-per-doos').value=a.aantal_per_doos||'';document.getElementById('wms-art-dozen').value=a.aantal_dozen||'';document.getElementById('wms-art-gewicht').value=a.gewicht||'';document.getElementById('wms-art-afmeting').value=a.afmeting||'';}
+  if(a){document.getElementById('wms-art-sku').value=a.sku||'';document.getElementById('wms-art-naam').value=a.naam||'';document.getElementById('wms-art-omschrijving').value=a.omschrijving||'';document.getElementById('wms-art-notitie').value=a.notitie||'';document.getElementById('wms-art-per-doos').value=a.aantal_per_doos||'';document.getElementById('wms-art-dozen').value=a.aantal_dozen||'';document.getElementById('wms-art-gewicht').value=a.gewicht||'';document.getElementById('wms-art-afmeting').value=a.afmeting||'';wmsArtImgLoad(a.afbeelding||null);}
+  else{wmsArtImgLoad(null);}
   const levSel=document.getElementById('wms-art-leverancier');levSel.innerHTML='<option value="">-- geen --</option>'+wmsLeveranciers.map(l=>'<option value="'+l.id+'"'+(a&&a.leverancier_id===l.id?' selected':'')+'>'+l.naam+'</option>').join('');
   // Laad bestaande locaties
   wmsArtikelLocaties=wmsLocatiesVanArtikel(a);
@@ -11232,6 +11269,7 @@ async function wmsSaveArtikel(){
     aantal_dozen:parseInt(document.getElementById('wms-art-dozen').value)||null,
     gewicht:parseFloat(document.getElementById('wms-art-gewicht').value)||null,
     afmeting:document.getElementById('wms-art-afmeting').value.trim()||null,
+    afbeelding:wmsArtImgData||null,
   };
   if(id)await supabaseClient.from('wms_artikelen').update(payload).eq('id',id);
   else await supabaseClient.from('wms_artikelen').insert(payload);
@@ -12032,6 +12070,23 @@ window.addEventListener('resize',()=>{if(typeof agView!=='undefined'&&agView==='
       <div class="wms-field" style="grid-column:1/-1"><label>Omschrijving</label><input class="field" id="wms-art-omschrijving" placeholder="Korte omschrijving" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px;outline:none"></div>
       <div class="wms-field"><label>Leverancier</label><select id="wms-art-leverancier" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px"><option value="">-- geen --</option></select></div>
       <div class="wms-field"><label>Notitie</label><input class="field" id="wms-art-notitie" placeholder="Optionele opmerking" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px;outline:none"></div>
+      <!-- Afbeelding upload -->
+      <div class="wms-field" style="grid-column:1/-1">
+        <label>Afbeelding</label>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div id="wms-art-img-preview" style="width:80px;height:80px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+            <i class="ti ti-photo" style="font-size:24px;color:var(--tx3)"></i>
+          </div>
+          <div style="flex:1">
+            <label for="wms-art-img-input" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--bd);border-radius:var(--r);cursor:pointer;font-size:13px;background:var(--bg2)">
+              <i class="ti ti-upload"></i> Afbeelding kiezen
+            </label>
+            <input type="file" id="wms-art-img-input" accept="image/*" style="display:none" onchange="wmsArtImgSelected(event)">
+            <div style="font-size:11px;color:var(--tx3);margin-top:4px">JPG, PNG, WebP — max 2MB</div>
+            <button id="wms-art-img-verwijder" onclick="wmsArtImgVerwijder()" style="display:none;margin-top:6px;font-size:11px;color:#a32d2d;background:none;border:none;cursor:pointer;padding:0"><i class="ti ti-trash"></i> Afbeelding verwijderen</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:11px;margin-top:6px">
       <div class="wms-field"><label>Stuks/doos</label><input type="number" id="wms-art-per-doos" min="1" placeholder="10" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px;outline:none"></div>
