@@ -1734,25 +1734,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
         <label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Adres</label>
         <input id="crm-adres" placeholder="Straat, nr, gemeente...">
       </div>
-      <div class="grid2">
-        <div class="field"><label>Notities</label><textarea id="crm-notities" rows="2" placeholder="Extra informatie over deze klant..."></textarea></div>
-        <div class="field">
-          <label><i class="ti ti-tag" style="color:var(--green);margin-right:4px"></i>Type relatie</label>
-          <select id="crm-relatietype" onchange="crmRelatietypeChange(this.value)" style="width:100%">
-            <option value="">— Kies type —</option>
-            <option value="Klant">Klant</option>
-            <option value="EV Specialist">EV Specialist</option>
-            <option value="Electriciën">Electriciën</option>
-            <option value="Groot installateur">Groot installateur</option>
-            <option value="Bouwbedrijf">Bouwbedrijf</option>
-            <option value="Leverancier">Leverancier</option>
-            <option value="Distributeur">Distributeur</option>
-            <option value="Aannemer">Aannemer</option>
-            <option value="Overheid">Overheid</option>
-            <option value="Andere">Andere</option>
-          </select>
-        </div>
-      </div>
+      <div class="field"><label>Notities</label><textarea id="crm-notities" rows="2" placeholder="Extra informatie over deze klant..."></textarea></div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:var(--bg2);border-radius:var(--r)">
         <input type="checkbox" id="crm-is-partner" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer">
         <label for="crm-is-partner" style="cursor:pointer;font-size:13px;font-weight:600"><i class="ti ti-tools" style="color:var(--green);margin-right:4px"></i>Dit bedrijf is een installatiepartner</label>
@@ -3818,10 +3800,10 @@ function renderCrm(){
   const el=document.getElementById('crm-list');if(!el)return;
   const q=(document.getElementById('crm-search')?.value||'').toLowerCase();
   let list=klanten.filter(k=>{
-    if(crmPartnerFilter&&!k.isInstallatiepartner&&!CRM_AUTO_PARTNER_TYPES.has(k.relatietype))return false;
+    if(crmPartnerFilter&&!k.isInstallatiepartner)return false;
     if(!q)return true;
     const contactZoek=Array.isArray(k.contacten)?k.contacten.map(c=>((c.voornaam||'')+' '+(c.naam||'')+' '+(c.tel||'')+' '+(c.email||'')+' '+(c.rol||'')).toLowerCase()).join(' '):(k.contact||'').toLowerCase();
-    return(k.naam||'').toLowerCase().includes(q)||(k.btw||'').toLowerCase().includes(q)||contactZoek.includes(q)||(k.adres||'').toLowerCase().includes(q)||(k.relatietype||'').toLowerCase().includes(q);
+    return(k.naam||'').toLowerCase().includes(q)||(k.btw||'').toLowerCase().includes(q)||contactZoek.includes(q)||(k.adres||'').toLowerCase().includes(q);
   });
   if(!list.length){
     el.innerHTML='<div class="empty-state"><i class="ti ti-building"></i>Geen klanten gevonden.</div>';return;
@@ -3830,14 +3812,14 @@ function renderCrm(){
     const idx=klanten.indexOf(k);
     const partnerBadge=k.isInstallatiepartner?`<span style="font-size:10px;background:rgba(232,93,4,.12);color:#e85d04;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:4px"><i class="ti ti-tools" style="font-size:9px"></i> Partner</span>`:'';
     const leverBadge=k.isLeverancier?`<span style="font-size:10px;background:rgba(83,74,183,.12);color:#534AB7;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:4px">Leverancier</span>`:'';
-    const typeBadge=k.relatietype?`<span style="font-size:10px;background:var(--bg2);color:var(--tx2);padding:1px 6px;border-radius:4px;border:1px solid var(--bd);margin-left:4px">${k.relatietype}</span>`:'';
+    const typeBadge='';
     const eersteContact=Array.isArray(k.contacten)&&k.contacten.length?k.contacten[0]:null;
     const contactNaam=eersteContact?((eersteContact.voornaam||'')+' '+(eersteContact.naam||'')).trim():(k.contact||'');
     const contactTel=eersteContact?eersteContact.tel:(k.contactgsm||k.tel||'');
     const contactEmail=eersteContact?eersteContact.email:(k.contactemail||k.email||'');
     const extraContacten=Array.isArray(k.contacten)&&k.contacten.length>1?` <span style="font-size:10px;color:var(--tx3)">+${k.contacten.length-1} meer</span>`:'';
     return`<div class="crm-row" onclick="openCrmModal(${idx})">
-      <div><div class="crm-naam">${k.naam||''}${typeBadge}${partnerBadge}${leverBadge}</div><div class="crm-sub">${k.btw||''}</div></div>
+      <div><div class="crm-naam">${k.naam||''}${partnerBadge}${leverBadge}</div><div class="crm-sub">${k.btw||''}</div></div>
       <div class="crm-cell">${k.adres||''}</div>
       <div><div class="crm-cell" style="font-weight:500">${contactNaam}${extraContacten}</div><div class="crm-sub">${eersteContact?.rol||k.functie||''}</div></div>
       <div><div class="crm-cell">${contactTel}</div><div class="crm-sub">${contactEmail}</div></div>
@@ -3849,11 +3831,7 @@ function renderCrm(){
 // Types die automatisch als installatiepartner worden gemarkeerd
 const CRM_AUTO_PARTNER_TYPES = new Set(['EV Specialist','Electriciën','Groot installateur','Bouwbedrijf','Aannemer']);
 
-function crmRelatietypeChange(type){
-  if(CRM_AUTO_PARTNER_TYPES.has(type)){
-    document.getElementById('crm-is-partner').checked = true;
-  }
-}
+
 
 let crmContacten = []; // werklijst tijdens modal open
 
@@ -3900,7 +3878,7 @@ function openCrmModal(idx){
     document.getElementById('crm-email').value=k.email||'';
     document.getElementById('crm-adres').value=k.adres||'';
     document.getElementById('crm-notities').value=k.notities||'';
-    document.getElementById('crm-relatietype').value=k.relatietype||'';
+
     document.getElementById('crm-is-partner').checked=!!k.isInstallatiepartner;
     document.getElementById('crm-del-btn').style.display=heeftRecht('crm_bewerken')?'inline-flex':'none';
     // Laad contactpersonen — migreer oude velden naar nieuw formaat
@@ -3916,7 +3894,7 @@ function openCrmModal(idx){
   }else{
     document.getElementById('crm-modal-title').textContent='Nieuwe klant';
     ['crm-naam','crm-btw','crm-tel','crm-email','crm-adres','crm-notities'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('crm-relatietype').value='';
+
     document.getElementById('crm-is-partner').checked=false;
     document.getElementById('crm-del-btn').style.display='none';
     crmContacten=[];
@@ -3943,7 +3921,6 @@ async function saveCrmKlant(){
     email:document.getElementById('crm-email').value.trim(),
     adres:document.getElementById('crm-adres').value.trim(),
     notities:document.getElementById('crm-notities').value.trim(),
-    relatietype:document.getElementById('crm-relatietype').value||'',
     isInstallatiepartner:document.getElementById('crm-is-partner').checked,
     contacten,
     // Legacy velden voor achterwaartse compatibiliteit
@@ -11380,7 +11357,7 @@ async function wmsSaveGrondplan(){if(!Object.keys(wmsGpPending).length){showToas
 function wmsCancelGrondplan(){wmsGpPending={};wmsGpUnlocked.clear();wmsGpSelected=null;wmsRenderGrondplan();showToast('Wijzigingen geannuleerd');}
 async function wmsPlaatsRek(rekId){
   if(wmsRekPosities.find(p=>p.rek_id===rekId&&p.gebouw_id===wmsActiveGebouwId)){showToast('Al geplaatst.');return;}
-  const{error}=await supabaseClient.from('wms_rek_posities').insert({rek_id:rekId,gebouw_id:wmsActiveGebouwId,x:1,y:1,schaal:1,schaalX:1,schaalY:1,rotatie:0});
+  const{error}=await supabaseClient.from('wms_rek_posities').insert({rek_id:rekId,gebouw_id:wmsActiveGebouwId,x:1,y:1,schaal:1,rotatie:0});
   if(error){
     showToast('Fout bij plaatsen: '+error.message+'. Voer het SQL-script uit in Supabase.',true);
     // Toon SQL hint in grondplan content
