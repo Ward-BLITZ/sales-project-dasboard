@@ -2654,10 +2654,10 @@ function prospDelete(){
 
 function prospNaarProject(){
   const p=prospects.find(x=>x.id===prospEditId);if(!p)return;
-  if(!confirm(`Prospect "${p.naam}" omzetten naar een B2B project? De prospect wordt dan verwijderd zodra je het project opslaat.`))return;
-  prospCloseModal();
-  // Bewaar prospect id zodat we het NA opslaan kunnen verwijderen
+  if(!confirm(`Prospect "${p.naam}" omzetten naar een B2B project?`))return;
+  // Prospect blijft bestaan tot het project opgeslagen wordt
   window._prospIdToDelete=p.id;
+  prospCloseModal();
   openModal(null);
   setTimeout(()=>{
     const nEl=document.getElementById('m-naam');if(nEl)nEl.value=p.naam+(p.project?' — '+p.project:'');
@@ -2666,19 +2666,15 @@ function prospNaarProject(){
     const pcEl=document.getElementById('m-postcode');if(pcEl)pcEl.value=p.postcode||'';
     const btwEl=document.getElementById('m-btw');if(btwEl)btwEl.value=p.btw||'';
     const adresEl=document.getElementById('m-adres');if(adresEl)adresEl.value=p.adres||'';
-    // Contacten zitten in p.contacts array
     const eersteContact=(p.contacts&&p.contacts.length)?p.contacts[0]:{};
     const ctEl=document.getElementById('m-contact');if(ctEl)ctEl.value=eersteContact.naam||p.contact||'';
     const gsmEl=document.getElementById('m-contactgsm');if(gsmEl)gsmEl.value=eersteContact.tel||p.gsm||p.tel||p.contactgsm||'';
     const mailEl=document.getElementById('m-contactemail');if(mailEl)mailEl.value=eersteContact.email||p.email||p.contactemail||'';
-    // Notities: samenvoegen van prospect info + alle contacten
     const infoEl=document.getElementById('m-info');
     if(infoEl){
       const delen=[];
       if(p.notities)delen.push(p.notities);
       if(p.moeder)delen.push('Moederbedrijf: '+p.moeder);
-      if(p.project)delen.push('Project: '+p.project);
-      // Alle contactpersonen
       if(p.contacts&&p.contacts.length>1){
         delen.push('Contactpersonen:');
         p.contacts.forEach(c=>{
@@ -3416,7 +3412,7 @@ async function saveProject(sluiten=true){
   if(isNieuwVerkocht){
     setTimeout(()=>b2bTriggerGewonnenFlow(project),400);
   }
-  // Verwijder gekoppelde prospect NA succesvol opslaan (niet bij annuleren)
+  // Verwijder gekoppelde prospect pas NA opslaan — niet bij annuleren
   if(window._prospIdToDelete){
     const pid=window._prospIdToDelete;
     window._prospIdToDelete=null;
@@ -3425,6 +3421,7 @@ async function saveProject(sluiten=true){
       sbDeleteProspect(prosp);
       prospects=prospects.filter(x=>x.id!==pid);
       prospRender();
+      showToast('Prospect omgezet naar project ✓');
     }
   }
 }
@@ -11414,14 +11411,15 @@ function wmsBuildGpCanvas(geb,cW,cH){
 }
 function wmsAddGpRek(canvas,rek,pos,geb){
   const isUnlocked=wmsGpUnlocked.has(rek.id);
+  const rot=pos.rotatie||0;
+  const sx=pos.schaalX??pos.schaal??1;
+  const sy=pos.schaalY??pos.schaal??1;
+
   const el=document.createElement('div');
   el.className='wms-gp-rek'+(isUnlocked?' unlocked':'');
   el.id='wms-gp-rek-'+rek.id;
   el.dataset.rekid=rek.id;
-  el.style.cssText='left:'+Math.round(pos.x*wmsGpScale)+'px;top:'+Math.round(pos.y*wmsGpScale)+'px;position:absolute;cursor:'+(isUnlocked?'move':'default');
-
-  const rot=pos.rotatie||0;
-  const schaal=pos.schaal||1;
+  el.style.cssText='left:'+Math.round(pos.x*wmsGpScale)+'px;top:'+Math.round(pos.y*wmsGpScale)+'px;position:absolute;overflow:visible;cursor:'+(isUnlocked?'move':'pointer');
 
   const allSlots=rek.secties.flatMap(s=>s.slots);
   let sectieHTML='';
@@ -11439,37 +11437,41 @@ function wmsAddGpRek(canvas,rek,pos,geb){
     sectieHTML+='<div class="wms-gp-sectie-col"><div class="wms-gp-sectie-label">'+sec.sectie_nr+'</div>'+rowsHTML+'</div>';
   });
 
-  const inner=document.createElement('div');
-  inner.className='wms-gp-rek-inner';
-  inner.style.transform='rotate('+rot+'deg) scale('+schaal+')';
-  inner.style.transformOrigin='top left';
-  inner.innerHTML='<div class="wms-gp-rek-header"><span>'+rek.naam+'</span><span style="font-size:9px;opacity:.7">'+allSlots.filter(s=>s.artikel_id).length+'/'+allSlots.length+'</span></div><div class="wms-gp-rek-body">'+sectieHTML+'</div>';
-  el.appendChild(inner);
-
-  if(!isUnlocked&&wmsIsManager){
-    // Lock overlay met ontgrendelknop
-    const overlay=document.createElement('div');
-    overlay.className='wms-gp-lock-overlay';
-    overlay.innerHTML='<button class="wms-gp-lock-btn" onclick="wmsUnlockRek(\''+rek.id+'\')">🔓 Bewerken</button>';
-    el.appendChild(overlay);
-  }
-
+  // Toolbar bovenaan (altijd buiten het rek zichtbaar)
   if(isUnlocked&&wmsIsManager){
-    // Toolbar met roteer + schaal knoppen
     const toolbar=document.createElement('div');
-    toolbar.style.cssText='position:absolute;top:-28px;left:0;display:flex;gap:4px;z-index:10;white-space:nowrap';
+    toolbar.style.cssText='position:absolute;top:-30px;left:0;display:flex;gap:3px;z-index:20;white-space:nowrap';
     toolbar.innerHTML=
       '<button onclick="wmsGpRoteer(\''+rek.id+'\','+rot+',-45)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">↺ -45°</button>'+
       '<button onclick="wmsGpRoteer(\''+rek.id+'\','+rot+',45)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">↻ +45°</button>'+
       '<button onclick="wmsGpSchaal(\''+rek.id+'\','+schaal+',-0.1)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">－</button>'+
       '<span style="font-size:10px;padding:2px 5px;background:#fff;border:1px solid #ccc;border-radius:3px">'+Math.round(schaal*100)+'%</span>'+
       '<button onclick="wmsGpSchaal(\''+rek.id+'\','+schaal+',0.1)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">＋</button>'+
-      '<button onclick="wmsGpRoteer(\''+rek.id+'\','+rot+',0,true)" style="font-size:10px;padding:2px 6px;background:#a32d2d;color:#fff;border:none;border-radius:3px;cursor:pointer">↺ Reset</button>';
+      '<button onclick="wmsGpRoteer(\''+rek.id+'\','+rot+',0,true)" style="font-size:10px;padding:2px 6px;background:#a32d2d;color:#fff;border:none;border-radius:3px;cursor:pointer">↺ 0°</button>';
     el.appendChild(toolbar);
-    wmsEnableDrag(el,rek.id,geb);
+  }
+
+  const inner=document.createElement('div');
+  inner.className='wms-gp-rek-inner';
+  inner.style.transform='rotate('+rot+'deg) scaleX('+sx+') scaleY('+sy+')';
+  inner.style.transformOrigin='top left';
+  inner.innerHTML='<div class="wms-gp-rek-header"><span>'+rek.naam+'</span><span style="font-size:9px;opacity:.7">'+allSlots.filter(s=>s.artikel_id).length+'/'+allSlots.length+'</span></div><div class="wms-gp-rek-body">'+sectieHTML+'</div>';
+  el.appendChild(inner);
+
+  // Ontgrendel-knop altijd zichtbaar op het rek als het vergrendeld is
+  if(!isUnlocked&&wmsIsManager){
+    const btn=document.createElement('button');
+    btn.style.cssText='position:absolute;top:2px;right:2px;z-index:15;font-size:10px;padding:2px 7px;background:rgba(29,37,45,.85);color:#fff;border:none;border-radius:3px;cursor:pointer;pointer-events:all';
+    btn.textContent='🔓 Bewerken';
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      wmsUnlockRek(rek.id);
+    });
+    el.appendChild(btn);
   }
 
   canvas.appendChild(el);
+  if(isUnlocked&&wmsIsManager)wmsEnableDrag(el,rek.id,geb);
 }
 
 function wmsGpRoteer(rekId,huidig,delta,reset){
@@ -11493,46 +11495,77 @@ function wmsMarkDirty(){
 function wmsUnlockRek(rekId){wmsGpUnlocked.add(rekId);wmsGpSelected=rekId;wmsRenderGrondplan();}
 function wmsSetPending(rekId,updates){wmsGpPending[rekId]=Object.assign(wmsGpPending[rekId]||{},updates);}
 function wmsEnableDrag(el,rekId,geb){
+  // SLEPEN
   el.addEventListener('mousedown',function(e){
-    // Negeer klikken op knoppen (toolbar, lock)
     if(e.target.tagName==='BUTTON'||e.target.closest('button'))return;
-    e.preventDefault();
-    e.stopPropagation();
-    const canvas=document.getElementById('wms-grondplan-canvas');
-    if(!canvas)return;
+    if(e.target.dataset&&e.target.dataset.resize)return;
+    e.preventDefault();e.stopPropagation();
+    const canvas=document.getElementById('wms-grondplan-canvas');if(!canvas)return;
     const canvasRect=canvas.getBoundingClientRect();
-    // Start offset = muis positie relatief aan canvas, minus element positie
-    const startMouseX=e.clientX-canvasRect.left;
-    const startMouseY=e.clientY-canvasRect.top;
     const startElX=parseInt(el.style.left)||0;
     const startElY=parseInt(el.style.top)||0;
-    const offsetX=startMouseX-startElX;
-    const offsetY=startMouseY-startElY;
+    const offsetX=(e.clientX-canvasRect.left)-startElX;
+    const offsetY=(e.clientY-canvasRect.top)-startElY;
     el.style.cursor='grabbing';
     function onMove(e2){
-      const mouseX=e2.clientX-canvasRect.left;
-      const mouseY=e2.clientY-canvasRect.top;
-      const nx=Math.max(0,Math.min(mouseX-offsetX,canvas.offsetWidth-el.offsetWidth));
-      const ny=Math.max(0,Math.min(mouseY-offsetY,canvas.offsetHeight-el.offsetHeight));
-      el.style.left=nx+'px';
-      el.style.top=ny+'px';
+      const nx=Math.max(0,(e2.clientX-canvasRect.left)-offsetX);
+      const ny=Math.max(0,(e2.clientY-canvasRect.top)-offsetY);
+      el.style.left=nx+'px';el.style.top=ny+'px';
       wmsSetPending(rekId,{x:Math.round(nx/wmsGpScale*10)/10,y:Math.round(ny/wmsGpScale*10)/10});
       wmsMarkDirty();
     }
-    function onUp(){
-      el.style.cursor='move';
-      document.removeEventListener('mousemove',onMove);
-      document.removeEventListener('mouseup',onUp);
-    }
-    document.addEventListener('mousemove',onMove);
-    document.addEventListener('mouseup',onUp);
+    function onUp(){el.style.cursor='move';document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);}
+    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+  });
+
+  // RESIZE HANDLES — 4 zijkanten + 4 hoeken
+  const handles=[
+    {pos:'n',  css:'top:-5px;left:50%;transform:translateX(-50%);width:20px;height:10px;cursor:n-resize'},
+    {pos:'s',  css:'bottom:-5px;left:50%;transform:translateX(-50%);width:20px;height:10px;cursor:s-resize'},
+    {pos:'e',  css:'right:-5px;top:50%;transform:translateY(-50%);width:10px;height:20px;cursor:e-resize'},
+    {pos:'w',  css:'left:-5px;top:50%;transform:translateY(-50%);width:10px;height:20px;cursor:w-resize'},
+    {pos:'ne', css:'top:-5px;right:-5px;width:12px;height:12px;cursor:ne-resize'},
+    {pos:'nw', css:'top:-5px;left:-5px;width:12px;height:12px;cursor:nw-resize'},
+    {pos:'se', css:'bottom:-5px;right:-5px;width:12px;height:12px;cursor:se-resize'},
+    {pos:'sw', css:'bottom:-5px;left:-5px;width:12px;height:12px;cursor:sw-resize'},
+  ];
+  const inner=el.querySelector('.wms-gp-rek-inner');
+  handles.forEach(h=>{
+    const handle=document.createElement('div');
+    handle.dataset.resize=h.pos;
+    handle.style.cssText='position:absolute;background:#00DFA3;border:1px solid #007a52;border-radius:2px;z-index:20;'+h.css;
+    handle.addEventListener('mousedown',function(e){
+      e.preventDefault();e.stopPropagation();
+      const startX=e.clientX,startY=e.clientY;
+      const startW=inner?inner.offsetWidth:100;
+      const startH=inner?inner.offsetHeight:60;
+      const rekPos=wmsRekPosities.find(p=>p.rek_id===rekId&&p.gebouw_id===wmsActiveGebouwId)||{};
+      const pend=wmsGpPending[rekId]||{};
+      const startSX=pend.schaalX??pend.schaal??rekPos.schaal??1;
+      const startSY=pend.schaalY??pend.schaal??rekPos.schaal??1;
+      const rot=pend.rotatie??rekPos.rotatie??0;
+      function onMove(e2){
+        const dx=e2.clientX-startX,dy=e2.clientY-startY;
+        let sx=startSX,sy=startSY;
+        if(h.pos.includes('e'))sx=Math.max(0.2,Math.round((startSX+dx/(startW||100))*10)/10);
+        if(h.pos.includes('w'))sx=Math.max(0.2,Math.round((startSX-dx/(startW||100))*10)/10);
+        if(h.pos.includes('s'))sy=Math.max(0.2,Math.round((startSY+dy/(startH||60))*10)/10);
+        if(h.pos.includes('n'))sy=Math.max(0.2,Math.round((startSY-dy/(startH||60))*10)/10);
+        if(inner)inner.style.transform='rotate('+rot+'deg) scaleX('+sx+') scaleY('+sy+')';
+        wmsSetPending(rekId,{schaalX:sx,schaalY:sy,schaal:Math.round((sx+sy)/2*10)/10});
+        wmsMarkDirty();
+      }
+      function onUp(){document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);}
+      document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+    });
+    el.appendChild(handle);
   });
 }
 async function wmsSaveGrondplan(){
   if(!Object.keys(wmsGpPending).length){showToast('Niets te bewaren.');return;}
   await Promise.all(Object.keys(wmsGpPending).map(rekId=>{
     const updates=wmsGpPending[rekId];
-    // Stuur enkel bestaande kolommen — geen schaalX/schaalY
+    // Stuur enkel bestaande kolommen (schaalX/schaalY bestaan niet in DB — schaal wordt gebruikt)
     const payload={};
     if(updates.x!==undefined)payload.x=updates.x;
     if(updates.y!==undefined)payload.y=updates.y;
