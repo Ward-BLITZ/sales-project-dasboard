@@ -1018,9 +1018,15 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
               <div class="field"><label>Telefoon</label><input id="id-tel" type="tel" placeholder="0477 ..."></div>
               <div class="field"><label>E-mail</label><input id="id-email" type="email" placeholder="jan@mail.be"></div>
               <div class="field"><label><i class="ti ti-tool" style="color:#e85d04;margin-right:4px"></i>Installatiedatum</label><input type="date" id="id-datum-inst"></div>
-              <div class="field"><label>Uur installatie</label><input type="time" id="id-uur-inst" value="09:00"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="field"><label>Van installatie</label><input type="time" id="id-uur-inst" value="09:00"></div>
+                <div class="field"><label>Tot installatie</label><input type="time" id="id-uur-inst-eind"></div>
+              </div>
               <div class="field"><label><i class="ti ti-clipboard-check" style="color:#7b2d8b;margin-right:4px"></i>Keuringsdatum</label><input type="date" id="id-datum-keur"></div>
-              <div class="field"><label>Uur keuring</label><input type="time" id="id-uur-keur" value="14:00"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="field"><label>Van keuring</label><input type="time" id="id-uur-keur" value="14:00"></div>
+                <div class="field"><label>Tot keuring</label><input type="time" id="id-uur-keur-eind"></div>
+              </div>
             </div>
             <div class="field"><label>Gekoppeld aan (B2C / B2B)</label>
               <div style="position:relative">
@@ -1620,7 +1626,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div id="ag-ticket-info" style="display:none;background:var(--bg2);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--tx2);margin-bottom:10px;line-height:1.7"></div>
       <div class="grid2">
         <div class="field"><label>Datum *</label><input type="date" id="ag-datum"></div>
-        <div class="field"><label>Uur</label><input type="time" id="ag-uur" value="09:00"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur" value="09:00"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur" value="10:00"></div></div>
       </div>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp"><option value="">— kies —</option></select>
@@ -1644,7 +1650,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Titel van de afspraak *</label><input id="ag-titel" placeholder="bv. Visit Jan Vermeersch"></div>
       <div class="grid2">
         <div class="field"><label>Datum *</label><input type="date" id="ag-datum2"></div>
-        <div class="field"><label>Uur</label><input type="time" id="ag-uur2" value="09:00"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur2" value="09:00"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur2" value="10:00"></div></div>
       </div>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp2"><option value="">— kies —</option></select>
@@ -1665,7 +1671,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Titel van de afspraak *</label><input id="ag-titel3" placeholder="bv. Offertegesprek Parking Delhaize"></div>
       <div class="grid2">
         <div class="field"><label>Datum *</label><input type="date" id="ag-datum3"></div>
-        <div class="field"><label>Uur</label><input type="time" id="ag-uur3" value="09:00"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur3" value="09:00"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur3" value="10:00"></div></div>
       </div>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp3"><option value="">— kies —</option></select>
@@ -1679,7 +1685,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Titel van de afspraak *</label><input id="ag-titel4" placeholder="bv. Teamvergadering"></div>
       <div class="grid2">
         <div class="field"><label>Datum *</label><input type="date" id="ag-datum4"></div>
-        <div class="field"><label>Uur</label><input type="time" id="ag-uur4" value="09:00"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur4" value="09:00"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur4" value="10:00"></div></div>
       </div>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp4"><option value="">— kies —</option></select>
@@ -1970,7 +1976,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
         <div id="b2b-opvolging-form" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:10px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
             <div class="field" style="margin:0"><label style="font-size:11px">Datum</label><input type="date" id="b2bop-datum" style="font-size:12px"></div>
-            <div class="field" style="margin:0"><label style="font-size:11px">Uur (optioneel)</label><input type="time" id="b2bop-uur" style="font-size:12px"></div>
+            <div class="field" style="margin:0"><label style="font-size:11px">Van</label><input type="time" id="b2bop-uur" style="font-size:12px"></div><div class="field" style="margin:0"><label style="font-size:11px">Tot</label><input type="time" id="b2bop-einduur" style="font-size:12px"></div>
           </div>
           <div class="field" style="margin-bottom:8px"><label style="font-size:11px">Wat moet er gedaan worden?</label><input id="b2bop-tekst" placeholder="bv. Offerte opvolgen, terugbellen..." style="font-size:12px"></div>
           <div style="display:flex;gap:6px;justify-content:flex-end">
@@ -2121,7 +2127,10 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     </div>
     <div class="grid2">
       <div class="field"><label>Datum</label><input type="date" id="bv-datum"></div>
-      <div class="field"><label>Uur</label><input type="time" id="bv-uur" value="10:00"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="field"><label>Van</label><input type="time" id="bv-uur" value="10:00"></div>
+        <div class="field"><label>Tot</label><input type="time" id="bv-einduur" value="11:00"></div>
+      </div>
     </div>
     <div class="field"><label>Adres (bevestig)</label><input type="text" id="bv-adres"></div>
     <div class="field"><label>Notitie voor visit</label><textarea id="bv-nota" rows="2" placeholder="bv. parkeer achteraan, bel aan bij buren..."></textarea></div>
@@ -2800,12 +2809,12 @@ async function loadAll(){
         if(inst.datumInst){
           const agId='inst-'+inst.id;
           agAfspraken=agAfspraken.filter(a=>a.id!==agId);
-          agAfspraken.push({id:agId,titel:'Installatie: '+inst.naam,datum:inst.datumInst,uur:inst.uurInst,type:'Installatie',resp:inst.resp,notitie:inst.adres,linkId:'inst-'+inst.id,linkLabel:inst.naam,linkType:'installatie'});
+          agAfspraken.push({id:agId,titel:'Installatie: '+inst.naam,datum:inst.datumInst,uur:inst.uurInst,einduur:inst.uurInstEind||'',type:'Installatie',resp:inst.resp,notitie:inst.adres,linkId:'inst-'+inst.id,linkLabel:inst.naam,linkType:'installatie'});
         }
         if(inst.datumKeur){
           const agId='keur-'+inst.id;
           agAfspraken=agAfspraken.filter(a=>a.id!==agId);
-          agAfspraken.push({id:agId,titel:'Keuring: '+inst.naam,datum:inst.datumKeur,uur:inst.uurKeur,type:'Keuring',resp:inst.resp,notitie:inst.adres,linkId:'keur-'+inst.id,linkLabel:inst.naam,linkType:'keuring'});
+          agAfspraken.push({id:agId,titel:'Keuring: '+inst.naam,datum:inst.datumKeur,uur:inst.uurKeur,einduur:inst.uurKeurEind||'',type:'Keuring',resp:inst.resp,notitie:inst.adres,linkId:'keur-'+inst.id,linkLabel:inst.naam,linkType:'keuring'});
         }
       });
       agPersist();
@@ -4746,6 +4755,7 @@ function agGetAlleAfspraken(){
       titel: 'Visit: '+b2cNaam(l),
       datum: l.visitDatum,
       uur: l.visitUur||'',
+      einduur: l.visitEinduur||'',
       type: 'B2C',
       resp: l.resp||'',
       link: b2cNaam(l),
@@ -5187,6 +5197,7 @@ function agOpenEdit(id){
     if(inst){agWizTicketId=inst.id;const chip=document.getElementById('ag-ticket-chip');chip.style.display='flex';chip.innerHTML=`<i class="ti ti-plug" style="font-size:12px"></i> ${inst.naam||''}<button onclick="agTicketClear()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;padding:0;font-size:13px"><i class="ti ti-x"></i></button>`;}
     document.getElementById('ag-datum').value=a.datum||'';
     document.getElementById('ag-uur').value=a.uur||'09:00';
+    if(document.getElementById('ag-einduur'))document.getElementById('ag-einduur').value=a.einduur||'';
     document.getElementById('ag-notitie').value=a.notitie||'';
     const rsel=document.getElementById('ag-resp');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('service').map(r=>`<option value="${r}"${r===a.resp?' selected':''}>${r}</option>`).join('');
@@ -5254,6 +5265,7 @@ function agSave(){
       id:agEditId||agNextId++,
       titel:naam, datum,
       uur:document.getElementById('ag-uur').value,
+      einduur:document.getElementById('ag-einduur')?.value||'',
       type:agWizSub==='installatie'?'Installatie':'Keuring',
       resp:document.getElementById('ag-resp').value,
       linkId:ticketId, linkLabel:inst?inst.naam:'',linkType:'installatie',
@@ -5277,6 +5289,7 @@ function agSave(){
       id:agEditId||agNextId++,
       titel, datum,
       uur:document.getElementById('ag-uur2').value,
+      einduur:document.getElementById('ag-einduur2')?.value||'',
       type:'B2C',
       resp:document.getElementById('ag-resp2').value,
       linkId:b2cId, linkLabel:lead?b2cNaam(lead):'',linkType:'b2c',
@@ -5307,6 +5320,7 @@ function agSave(){
       id:agEditId||agNextId++,
       titel, datum,
       uur:document.getElementById('ag-uur3').value,
+      einduur:document.getElementById('ag-einduur3')?.value||'',
       type:'B2B',
       resp:document.getElementById('ag-resp3').value,
       linkId:b2bId, linkLabel:logObj?logObj.naam:'',linkType:agWizB2bType==='Prospect'?'prospect':'b2b',
@@ -5329,6 +5343,7 @@ function agSave(){
       id:agEditId||agNextId++,
       titel, datum,
       uur:document.getElementById('ag-uur4').value,
+      einduur:document.getElementById('ag-einduur4')?.value||'',
       type:agWizHoofd==='service'?'Andere':'Andere',
       resp:document.getElementById('ag-resp4').value,
       linkId:'',linkLabel:'',linkType:'andere',
@@ -5409,8 +5424,8 @@ function instLoadFromStorage(){
       // Herbouw agenda-afspraken
       agAfspraken=agAfspraken.filter(a=>a.type!=='Installatie'&&a.type!=='Keuring');
       installaties.forEach(inst=>{
-        if(inst.datumInst){const agId='inst-'+inst.id;agAfspraken=agAfspraken.filter(a=>a.id!==agId);agAfspraken.push({id:agId,titel:'Installatie: '+inst.naam,datum:inst.datumInst,uur:inst.uurInst,type:'Installatie',resp:inst.resp,notitie:inst.adres,linkId:'inst-'+inst.id,linkLabel:inst.naam,linkType:'installatie'});}
-        if(inst.datumKeur){const agId='keur-'+inst.id;agAfspraken=agAfspraken.filter(a=>a.id!==agId);agAfspraken.push({id:agId,titel:'Keuring: '+inst.naam,datum:inst.datumKeur,uur:inst.uurKeur,type:'Keuring',resp:inst.resp,notitie:inst.adres,linkId:'keur-'+inst.id,linkLabel:inst.naam,linkType:'keuring'});}
+        if(inst.datumInst){const agId='inst-'+inst.id;agAfspraken=agAfspraken.filter(a=>a.id!==agId);agAfspraken.push({id:agId,titel:'Installatie: '+inst.naam,datum:inst.datumInst,uur:inst.uurInst,einduur:inst.uurInstEind||'',type:'Installatie',resp:inst.resp,notitie:inst.adres,linkId:'inst-'+inst.id,linkLabel:inst.naam,linkType:'installatie'});}
+        if(inst.datumKeur){const agId='keur-'+inst.id;agAfspraken=agAfspraken.filter(a=>a.id!==agId);agAfspraken.push({id:agId,titel:'Keuring: '+inst.naam,datum:inst.datumKeur,uur:inst.uurKeur,einduur:inst.uurKeurEind||'',type:'Keuring',resp:inst.resp,notitie:inst.adres,linkId:'keur-'+inst.id,linkLabel:inst.naam,linkType:'keuring'});}
       });
     }
   }catch{}
@@ -5608,8 +5623,10 @@ function instDossierOpen(id){
   document.getElementById('id-email').value=i.email||'';
   document.getElementById('id-datum-inst').value=i.datumInst||'';
   document.getElementById('id-uur-inst').value=i.uurInst||'09:00';
+  document.getElementById('id-uur-inst-eind').value=i.uurInstEind||'';
   document.getElementById('id-datum-keur').value=i.datumKeur||'';
   document.getElementById('id-uur-keur').value=i.uurKeur||'14:00';
+  document.getElementById('id-uur-keur-eind').value=i.uurKeurEind||'';
   document.getElementById('id-link-search').value=i.linkLabel||'';
   document.getElementById('id-link-id').value=i.linkId||'';
   document.getElementById('id-link-label').value=i.linkLabel||'';
@@ -5698,8 +5715,10 @@ function instDossierSave(sluiten=true){
     fase: document.getElementById('inst-dossier-fase').value,
     datumInst: document.getElementById('id-datum-inst').value,
     uurInst: document.getElementById('id-uur-inst').value,
+    uurInstEind: document.getElementById('id-uur-inst-eind').value||'',
     datumKeur: document.getElementById('id-datum-keur').value,
     uurKeur: document.getElementById('id-uur-keur').value,
+    uurKeurEind: document.getElementById('id-uur-keur-eind').value||'',
     linkId: document.getElementById('id-link-id').value,
     linkLabel: document.getElementById('id-link-label').value,
     screening: instScCollect(),
@@ -7331,7 +7350,7 @@ function b2cRenderInfo(l){
         <div id="b2c-opvolging-form" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
             <div class="field" style="margin:0"><label style="font-size:11px">Datum</label><input type="date" id="bop-datum" value="${today()}" style="font-size:12px"></div>
-            <div class="field" style="margin:0"><label style="font-size:11px">Uur (optioneel)</label><input type="time" id="bop-uur" style="font-size:12px"></div>
+            <div class="field" style="margin:0"><label style="font-size:11px">Van</label><input type="time" id="bop-uur" style="font-size:12px"></div><div class="field" style="margin:0"><label style="font-size:11px">Tot</label><input type="time" id="bop-einduur" style="font-size:12px"></div>
           </div>
           <div class="field" style="margin-bottom:8px"><label style="font-size:11px">Wat moet er gedaan worden?</label><input id="bop-tekst" placeholder="bv. Offerte opvolgen, terugbellen..." style="font-size:12px"></div>
           <div style="display:flex;gap:6px;justify-content:flex-end">
@@ -7514,7 +7533,8 @@ function b2cSaveOpvolging(id){
   if(!datum||!tekst){showToast('Vul datum en omschrijving in.');return;}
   const l=b2cLeads.find(x=>x.id===id);if(!l)return;
   l.opvolgingen=l.opvolgingen||[];
-  l.opvolgingen.push({datum,uur:document.getElementById('bop-uur').value,tekst,gedaan:false});
+  l.opvolgingen.push({datum,uur:document.getElementById('bop-uur').value,
+          einduur:document.getElementById('bop-einduur')?.value||'',tekst,gedaan:false});
   l.acties=l.acties||[];
   l.acties.push(logEntry('Opvolging ingepland: '+tekst+' op '+datum));
   sbSaveB2cLead(l);
@@ -8135,6 +8155,7 @@ function b2cOpenVisitModal(id){
   document.getElementById('b2c-visit-titel').textContent='Visit inplannen — '+b2cNaam(l);
   document.getElementById('bv-datum').value=l.visitDatum||'';
   document.getElementById('bv-uur').value=l.visitUur||'10:00';
+  document.getElementById('bv-einduur').value=l.visitEinduur||'';
   document.getElementById('bv-adres').value=l.adres||'';
   document.getElementById('bv-nota').value=l.notities||'';
   document.getElementById('bv-annuleer-btn').style.display=l.visitDatum?'inline-flex':'none';
@@ -8152,10 +8173,12 @@ function b2cSaveVisit(){
   const l=b2cLeads.find(x=>x.id===b2cVisitLeadId);if(!l)return;
   l.visitDatum=document.getElementById('bv-datum').value;
   l.visitUur=document.getElementById('bv-uur').value;
+  l.visitEinduur=document.getElementById('bv-einduur').value||'';
   l.adres=document.getElementById('bv-adres').value;
   l.notities=document.getElementById('bv-nota').value;
   if(l.status==='Nieuw'||l.status==='Gecontacteerd')l.status='Visit gepland';
-  l.acties=l.acties||[];l.acties.push(logEntry('Visit gepland op '+l.visitDatum+' om '+l.visitUur));
+  const tijdLog=l.visitUur+(l.visitEinduur?' - '+l.visitEinduur:'');
+  l.acties=l.acties||[];l.acties.push(logEntry('Visit gepland op '+l.visitDatum+' om '+tijdLog));
   sbSaveB2cLead(l);
   b2cCloseVisitModal();b2cRenderLeads();b2cRenderCalendar();b2cRenderAankomende();
   showToast('Visit ingepland!');
@@ -8452,7 +8475,7 @@ function b2bSaveOpvolging(){
   const datum=document.getElementById('b2bop-datum').value;
   const tekst=document.getElementById('b2bop-tekst').value.trim();
   if(!datum||!tekst){showToast('Vul datum en omschrijving in.');return;}
-  currentB2bOpvolgingen.push({datum,uur:document.getElementById('b2bop-uur').value,tekst,gedaan:false});
+  currentB2bOpvolgingen.push({datum,uur:document.getElementById('b2bop-uur').value,einduur:document.getElementById('b2bop-einduur')?.value||'',tekst,gedaan:false});
   document.getElementById('b2b-opvolging-form').style.display='none';
   b2bRenderOpvolgingen();
   showToast('Opvolging toegevoegd.');
