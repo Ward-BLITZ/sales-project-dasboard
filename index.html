@@ -6750,6 +6750,7 @@ function b2cRenderLeads(){
     return true;
   });
   const board=document.getElementById('b2c-kanban-board');if(!board)return;
+  board._eventsAttached=false; // reset zodat events opnieuw gekoppeld worden na render
 
   // Sorteer leads per kolom: geen opvolging eerst, daarna vroegste opvolging
   function eerstvolgendeOpvolging(l){
@@ -6920,7 +6921,9 @@ let _b2cDragId=null;
 
 function b2cAttachBoardEvents(){
   const board=document.getElementById('b2c-kanban-board');
-  if(!board||board._eventsAttached)return;
+  if(!board)return;
+  // Verwijder oude listeners door de vlag altijd te resetten na render
+  if(board._eventsAttached)return;
   board._eventsAttached=true;
 
   // Drag start — delegated
