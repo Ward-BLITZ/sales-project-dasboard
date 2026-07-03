@@ -2892,7 +2892,7 @@ async function sbSaveB2cLead(l){
 }
 async function sbDeleteB2cLead(id){
   // Zoek de lead om de Supabase row id (_sbid) te vinden
-  const l=b2cLeads.find(x=>x.id===id)||{_sbid:id};
+  const l=b2cLeads.find(x=>String(x.id)===String(id))||{_sbid:id};
   const sbid=l._sbid||id;
   if(sbUrl){try{await sbFetch('b2c_leads?id=eq.'+sbid,{method:'DELETE'});}catch(e){console.warn('sbDeleteB2cLead:',e.message);}}
   try{localStorage.setItem('blitz_b2c',JSON.stringify(b2cLeads));}catch{}
@@ -5285,7 +5285,7 @@ function agSave(){
     const titel=document.getElementById('ag-titel').value.trim();
     const datum=document.getElementById('ag-datum2').value;
     if(!titel||!datum){showToast('Titel en datum zijn verplicht.');return;}
-    const lead=b2cLeads.find(x=>x.id===agWizB2cId);
+    const lead=b2cLeads.find(x=>String(x.id)===String(agWizB2cId));
     a={
       id:agEditId||agNextId++,
       titel, datum,
@@ -5896,7 +5896,7 @@ function instTicketInfoRender(inst){
 
   if(linkId.startsWith('b2c-')){
     const leadId=parseInt(linkId.replace('b2c-',''));
-    const l=b2cLeads.find(x=>x.id===leadId);
+    const l=b2cLeads.find(x=>String(x.id)===String(leadId));
     if(l){
       html+=`<div style="background:var(--bg2);border-radius:var(--rl);padding:1rem">
         <div style="font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px">${b2cNaam(l)}</div>
@@ -6690,7 +6690,7 @@ function b2cRenderGesloten(prefix, allList, kleur, label){
       <div style="font-size:12px;color:var(--tx3)">${datum||'—'}</div>
       <div style="display:flex;gap:6px">
         <button class="btn sm" onclick="event.stopPropagation();b2cOpenDetail('${l.id}')"><i class="ti ti-eye"></i></button>
-        <button class="btn sm" onclick="event.stopPropagation();b2cHeractiveer(${l.id})" title="Terugzetten naar actief"><i class="ti ti-refresh"></i></button>
+        <button class="btn sm" onclick="event.stopPropagation();b2cHeractiveer('${l.id}')" title="Terugzetten naar actief"><i class="ti ti-refresh"></i></button>
       </div>
     </div>`;
   }).join('');
@@ -6711,7 +6711,7 @@ function b2cHeractiveer(id){
 }
 
 function b2cMarkeerStatus(status){
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cOpenLeadId));if(!l)return;
   if(status==='Verloren'){
     b2cVerliesLeadId=b2cOpenLeadId;
     b2cDragLeadId=null;
@@ -6827,7 +6827,7 @@ function b2cBevestigGewonnenEigen(){
     doorstuurNaarInstallatie('b2b',p.id||p._rowid);
     return;
   }
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cOpenLeadId));
   b2cSluitGewonnenKeuze();
   if(!l)return;
   doorstuurNaarInstallatie('b2c', l.id);
@@ -6849,7 +6849,7 @@ function b2cBevestigGewonnenPartner(){
     return;
   }
   // Partner installeert: toon partner-zoek overlay
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cOpenLeadId));
   if(!l){b2cSluitGewonnenKeuze();return;}
   b2cSluitGewonnenKeuze();
   const vooraf=l.installatiepartner||'';
@@ -6896,7 +6896,7 @@ function b2cGwPartnerZoek(q){
 function b2cBevestigGwPartner(){
   const naam=(document.getElementById('b2c-gw-partner-input').value||'').trim();
   if(!naam){showToast('Vul een installatiepartner in.');return;}
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cOpenLeadId));
   if(!l){b2cSluitGwPartner();return;}
   l.status='Gewonnen';
   if(!l.gewonnenOp)l.gewonnenOp=today();
@@ -7025,7 +7025,7 @@ function b2cSelectVerliesReden(btn,reden){
   document.getElementById('b2c-verlies-input').value=reden;
 }
 function b2cBevestigVerlies(){
-  const l=b2cLeads.find(x=>x.id===b2cVerliesLeadId);
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cVerliesLeadId));
   if(!l){b2cAnnuleerVerlies();return;}
   const reden=document.getElementById('b2c-verlies-input').value.trim();
   l.status='Verloren';l.verliesReden=reden||'Niet opgegeven';l.verliesOp=today();
@@ -7048,7 +7048,7 @@ function b2cAnnuleerVerlies(){
 function b2cBevestigInstallateur(){
   const naam=document.getElementById('b2c-installateur-input').value.trim();
   if(!naam){showToast('Selecteer of typ een installatiepartner.');return;}
-  const l=b2cLeads.find(x=>x.id===b2cInstallateurLeadId);
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cInstallateurLeadId));
   if(!l){b2cSluitInstallateur();return;}
   l.status=b2cInstallateurNewStatus;
   l.installatiepartner=naam;
@@ -7188,7 +7188,7 @@ function b2cShowDetailTab(tab){
     document.getElementById('b2c-dtab-'+t).classList.toggle('active',t===tab);
     document.getElementById(t==='offerte' ? 'b2c-tab-offerte' : 'b2c-detail-'+t).style.display=t===tab?'block':'none';
   });
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cOpenLeadId));if(!l)return;
   if(tab==='info')b2cRenderInfo(l);
   if(tab==='screening')b2cRenderScreening(l);
   if(tab==='contract')b2cRenderContract(l);
@@ -7231,7 +7231,7 @@ function b2cDocSelected(e){b2cDocHandleFiles(e.target.files);e.target.value='';}
 
 function b2cDocHandleFiles(files){
   if(!files||!files.length)return;
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cOpenLeadId));if(!l)return;
   l.documenten=l.documenten||[];
   Array.from(files).forEach(file=>{
     const reader=new FileReader();
@@ -7245,7 +7245,7 @@ function b2cDocHandleFiles(files){
 }
 
 function b2cDocVerwijder(i){
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cOpenLeadId));if(!l)return;
   l.documenten=l.documenten||[];
   l.documenten.splice(i,1);
   sbSaveB2cLead(l);
@@ -7335,7 +7335,7 @@ function b2cRenderInfo(l){
               ${l.visitDatum
                 ?`<span style="font-size:12px;font-weight:600;color:var(--green)">${l.visitDatum}${l.visitUur?' '+l.visitUur:''}</span>`
                 :`<span style="font-size:12px;color:var(--tx3)">Niet gepland</span>`}
-              <button class="btn sm" onclick="b2cOpenVisitModal(${l.id})" style="flex-shrink:0"><i class="ti ti-calendar-${l.visitDatum?'event':'plus'}"></i> ${l.visitDatum?'Wijzigen':'Plannen'}</button>
+              <button class="btn sm" onclick="b2cOpenVisitModal('${l.id}')" style="flex-shrink:0"><i class="ti ti-calendar-${l.visitDatum?'event':'plus'}"></i> ${l.visitDatum?'Wijzigen':'Plannen'}</button>
             </div>
           </div>
         </div>
@@ -7366,7 +7366,7 @@ function b2cRenderInfo(l){
 
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin:0 0 10px;padding-bottom:6px;border-bottom:2px solid var(--bd);display:flex;align-items:center;justify-content:space-between">
           <span><i class="ti ti-calendar-check" style="margin-right:5px;color:var(--green)"></i>Opvolgingen</span>
-          <button class="btn sm primary" onclick="b2cAddOpvolging(${l.id})"><i class="ti ti-plus"></i> Toevoegen</button>
+          <button class="btn sm primary" onclick="b2cAddOpvolging('${l.id}')"><i class="ti ti-plus"></i> Toevoegen</button>
         </div>
         <div id="b2c-opvolging-list" style="margin-bottom:8px">${b2cRenderOpvolgingen(l)}</div>
         <div id="b2c-opvolging-form" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
@@ -7377,10 +7377,10 @@ function b2cRenderInfo(l){
           <div class="field" style="margin-bottom:8px"><label style="font-size:11px">Wat moet er gedaan worden?</label><input id="bop-tekst" placeholder="bv. Offerte opvolgen, terugbellen..." style="font-size:12px"></div>
           <div style="display:flex;gap:6px;justify-content:flex-end">
             <button class="btn sm" onclick="document.getElementById('b2c-opvolging-form').style.display='none'">Annuleren</button>
-            <button class="btn sm primary" onclick="b2cSaveOpvolging(${l.id})"><i class="ti ti-check"></i> Opslaan</button>
+            <button class="btn sm primary" onclick="b2cSaveOpvolging('${l.id}')"><i class="ti ti-check"></i> Opslaan</button>
           </div>
         </div>
-        <button class="btn sm" onclick="b2cOpenDoorstuur(${l.id})" style="width:100%;justify-content:center;margin-bottom:14px;border-color:rgba(0,223,163,.4);color:var(--green)"><i class="ti ti-arrow-right"></i> Doorsturen naar B2B projecten</button>
+        <button class="btn sm" onclick="b2cOpenDoorstuur('${l.id}')" style="width:100%;justify-content:center;margin-bottom:14px;border-color:rgba(0,223,163,.4);color:var(--green)"><i class="ti ti-arrow-right"></i> Doorsturen naar B2B projecten</button>
 
         <!-- ACTIVITEITENLOG -->
         <div style="border:1px solid var(--bd);border-radius:var(--rl);background:var(--bg2)">
@@ -7391,7 +7391,7 @@ function b2cRenderInfo(l){
           <div class="act-log-feed" id="b2c-act-feed" style="max-height:220px;overflow-y:auto;padding:8px 4px 0">${b2cActLogHtml(l.acties)}</div>
           <div class="act-log-input-row" style="padding:10px 12px;border-top:1px solid var(--bd);margin-top:4px">
             <input type="text" id="b2c-actie-input" placeholder="Actie loggen... (Enter of klik +)" style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')b2cLogActie(${l.id})">
-            <button class="btn sm primary" onclick="b2cLogActie(${l.id})" title="Loggen"><i class="ti ti-plus"></i></button>
+            <button class="btn sm primary" onclick="b2cLogActie('${l.id}')" title="Loggen"><i class="ti ti-plus"></i></button>
           </div>
         </div>
       </div>
@@ -7416,7 +7416,7 @@ function b2cRenderInfo(l){
 }
 
 function b2cSaveLeadEdit(sluiten=true){
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cOpenLeadId));if(!l)return;
   const get=id=>{const el=document.getElementById(id);return el?el.value.trim():null;};
   const changed=[];
   const nvnaam=get('bi-vnaam'), nanaam=get('bi-anaam');
@@ -7469,8 +7469,8 @@ function b2cRenderOpvolgingen(l){
         <div style="font-size:12px;font-weight:600;color:var(--tx)">${op.tekst}</div>
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0">
-        <button class="btn sm" style="color:#639922;border-color:rgba(99,153,34,.3)" title="Afvinken" data-lead="${l.id}" data-idx="${origIdx}" onclick="b2cToggleOpvolgingGedaan(${l.id},${origIdx})"><i class="ti ti-check"></i></button>
-        <button class="btn sm danger" onclick="b2cDeleteOpvolging(${l.id},${origIdx})"><i class="ti ti-trash"></i></button>
+        <button class="btn sm" style="color:#639922;border-color:rgba(99,153,34,.3)" title="Afvinken" data-lead="${l.id}" data-idx="${origIdx}" onclick="b2cToggleOpvolgingGedaan('${l.id}',${origIdx})"><i class="ti ti-check"></i></button>
+        <button class="btn sm danger" onclick="b2cDeleteOpvolging('${l.id}',${origIdx})"><i class="ti ti-trash"></i></button>
       </div>
     </div>`;
   }).join('');
@@ -7526,7 +7526,7 @@ function b2cRenderDashOpvolgingen(){
       <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:${isVandaag?'var(--green)':verleden?'#a32d2d':'var(--tx3)'};margin-bottom:5px;padding:0 2px">${isVandaag?'📅 Vandaag':verleden?'⚠ '+datum.slice(8)+' '+MK[parseInt(datum.slice(5,7))-1]:dagNamen[d.getDay()]+' '+d.getDate()+' '+MK[d.getMonth()]}</div>
       ${items_dag.map(({op,l,idx})=>`
         <div style="display:flex;align-items:flex-start;gap:6px;padding:6px 8px;background:var(--bg2);border-radius:8px;margin-bottom:4px;border-left:3px solid ${isVandaag?'var(--green)':verleden?'#a32d2d':'var(--bd2)'}">
-          <button onclick="b2cToggleOpvolgingGedaan(${l.id},${idx})"
+          <button onclick="b2cToggleOpvolgingGedaan('${l.id}',${idx})"
             style="width:18px;height:18px;border-radius:4px;border:2px solid rgba(99,153,34,.5);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px"
             onmouseover="this.style.background='rgba(99,153,34,.15)'" onmouseout="this.style.background='none'">
             <i class="ti ti-check" style="font-size:10px;color:#639922"></i>
@@ -7569,7 +7569,7 @@ function b2cSaveOpvolging(id){
 }
 
 function b2cToggleOpvolgingGedaan(leadId,idx){
-  const l=b2cLeads.find(x=>x.id===leadId);if(!l||!l.opvolgingen)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(leadId));if(!l||!l.opvolgingen)return;
   const op=l.opvolgingen[idx];
   if(op.gedaan){
     op.gedaan=false;op.opmerking='';
@@ -7596,7 +7596,7 @@ function b2cAfvinkKies(btn,tekst){
   document.getElementById('b2c-afvink-opmerking').value=tekst;
 }
 function b2cBevestigAfvink(){
-  const l=b2cLeads.find(x=>x.id===b2cAfvinkLeadId);
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cAfvinkLeadId));
   if(!l||!l.opvolgingen){b2cSluitAfvink();return;}
   const op=l.opvolgingen[b2cAfvinkOpIdx];
   const opmerking=document.getElementById('b2c-afvink-opmerking').value.trim();
@@ -7618,7 +7618,7 @@ function b2cSluitAfvink(){
 }
 
 function b2cDeleteOpvolging(id,idx){
-  const l=b2cLeads.find(x=>x.id===id);if(!l||!l.opvolgingen)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l||!l.opvolgingen)return;
   if(!confirm('Opvolging verwijderen?'))return;
   l.opvolgingen.splice(idx,1);
   sbSaveB2cLead(l);
@@ -7666,7 +7666,7 @@ function b2cPartnerClear(){
 }
 
 function b2cQuickWarmte(w){
-  const l=b2cLeads.find(x=>x.id===b2cOpenLeadId);if(!l)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cOpenLeadId));if(!l)return;
   l.warmte=w;
   sbSaveB2cLead(l);
   b2cRenderLeads();
@@ -7731,7 +7731,7 @@ function b2cRenderScreening(l){
         <i class="ti ti-clipboard-list" style="font-size:48px;display:block;margin-bottom:12px;color:var(--bd2)"></i>
         <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;margin-bottom:8px;color:var(--tx)">Screening nog niet uitgevoerd</div>
         <div style="font-size:13px;color:var(--tx2);margin-bottom:1.5rem">Voer de visit uit en vul het screeningsformulier in.</div>
-        <button class="btn primary" onclick="b2cStartScreening(${l.id})" style="margin:0 auto"><i class="ti ti-clipboard-check"></i> Visit uitvoeren & screenen</button>
+        <button class="btn primary" onclick="b2cStartScreening('${l.id}')" style="margin:0 auto"><i class="ti ti-clipboard-check"></i> Visit uitvoeren & screenen</button>
       </div>
     `;
   } else {
@@ -7739,8 +7739,8 @@ function b2cRenderScreening(l){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
         <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:var(--tx2)">Screeningsresultaten — ${l.screening.datum||'datum onbekend'}</div>
         <div style="display:flex;gap:8px">
-          <button class="btn sm" onclick="b2cStartScreening(${l.id})"><i class="ti ti-edit"></i> Bewerken</button>
-          <button class="btn sm primary" onclick="b2cExportScreening(${l.id})"><i class="ti ti-download"></i> Export</button>
+          <button class="btn sm" onclick="b2cStartScreening('${l.id}')"><i class="ti ti-edit"></i> Bewerken</button>
+          <button class="btn sm primary" onclick="b2cExportScreening('${l.id}')"><i class="ti ti-download"></i> Export</button>
         </div>
       </div>
       ${b2cScSamenvatting(l.screening)}
@@ -7899,7 +7899,7 @@ function b2cRenderScFotos(){
 }
 
 function b2cSaveScreening(){
-  const l=b2cLeads.find(x=>x.id===b2cScreeningLeadId);if(!l)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cScreeningLeadId));if(!l)return;
   l.screening={
     digitale_meter:b2cGetJaNee('bsc-digitale_meter'),p1_bezet:b2cGetJaNee('bsc-p1_bezet'),
     eigendom:b2cGetJaNee('bsc-eigendom'),vrije_route:b2cGetJaNee('bsc-vrije_route'),
@@ -7927,7 +7927,7 @@ function b2cCloseScModal(){
 }
 
 function b2cExportScreening(id){
-  const l=b2cLeads.find(x=>x.id===id);if(!l||!l.screening)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l||!l.screening)return;
   const sc=l.screening;
   const txt=`SCREENINGSFORMULIER — INSTALLATIE LAADSTATION\nBLITZ Power BV · Heirbaan 395, 9150 Kruibeke\n\nDATUM: ${sc.datum||today()}\nNAAM: ${b2cNaam(l)}\nADRES: ${l.adres||'—'}\n\nLOCATIE\nDigitale meter: ${sc.digitale_meter||'—'}\nP1-poort bezet: ${sc.p1_bezet||'—'}\nEigendom muur: ${sc.eigendom||'—'}\nVrije route: ${sc.vrije_route||'—'}\nGevelbekleding: ${sc.gevelbekleding||'—'}\nAfstand: ${sc.afstand||'—'}\n\nELEKTRISCH\nHoofdzekering: ${sc.hoofdzekering||'—'} A\nAansluiting: ${sc.aansluiting||'—'}\nVrije ruimte kast: ${sc.vrije_ruimte||'—'}\n\nINTERNET\nLAN: ${sc.lan||'—'}\n4G: ${sc.vierg||'—'}\n\nCONCLUSIE\nExtra werken: ${sc.extra_werken||'—'}\nOpmerkingen: ${sc.opmerkingen||'—'}\nFoto's: ${(sc.fotos||[]).length}\n`;
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));a.download=`Screening_${b2cNaam(l).replace(' ','_')}_${today()}.txt`;a.click();
@@ -7961,13 +7961,13 @@ function b2cRenderContract(l){
           <span style="font-size:12px;color:var(--tx3)">Offerte-PDF of document</span>
         </div>
         <div id="ct-offerte-naam" style="font-size:12px;color:var(--green);margin-top:4px;display:none"><i class="ti ti-check"></i> <span id="ct-offerte-lbl"></span></div>
-        <button class="btn primary" style="width:100%;justify-content:center;margin-top:1rem" onclick="b2cGenereerContract(${l.id})"><i class="ti ti-file-invoice"></i> Contract genereren</button>
+        <button class="btn primary" style="width:100%;justify-content:center;margin-top:1rem" onclick="b2cGenereerContract('${l.id}')"><i class="ti ti-file-invoice"></i> Contract genereren</button>
       </div>
       <div>
         <div style="font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Voorbeeld contract</div>
         <div class="contract-preview" id="ct-preview">Vul gegevens in en klik "Contract genereren".</div>
         <div id="ct-acties" style="display:none;margin-top:10px;display:flex;gap:8px">
-          <button class="btn primary" onclick="b2cDownloadContract(${l.id})"><i class="ti ti-file-type-pdf"></i> Download PDF</button>
+          <button class="btn primary" onclick="b2cDownloadContract('${l.id}')"><i class="ti ti-file-type-pdf"></i> Download PDF</button>
           <button class="btn" onclick="b2cCopyContract()"><i class="ti ti-copy"></i> Kopiëren</button>
         </div>
       </div>
@@ -8067,7 +8067,7 @@ function b2cGenereerContract(id){
 }
 
 function b2cDownloadContract(id){
-  const l=b2cLeads.find(x=>x.id===id);if(!l||!b2cContractTekst)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l||!b2cContractTekst)return;
   const c=b2cContractTekst;
   const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Contract '+c.naam+'</title><style>'+
     'body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#1D252D;font-size:12px}'+
@@ -8199,7 +8199,7 @@ function b2cCloseVisitModal(){
 }
 
 function b2cSaveVisit(){
-  const l=b2cLeads.find(x=>x.id===b2cVisitLeadId);if(!l)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cVisitLeadId));if(!l)return;
   l.visitDatum=document.getElementById('bv-datum').value;
   l.visitUur=document.getElementById('bv-uur').value;
   l.visitEinduur=document.getElementById('bv-einduur').value||'';
@@ -8214,7 +8214,7 @@ function b2cSaveVisit(){
 }
 
 function b2cAnnuleerVisit(){
-  const l=b2cLeads.find(x=>x.id===b2cVisitLeadId);if(!l)return;
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cVisitLeadId));if(!l)return;
   if(!confirm(`Visit van ${b2cNaam(l)} op ${l.visitDatum} verwijderen?`))return;
   l.visitDatum=null;l.visitUur=null;
   if(l.status==='Visit gepland')l.status='Nieuw';
@@ -8247,7 +8247,7 @@ function b2cOpenDoorstuur(id){
 function b2cDoorstuurConfirm(){
   const naam=document.getElementById('ds-naam').value.trim();
   if(!naam){showToast('Geef een projectnaam in.');return;}
-  const l=b2cLeads.find(x=>x.id===b2cDoorstuurLeadId);
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cDoorstuurLeadId));
   const project={
     naam,
     klant:document.getElementById('ds-klant').value.trim(),
@@ -8568,7 +8568,7 @@ function b2cBevestigAfvink(){
     return;
   }
   // Originele B2C flow
-  const l=b2cLeads.find(x=>x.id===b2cAfvinkLeadId);
+  const l=b2cLeads.find(x=>String(x.id)===String(b2cAfvinkLeadId));
   if(!l||!l.opvolgingen){b2cSluitAfvink();return;}
   const op=l.opvolgingen[b2cAfvinkOpIdx];
   const opmerking=document.getElementById('b2c-afvink-opmerking').value.trim();
@@ -9731,7 +9731,7 @@ function b2bOfferteGetHost(){
   // Geeft het object terug waarop de huidige offerte betrekking heeft: een B2B-project
   // of een B2C-lead, afhankelijk van vanuit welk scherm de offerte geopend werd.
   if(b2bOfferteHostType==='lead'){
-    return (typeof b2cLeads!=='undefined' && typeof b2cOpenLeadId!=='undefined') ? b2cLeads.find(x=>x.id===b2cOpenLeadId) : null;
+    return (typeof b2cLeads!=='undefined' && typeof b2cOpenLeadId!=='undefined') ? b2cLeads.find(x=>String(x.id)===String(b2cOpenLeadId)) : null;
   }
   return (editingIdx!==null && typeof projects!=='undefined' && projects[editingIdx]) ? projects[editingIdx] : null;
 }
