@@ -1212,6 +1212,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <div style="display:flex;gap:8px;flex-shrink:0">
       <button class="btn" onclick="b2cOpenNieuw(false)"><i class="ti ti-plus"></i> Snelle lead</button>
       <button class="btn primary" onclick="b2cOpenNieuw(true)"><i class="ti ti-map-pin"></i> Lead via visit</button>
+      <button class="btn sm" onclick="afasSyncWebOffertes()" title="AFAS weboffertes nu syncen" style="opacity:.7"><i class="ti ti-refresh"></i> AFAS sync</button>
     </div>
   </div>
   <div style="display:flex;gap:16px;align-items:flex-start">
@@ -5177,7 +5178,7 @@ function agOpenEditItem(a){
 
 function agOpenEdit(id){
   const sid=String(id);
-  if(sid.startsWith('b2c-')){b2cOpenDetail(parseInt(sid.replace('b2c-','')));return;}
+  if(sid.startsWith('b2c-')){b2cOpenDetail(sid.replace('b2c-',''));return;}
   if(sid.startsWith('b2b-')){const idx=projects.findIndex(p=>p.id===sid.replace('b2b-','')||p._rowid===sid.replace('b2b-',''));if(idx>-1)openModal(idx);return;}
   const a=agAfspraken.find(x=>x.id===id);if(!a)return;
   agEditId=id;
@@ -5912,7 +5913,7 @@ function instTicketInfoRender(inst){
           <div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Activiteiten lead</div>
           <div class="b2c-tl">${[...l.acties].slice(-5).reverse().map(a=>`<div class="b2c-tl-item"><div class="b2c-tl-date">${a.datum}</div><div class="b2c-tl-text">${a.tekst}</div></div>`).join('')}</div>
         </div>`:''}
-        <div style="margin-top:12px"><button class="btn sm" onclick="instDossierClose();b2cOpenDetail(${l.id})"><i class="ti ti-external-link"></i> Volledig dossier openen</button></div>
+        <div style="margin-top:12px"><button class="btn sm" onclick="instDossierClose();b2cOpenDetail('${l.id}')"><i class="ti ti-external-link"></i> Volledig dossier openen</button></div>
       </div>`;
     } else {
       html+='<div style="color:var(--tx3);font-size:13px">Lead niet gevonden (mogelijk verwijderd).</div>';
@@ -6064,7 +6065,8 @@ function doorstuurNaarInstallatie(bron, id){
   let leadObj=null, projObj=null;
 
   if(bron==='b2c'){
-    const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+    // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
     leadObj=l;
     voornaam=l.voornaam||'';achternaam=l.achternaam||'';adres=l.adres||'';tel=l.tel||'';email=l.email||'';resp=l.resp||'';
     linkId='b2c-'+l.id;linkLabel=b2cNaam(l);
@@ -6449,6 +6451,17 @@ function startAppAfterLogin(userNaam='', userEmail=''){
   loadGebruikers().catch(()=>{}).finally(()=>{
     showTab('agenda');
   });
+  // AFAS offertes sync — eerste keer bij opstarten, daarna op vaste tijdstippen
+  setTimeout(()=>afasSyncWebOffertes(), 5000);
+  // Controleer elke minuut of het een synctijdstip is (06:00, 12:00, 15:30)
+  setInterval(()=>{
+    const nu = new Date();
+    const hh = nu.getHours();
+    const mm = nu.getMinutes();
+    if((hh===6&&mm===0)||(hh===12&&mm===0)||(hh===15&&mm===30)){
+      afasSyncWebOffertes();
+    }
+  }, 60000);
 }
 
 function linkUserToResp(userNaam, userEmail){
@@ -6667,7 +6680,7 @@ function b2cRenderGesloten(prefix, allList, kleur, label){
 
   el.innerHTML=list.map(l=>{
     const datum=(l.acties||[]).filter(a=>a.tekst.toLowerCase().includes(label.toLowerCase())).pop()?.datum||'';
-    return`<div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr 120px;gap:10px;align-items:center;padding:12px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:8px;cursor:pointer" onclick="b2cOpenDetail(${l.id})">
+    return`<div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr 120px;gap:10px;align-items:center;padding:12px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:8px;cursor:pointer" onclick="b2cOpenDetail('${l.id}')">
       <div>
         <div style="font-weight:600;font-size:13px">${b2cNaam(l)}</div>
         <div style="font-size:11px;color:var(--tx3)">${l.tel||l.email||''}</div>
@@ -6676,7 +6689,7 @@ function b2cRenderGesloten(prefix, allList, kleur, label){
       <div style="font-size:12px;color:var(--tx2)">${l.resp||'—'}</div>
       <div style="font-size:12px;color:var(--tx3)">${datum||'—'}</div>
       <div style="display:flex;gap:6px">
-        <button class="btn sm" onclick="event.stopPropagation();b2cOpenDetail(${l.id})"><i class="ti ti-eye"></i></button>
+        <button class="btn sm" onclick="event.stopPropagation();b2cOpenDetail('${l.id}')"><i class="ti ti-eye"></i></button>
         <button class="btn sm" onclick="event.stopPropagation();b2cHeractiveer(${l.id})" title="Terugzetten naar actief"><i class="ti ti-refresh"></i></button>
       </div>
     </div>`;
@@ -6687,7 +6700,8 @@ function b2cGewSetResp(r){b2cGewRespFilter=r;b2cRenderGewonnen();}
 function b2cVlSetResp(r){b2cVlRespFilter=r;b2cRenderVerloren();}
 
 function b2cHeractiveer(id){
-  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
   if(!confirm(`"${b2cNaam(l)}" terugzetten naar actieve leads?`))return;
   l.status='Nieuw';
   l.acties=l.acties||[];
@@ -6914,7 +6928,7 @@ function b2cAttachBoardEvents(){
     const tile=e.target.closest('[data-b2c-id]');
     if(!tile)return;
     _b2cDragging=false;
-    _b2cDragId=parseInt(tile.dataset.b2cId);
+    _b2cDragId=tile.dataset.b2cId;
     e.dataTransfer.effectAllowed='move';
     e.dataTransfer.setData('text/plain',String(_b2cDragId));
     setTimeout(()=>tile.style.opacity='.3',0);
@@ -6953,9 +6967,9 @@ function b2cAttachBoardEvents(){
     e.preventDefault();e.stopPropagation();
     col.style.background='';
     const newStatus=col.dataset.b2cStatus;
-    const id=parseInt(e.dataTransfer.getData('text/plain')||_b2cDragId);
+    const id=String(e.dataTransfer.getData('text/plain')||_b2cDragId||'');
     if(!id)return;
-    const l=b2cLeads.find(x=>x.id===id);
+    const l=b2cLeads.find(x=>String(x.id)===id);
     if(!l||l.status===newStatus){_b2cDragId=null;return;}
     if(newStatus==='Offerte installateur'){
       _b2cDragId=null;
@@ -6981,7 +6995,7 @@ function b2cAttachBoardEvents(){
     if(_b2cDragging)return;
     const tile=e.target.closest('[data-b2c-id]');
     if(!tile)return;
-    b2cOpenDetail(parseInt(tile.dataset.b2cId));
+    b2cOpenDetail(tile.dataset.b2cId);
   });
 }
 
@@ -7127,7 +7141,8 @@ async function b2cInstAanmaken(){
 // ─── DETAIL MODAL ───────────────────────────────────
 function b2cOpenDetail(id){
   b2cOpenLeadId=id;
-  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
   document.getElementById('b2c-detail-titel').textContent=b2cNaam(l);
   document.getElementById('b2c-detail-overlay').classList.add('open');
   b2bOfferteState=null; b2bOfferteHostType='lead'; b2bOfferteNS='b2cof';
@@ -7145,7 +7160,8 @@ function b2cCloseDetail(){
 }
 
 function b2cVerwijderLead(id){
-  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
   if(!confirm(`Lead "${b2cNaam(l)}" definitief verwijderen? Dit kan niet ongedaan gemaakt worden.`))return;
   // Verwijder ook gelinkte installatietickets
   const linkId='b2c-'+id;
@@ -7273,13 +7289,16 @@ function b2cRenderInfo(l){
           <div class="field" style="margin-bottom:10px"><label><i class="ti ti-mail" style="margin-right:3px"></i>E-mail</label><input id="bi-email" value="${l.email||''}" type="email" style="font-size:13px"></div>
         </div>
         <div class="field" style="margin-bottom:10px"><label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Installatieadres</label><input id="bi-adres" value="${l.adres||''}" placeholder="Straat, nr, gemeente..." style="font-size:13px"></div>
-        <div class="field" style="margin-bottom:10px"><label><i class="ti ti-receipt" style="margin-right:3px"></i>BTW-nummer <span style="color:var(--tx3);font-weight:400">(optioneel — bv. zelfstandige klant)</span></label><input id="bi-btw" value="${l.btw||''}" placeholder="BE 0123.456.789" style="font-size:13px"></div>
+        <div class="grid2" style="gap:10px;margin-bottom:10px">
+          <div class="field" style="margin-bottom:0"><label><i class="ti ti-building" style="margin-right:3px"></i>Bedrijfsnaam <span style="color:var(--tx3);font-weight:400">(optioneel)</span></label><input id="bi-bedrijf" value="${l.bedrijf||''}" placeholder="Bedrijfsnaam..." style="font-size:13px"></div>
+          <div class="field" style="margin-bottom:0"><label><i class="ti ti-receipt" style="margin-right:3px"></i>BTW-nummer <span style="color:var(--tx3);font-weight:400">(optioneel)</span></label><input id="bi-btw" value="${l.btw||''}" placeholder="BE 0123.456.789" style="font-size:13px"></div>
+        </div>
 
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin:14px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--bd)"><i class="ti ti-settings" style="margin-right:5px"></i>Lead details</div>
         <div class="field" style="margin-bottom:10px">
           <label>Status</label>
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
-            ${B2C_STATUSSEN.map(s=>`<button class="b2c-status-step${l.status===s?' current':''}" style="font-size:11px;padding:3px 9px" onclick="b2cChangeStatus(${l.id},'${s}')">${s}</button>`).join('')}
+            ${B2C_STATUSSEN.map(s=>`<button class="b2c-status-step${l.status===s?' current':''}" style="font-size:11px;padding:3px 9px" onclick="b2cChangeStatus('${l.id}','${s}')">${s}</button>`).join('')}
           </div>
         </div>
         <div class="grid2" style="gap:10px">
@@ -7403,6 +7422,7 @@ function b2cSaveLeadEdit(sluiten=true){
   const nemail=get('bi-email');if(nemail!==null&&nemail!==(l.email||'')){l.email=nemail;changed.push('e-mail');}
   const nadres=get('bi-adres');if(nadres!==null&&nadres!==(l.adres||'')){l.adres=nadres;changed.push('adres');}
   const nbtw=get('bi-btw');if(nbtw!==null&&nbtw!==(l.btw||'')){l.btw=nbtw;changed.push('BTW-nummer');}
+  const nbedrijf=get('bi-bedrijf');if(nbedrijf!==null&&nbedrijf!==(l.bedrijf||'')){l.bedrijf=nbedrijf;changed.push('bedrijfsnaam');}
   const nbron=get('bi-bron');if(nbron!==null&&nbron!==(l.bron||'')){l.bron=nbron;changed.push('bron');}
   const nwarmte=get('bi-warmte')||get('bi-warmte-top');if(nwarmte&&nwarmte!==(l.warmte||'')){l.warmte=nwarmte;changed.push('warmte');}
   const nnotities=get('bi-notities');if(nnotities!==null&&nnotities!==(l.notities||'')){l.notities=nnotities;changed.push('notities');}
@@ -7508,7 +7528,7 @@ function b2cRenderDashOpvolgingen(){
             onmouseover="this.style.background='rgba(99,153,34,.15)'" onmouseout="this.style.background='none'">
             <i class="ti ti-check" style="font-size:10px;color:#639922"></i>
           </button>
-          <div style="flex:1;min-width:0;cursor:pointer" onclick="b2cOpenDetail(${l.id})">
+          <div style="flex:1;min-width:0;cursor:pointer" onclick="b2cOpenDetail('${l.id}')">
             <div style="font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b2cNaam(l)}</div>
             <div style="font-size:11px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${op.tekst}</div>
             ${op.uur?`<div style="font-size:10px;color:var(--tx3)">${op.uur}</div>`:''}
@@ -7531,7 +7551,8 @@ function b2cSaveOpvolging(id){
   const datum=document.getElementById('bop-datum').value;
   const tekst=document.getElementById('bop-tekst').value.trim();
   if(!datum||!tekst){showToast('Vul datum en omschrijving in.');return;}
-  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
   l.opvolgingen=l.opvolgingen||[];
   l.opvolgingen.push({datum,uur:document.getElementById('bop-uur').value,
           einduur:document.getElementById('bop-einduur')?.value||'',tekst,gedaan:false});
@@ -7661,7 +7682,8 @@ function b2cQuickWarmte(w){
 }
 
 function b2cChangeStatus(id,s){
-  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
   if(s==='Gewonnen'){
     b2cOpenLeadId=id;
     document.getElementById('b2c-gewonnen-keuze-naam').textContent=b2cNaam(l);
@@ -7686,7 +7708,8 @@ function b2cChangeStatus(id,s){
 function b2cLogActie(id){
   const inp=document.getElementById('b2c-actie-input');
   const tekst=inp.value.trim();if(!tekst)return;
-  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
   l.acties=l.acties||[];l.acties.push(logEntry(tekst));
   sbSaveB2cLead(l);
   inp.value='';
@@ -7752,7 +7775,8 @@ function b2cScSamenvatting(sc){
 // ─── SCREENING FORMULIER ────────────────────────────
 function b2cStartScreening(id){
   b2cScreeningLeadId=id;
-  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
   b2cScreeningFotos=(l.screening&&l.screening.fotos)||[];
   b2cScreeningSelects={gevelbekleding:l.screening?.gevelbekleding||'',aansluiting:l.screening?.aansluiting||''};
   const sc=l.screening||{};
@@ -7961,7 +7985,8 @@ function b2cHandleOfferteUpload(e){
 }
 
 function b2cGenereerContract(id){
-  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
   const naam=document.getElementById('ct-naam').value||b2cNaam(l);
   const adres=document.getElementById('ct-adres').value||l.adres||'—';
   const btw=document.getElementById('ct-btw').value||'Particulier';
@@ -8151,7 +8176,8 @@ function b2cSaveLead(){
 // ─── VISIT MODAL ────────────────────────────────────
 function b2cOpenVisitModal(id){
   b2cVisitLeadId=id;
-  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
   document.getElementById('b2c-visit-titel').textContent='Visit inplannen — '+b2cNaam(l);
   document.getElementById('bv-datum').value=l.visitDatum||'';
   document.getElementById('bv-uur').value=l.visitUur||'10:00';
@@ -8196,7 +8222,8 @@ function b2cAnnuleerVisit(){
 }
 function b2cOpenDoorstuur(id){
   b2cDoorstuurLeadId=id;
-  const l=b2cLeads.find(x=>x.id===id);if(!l)return;
+  // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
   // Vul B2B velden voor met B2C data
   document.getElementById('ds-naam').value=b2cNaam(l)+' — EV Lader';
   document.getElementById('ds-klant').value=b2cNaam(l);
@@ -8285,7 +8312,7 @@ function b2cSelectDag(ds){
   const pane=document.getElementById('b2c-dag-visits');
   if(!dl.length){pane.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:.75rem">Geen visits op deze dag</div>';return;}
   pane.innerHTML=dl.map(l=>`
-    <div class="visit-slot-card" onclick="b2cOpenDetail(${l.id})">
+    <div class="visit-slot-card" onclick="b2cOpenDetail('${l.id}')">
       <div class="visit-slot-time">${l.visitUur||'—'}</div>
       <div class="visit-slot-naam">${b2cNaam(l)}</div>
       <div class="visit-slot-sub">${l.adres||'—'}</div>
@@ -8303,7 +8330,7 @@ function b2cRenderAankomende(){
   pane.innerHTML=lijst.map(l=>{
     const d=new Date(l.visitDatum);
     const dTxt=d.getDate()+' '+MNLB[d.getMonth()].substring(0,3);
-    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:7px;cursor:pointer" onclick="b2cOpenDetail(${l.id})">
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:7px;cursor:pointer" onclick="b2cOpenDetail('${l.id}')">
       <div style="min-width:46px;font-size:13px;font-weight:700;color:var(--green)">${dTxt}${l.visitUur?'<br><span style="font-size:10px;color:var(--tx3);font-weight:400">'+l.visitUur+'</span>':''}</div>
       <div style="flex:1"><div style="font-size:13px;font-weight:600">${b2cNaam(l)}</div><div style="font-size:11px;color:var(--tx3)">${l.adres||'—'}</div></div>
       <span class="badge ${b2cBadgeW(l.warmte)}">${l.warmte}</span>
@@ -9052,8 +9079,9 @@ let wmsAfasSamenstellingen = []; // blijft leeg — Blitz_laadstations/samenstel
 let wmsAfasStatus = 'idle';
 let wmsArtikelFilter = 'alle'; // 'alle' | 'supabase' | 'afas'
 
-async function afasFetchConnector(connectorName, take=1000) {
-  const resp = await fetch(`${AFAS_PROXY_URL}?skip=0&take=${take}&connector=${encodeURIComponent(connectorName)}`, {
+async function afasFetchConnector(connectorName, take=1000, extraParams='') {
+  const url = `${AFAS_PROXY_URL}?skip=0&take=${take}&connector=${encodeURIComponent(connectorName)}${extraParams}`;
+  const resp = await fetch(url, {
     headers: {
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
@@ -9892,11 +9920,12 @@ async function b2bRenderOfferteTab(){
     const naam=l?b2cNaam(l):'(geen klantnaam)';
     klantHtml=`
       <div><strong>${naam||'(geen klantnaam)'}</strong></div>
+      ${(l?.bedrijf||'').trim()?`<div style="font-size:13px;color:var(--tx2)">${l.bedrijf.trim()}</div>`:''}
       <div>${(l?.adres||'').trim()||'(geen adres)'}</div>
+      ${(l?.btw||'').trim()?`<div style="font-size:12px;color:var(--tx2);margin-top:2px">BTW: ${l.btw.trim()}</div>`:''}
       <div style="display:flex;gap:18px;margin-top:4px;flex-wrap:wrap">
         ${(l?.email||'').trim()?'<span><i class="ti ti-mail" style="font-size:12px"></i> '+l.email.trim()+'</span>':''}
         ${(l?.tel||'').trim()?'<span><i class="ti ti-phone" style="font-size:12px"></i> '+l.tel.trim()+'</span>':''}
-        ${(l?.btw||'').trim()?'<span><i class="ti ti-receipt" style="font-size:12px"></i> BTW: '+l.btw.trim()+'</span>':''}
       </div>
       <div style="font-size:11px;color:var(--tx3);margin-top:6px"><i class="ti ti-info-circle"></i> Wijzig klantgegevens in het Dossier-tabblad — die worden automatisch overgenomen op de offerte.</div>`;
 
@@ -10494,7 +10523,7 @@ async function b2bOfferteGenereren(){
       await sbSaveB2cLead(host).catch(()=>{});
       // PDF-generator verwacht {klant, adres, offerte} — bij een B2C-lead bestaat dat niet
       // als zodanig, dus we bouwen een kleine adapter met dezelfde velden.
-      b2bGenereerOffertePDF({ klant: b2cNaam(host), adres: host.adres||'', btw: host.btw||'', offerte: host.offerte });
+      b2bGenereerOffertePDF({ klant: b2cNaam(host), bedrijf: host.bedrijf||'', adres: host.adres||'', btw: host.btw||'', offerte: host.offerte });
     } else {
       lsSave&&lsSave();
       await sbSaveProject(host).catch(()=>{});
@@ -10539,6 +10568,16 @@ function b2bGenereerOffertePDF(project){
   doc.text(klantNaam, pageWidth - margin, y, {align:'right'});
   y += 14;
 
+  // Bedrijfsnaam onder naam (rechts)
+  if(project.bedrijf){
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(...GRAY);
+    doc.text(project.bedrijf.toUpperCase(), pageWidth - margin, y, {align:'right'});
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...BLACK);
+    y += 13;
+  }
+
   const adresRaw = (project.adres||'').trim();
   let klantStraat = '', klantPostcodeStad = '';
   if(adresRaw.includes(',')){
@@ -10549,10 +10588,10 @@ function b2bGenereerOffertePDF(project){
     klantStraat = adresRaw;
   }
   const klantRegels = [];
-  if(project.btw) klantRegels.push('BTW: '+project.btw);
   if(klantStraat) klantRegels.push(klantStraat.toUpperCase());
   if(klantPostcodeStad) klantRegels.push(klantPostcodeStad.toUpperCase());
   klantRegels.push('België');
+  if(project.btw) klantRegels.push('BTW: '+project.btw);
   const eigenRegels = ['Heirbaan 395','9150 KRUIBEKE','België'];
 
   doc.setFont('helvetica','normal');
@@ -11665,6 +11704,204 @@ function wmsOpenLocatieDetail(code){
 
 
 
+async function afasResetEnResync(){
+  if(!confirm('Alle AFAS webofferte leads verwijderen en opnieuw importeren?'))return;
+  showToast('Bezig met verwijderen...');
+  // Verwijder alle leads met _afasOfferteid
+  const afasLeads = b2cLeads.filter(l=>l._afasOfferteid);
+  for(const l of afasLeads){
+    await sbDeleteB2cLead(l.id).catch(()=>{});
+  }
+  b2cLeads = b2cLeads.filter(l=>!l._afasOfferteid);
+  b2cRenderLeads();
+  // Reset sync lock zodat dezelfde ordernummers opnieuw aangemaakt worden
+  _afasSyncBusy = false;
+  showToast('AFAS leads verwijderd, opnieuw syncen...');
+  await afasSyncWebOffertes();
+}
+let _afasSyncBusy = false;
+
+async function afasSyncWebOffertes() {
+  if(_afasSyncBusy) return;
+  _afasSyncBusy = true;
+  console.log('[AFAS Sync] Start weboffertes sync...');
+  try {
+    // Slim pagineren: zoek de batch die 2026-07-01+ bevat
+    // Op basis van data: skip=4000→feb2024, skip=6000→feb2025
+    // Schatting: ~2000 rijen per 6 maanden → skip=10000 ≈ mid 2026
+    const SYNC_VANAF = '2026-07-01';
+    let allRows = [];
+
+    const batches = [10000, 8000, 12000, 14000];
+    for(const skip of batches) {
+      try {
+        const batchResp = await fetch(
+          `${AFAS_PROXY_URL}?skip=${skip}&take=3000&connector=${encodeURIComponent('Blitz-verkoopofferteregels')}`,
+          { headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY } }
+        );
+        if(!batchResp.ok) { console.warn('[AFAS Sync] Batch skip='+skip+' HTTP fout:', batchResp.status); continue; }
+        const batchJson = await batchResp.json();
+        const batchRows = batchJson.rows || batchJson.data?.rows || [];
+        if(!batchRows.length) { console.log('[AFAS Sync] Batch skip='+skip+': leeg — einde connector'); break; }
+        const firstDatum = (batchRows[0]?.Datum||'').slice(0,10);
+        const lastDatum = (batchRows[batchRows.length-1]?.Datum||'').slice(0,10);
+        console.log(`[AFAS Sync] Batch skip=${skip}: ${batchRows.length} rijen, datum ${firstDatum} → ${lastDatum}`);
+        // Voeg toe als de batch recente records bevat
+        const heeftRecenteRijen = batchRows.some(r=>(r.Datum||'').slice(0,10)>=SYNC_VANAF);
+        if(heeftRecenteRijen || lastDatum >= SYNC_VANAF || firstDatum >= SYNC_VANAF) {
+          allRows = [...allRows, ...batchRows.filter(r=>(r.Datum||'').slice(0,10)>=SYNC_VANAF)];
+          console.log(`[AFAS Sync] Batch skip=${skip}: ${allRows.length} WEB-kandidaten na datum filter`);
+        }
+        // Als de batch nog voor onze datum valt, ga verder
+        if(lastDatum < SYNC_VANAF) { console.log(`[AFAS Sync] skip=${skip} nog voor ${SYNC_VANAF}, volgende batch...`); }
+        // Als de batch al na onze datum valt, hoeven we niet verder
+        if(firstDatum >= SYNC_VANAF && batchRows.length < 3000) break;
+      } catch(e) { console.warn('[AFAS Sync] Batch skip='+skip+' fout:', e.message); }
+    }
+
+    const rows = allRows;
+    console.log('[AFAS Sync] Totaal rijen voor filter:', rows.length);
+    if(!rows || !rows.length){
+      console.log('[AFAS Sync] Geen rijen na 01/07/2026 gevonden. Pas de skip waarden aan.');
+      _afasSyncBusy=false; return;
+    }
+    const origins = [...new Set(rows.map(r=>r.Oorsprong_Offerte).filter(Boolean))];
+    console.log('[AFAS Sync] Oorsprong waarden in batch:', origins);
+
+    // WEB filter op al datum-gefilterde rijen
+    const webRows = rows.filter(r => {
+      const oo = (r.Oorsprong_Offerte || '').toString().toUpperCase();
+      return oo.includes('WEB');
+    });
+    console.log('[AFAS Sync] WEB offertes:', webRows.length, '| Alle oorsprongen:', [...new Set(rows.map(r=>r.Oorsprong_Offerte).filter(Boolean))]);
+    if(!webRows.length){ _afasSyncBusy=false; return; }
+
+    // Groepeer per Ordernummer
+    const perOrder = {};
+    webRows.forEach(r => {
+      const nr = String(r.Ordernummer || r.ordernummer || '').trim();
+      if(!nr) return;
+      if(!perOrder[nr]) perOrder[nr] = [];
+      perOrder[nr].push(r);
+    });
+    console.log('[AFAS Sync] Unieke ordernummers:', Object.keys(perOrder).length);
+
+    let nNieuw = 0;
+    for(const [ordernr, regels] of Object.entries(perOrder)) {
+      const eerste = regels[0];
+
+      // Naam eindklant: Naam_3 = eindklant, Naam = bedrijf/verkooprelatie
+      // Als Naam_3 leeg is, gebruik Naam maar strip bedrijfsnamen
+      const naamEindklant = (eerste.Naam_3 || eerste.naam_3 || '').trim();
+      const naamFallback = (eerste.Naam || eerste.naam || '').trim();
+      const naamRaw = naamEindklant || naamFallback;
+      const naamZonderBedrijf = naamRaw.replace(/\s*\(.*?\)\s*/g, '').trim();
+      const naamDelen = naamZonderBedrijf.split(/\s+/);
+      const voornaam = naamDelen[0] || '';
+      const achternaam = naamDelen.slice(1).join(' ') || '';
+      const bedrijfMatch = naamRaw.match(/\(([^)]+)\)/);
+      // Bedrijf: apart veld of tussen haakjes in naam
+      const bedrijf = (eerste.Bedrijf || eerste.bedrijf || (bedrijfMatch ? bedrijfMatch[1] : '')).trim();
+
+      // Tel/email: underscore variant (geen spatie in veldnaam)
+      const tel = (eerste.Telefoonnummer_eindklant || eerste['Telefoonnummer eindklant'] || '').trim();
+      const email = (eerste['E-mailadres_eindklant'] || eerste['E-mailadres eindklant'] || '').trim();
+      const adres = (eerste.Adres_eindklant || eerste['Adres eindklant'] || '').trim();
+      const bedrijfEindklant = (eerste.Bedrijf_eindklant || eerste['Bedrijf eindklant'] || eerste.Bedrijf || eerste.bedrijf || (bedrijfMatch ? bedrijfMatch[1] : '')).trim();
+      const oorsprong = (eerste.Oorsprong_Offerte || '').toString().toUpperCase();
+      const bron = oorsprong.includes('WEB') ? 'Website' : 'Andere';
+      const datum = (eerste.Datum || eerste.datum || today()).toString().slice(0,10);
+      const opmerking = (eerste.Opmerking || eerste.opmerking || '').trim();
+
+      // Check duplicaat op _afasOfferteid
+      const bestaand = b2cLeads.find(l => l._afasOfferteid === ordernr);
+      if(bestaand) {
+        console.log('[AFAS Sync] Duplicaat gevonden:', ordernr);
+        const extraNota = `\nOfferte ${ordernr} ook van ${naamZonderBedrijf} (AFAS duplicaat)`;
+        if(!(bestaand.notities||'').includes(ordernr)) {
+          bestaand.notities = ((bestaand.notities||'') + extraNota).trim();
+          sbSaveB2cLead(bestaand);
+        }
+        continue;
+      }
+
+      // Offerteregels → groeperingen
+      const groeperingMap = {};
+      regels.forEach(r => {
+        const gr = (r.Groepering || r.groepering || 'Algemeen').trim() || 'Algemeen';
+        if(!groeperingMap[gr]) groeperingMap[gr] = [];
+        groeperingMap[gr].push({
+          sku: r.Itemcode || r.itemcode || '',
+          omschrijving: r.Omschrijving || r.omschrijving || '',
+          aantal: parseFloat(r.Aantal_eenheden || r.aantal_eenheden || 1) || 1,
+          eenheid: r.Eenheid || r.eenheid || 'Stuks',
+          prijs: parseFloat(r.Prijs || r.prijs || 0) || 0,
+          kortingPct: parseFloat(r.__Regelkorting || r.Regelkorting || 0) || 0,
+          kortingEuro: 0,
+          btw: 'Algemeen',
+        });
+      });
+      const groeperingen = Object.entries(groeperingMap).map(([naam, items]) => ({ naam, items }));
+
+      const notitieText = [
+        `AFAS Offerte #${ordernr}`,
+        `Datum: ${datum}`,
+        eerste.Status_offerte ? `Status: ${eerste.Status_offerte}` : '',
+        opmerking ? `Opmerking: ${opmerking}` : '',
+      ].filter(Boolean).join('\n');
+
+      // Nieuwe B2C lead — geef een lokaal id mee
+      // Stabiel string id op basis van ordernummer — zodat b2cOpenDetail het kan vinden
+      const lokaalId = 'afas-' + ordernr;
+      const nieuweLead = {
+        id: lokaalId,
+        voornaam,
+        achternaam,
+        bedrijf: bedrijfEindklant||'',
+        tel,
+        email,
+        adres,
+        status: 'Nieuw',
+        warmte: 'Lauw',
+        bron,
+        resp: '',
+        notities: notitieText,
+        _afasOfferteid: ordernr,
+        _afasBron: 'WEB',
+        aangemaakt: datum,
+        offerte: {
+          offertenummer: ordernr,
+          datum,
+          referentie: `AFAS #${ordernr}`,
+          btwPercentage: 21,
+          opmerkingen: opmerking,
+          groeperingen,
+        },
+        acties: [{datum: today(), tekst: `Lead aangemaakt vanuit AFAS webofferte #${ordernr}`}],
+      };
+
+      // Eerst lokaal toevoegen zodat het meteen zichtbaar is
+      b2cLeads.push(nieuweLead);
+      b2cRenderLeads();
+      nNieuw++;
+      console.log('[AFAS Sync] Nieuwe lead aangemaakt:', voornaam, achternaam, ordernr);
+
+      // Dan opslaan in Supabase
+      sbSaveB2cLead(nieuweLead).catch(e => console.warn('[AFAS Sync] Save fout:', e.message));
+    }
+
+    if(nNieuw > 0) {
+      showToast(`✓ AFAS sync: ${nNieuw} nieuwe webofferte${nNieuw!==1?'s':''} geïmporteerd`);
+    } else {
+      console.log('[AFAS Sync] Geen nieuwe offertes gevonden.');
+    }
+  } catch(e) {
+    console.warn('[AFAS Sync] Fout:', e.message, e.stack);
+  } finally {
+    _afasSyncBusy = false;
+  }
+}
+
 // === WEEK VIEW + TODO FEATURES ===
 // ── AGENDA VIEW (maand/week) ──────────────────────────
 let agView='maand'; // 'maand' of 'week'
@@ -11935,7 +12172,7 @@ function agRenderWeekTodo(dagenStr){
   el.querySelectorAll('[data-twtd]').forEach(btn=>{btn.addEventListener('click',()=>todoAfvinken(btn.dataset.twtd));});
   el.querySelectorAll('[data-sid-todoid]').forEach(s=>{s.addEventListener('click',()=>todoOpenModal(s.dataset.sidTodoid));});
   el.querySelectorAll('[data-sid-agid]').forEach(d=>{d.addEventListener('click',()=>agOpenEdit(d.dataset.sidAgid));});
-  el.querySelectorAll('[data-sid-leadid]').forEach(d=>{d.addEventListener('click',()=>{showTab('b2c');setTimeout(()=>b2cOpenDetail(parseInt(d.dataset.sidLeadid)),200);});});
+  el.querySelectorAll('[data-sid-leadid]').forEach(d=>{d.addEventListener('click',()=>{showTab('b2c');setTimeout(()=>b2cOpenDetail(d.dataset.sidLeadid),200);});});
   el.querySelectorAll('[data-sid-projid]').forEach(d=>{d.addEventListener('click',()=>{const pid=d.dataset.sidProjid;const idx=projects.findIndex(p=>String(p.id)===String(pid)||String(p._rowid)===String(pid));if(idx>=0){showTab('lopend');setTimeout(()=>openModal(idx),200);}});});
 }
 
