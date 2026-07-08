@@ -11989,6 +11989,7 @@ function renderKlantOpvolging(obj, type){
           <button class="btn sm primary" onclick="ttGenereerLink('${obj.id||obj._sbid||''}','${type}')">
             <i class="ti ti-${token?'refresh':'link'}"></i> ${token?'Vernieuw link':'Genereer klantlink'}
           </button>
+          ${token ? `<button class="btn sm" onclick="ttVerwijderLink('${obj.id||obj._sbid||''}','${type}')" style="background:#fff0f0;color:#a32d2d;border:1px solid #fcc"><i class="ti ti-link-off"></i> Link verwijderen</button>` : ''}
         </div>
       </div>
 
@@ -12110,6 +12111,16 @@ function renderKlantChat(obj, type){
 function ttGetObj(id, type){
   if(type==='b2c') return b2cLeads.find(x=>String(x.id)===String(id));
   return projects.find(x=>String(x.id)===String(id)||String(x._rowid)===String(id));
+}
+
+function ttVerwijderLink(id, type){
+  if(!confirm('Klantlink verwijderen? De klant kan de pagina dan niet meer bekijken. Chat, documenten en reviewinstellingen worden ook gewist.')) return;
+  const obj = ttGetObj(id, type);
+  if(!obj) return;
+  obj.trackTrace = {}; // alles wissen
+  if(type==='b2c'){ sbSaveB2cLead(obj); renderKlantOpvolging(obj, type); }
+  else { sbSaveProject(obj); renderKlantOpvolging(obj, type); }
+  showToast('Klantlink verwijderd ✓');
 }
 
 function ttGenereerLink(id, type){
