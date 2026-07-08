@@ -137,7 +137,7 @@ function renderAll(){
   const stap = tt.stap || 0;
   const afgerond = stap >= STAPPEN.length-1;
   const naam = [trackData.voornaam||'', trackData.naam||trackData.achternaam||'', trackData.klant||''].filter(Boolean).join(' ') || 'Uw project';
-  const docs = (trackData.docs||trackData.documenten||[]).filter((_,i)=>(tt.zichtbaareDocs||[]).includes(i));
+  const docs = (trackData.docs||trackData.documenten||[]).filter(d=>d.zichtbaarVoorKlant);
   const berichten = (tt.chat||[]).sort((a,b)=>a.ts.localeCompare(b.ts));
   const heeftReview = tt.review;
 
@@ -188,8 +188,8 @@ function renderAll(){
         ${docs.length===0
           ? `<div style="color:var(--tx3);font-size:13px;font-style:italic;padding:10px 0">Er zijn nog geen documenten beschikbaar voor u.</div>`
           : docs.map(d=>`
-            <a class="doc-item" href="${d.url||d.data||'#'}" target="_blank" download="${d.naam||d.name}">
-              <i class="ti ti-file-text" style="font-size:20px;color:var(--green);flex-shrink:0"></i>
+            <a class="doc-item" href="${d.data||d.url||'#'}" target="_blank" ${d.data?`download="${d.naam||d.name}"`:''}>
+              <i class="ti ti-${d._type==='offerte'?'file-invoice':'file-text'}" style="font-size:20px;color:var(--green);flex-shrink:0"></i>
               <span style="flex:1;font-size:13px;font-weight:500">${d.naam||d.name||'Document'}</span>
               <i class="ti ti-download" style="color:var(--tx3)"></i>
             </a>
