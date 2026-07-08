@@ -11678,33 +11678,55 @@ async function wmsSaveRekNummering(){
   const rekNaam = document.getElementById('wms-rek-nummering-naam').value;
   const richting = document.getElementById('wms-rek-nummering-richting').value;
   const start = parseInt(document.getElementById('wms-rek-nummering-start').value)||1;
-  const rek = wmsRekken.find(r=>r.id===rekId);
-  if(!rek) return;
+
+  console.log('[Nummering] rekId=',rekId,'naam=',rekNaam,'richting=',richting,'start=',start);
+
+  // String vergelijking voor UUID ids
+  const rek = wmsRekken.find(r=>String(r.id)===String(rekId));
+  if(!rek){ showToast('Rek niet gevonden.'); console.error('[Nummering] rek niet gevonden, rekken:', wmsRekken.map(r=>r.id)); return; }
+  if(!supabaseClient){ showToast('Geen verbinding met database.'); return; }
   if(!confirm(`Alle slotnummers van rek "${rekNaam}" herberekenen? Bezette vakken worden losgekoppeld.`)) return;
-  const totaalPosities = rek.secties.reduce((s,sec)=>s+sec.per_laag,0);
-  for(let i=0;i<rek.secties.length;i++){
-    const sec = rek.secties[i];
-    const lagen = sec.lagen||3;
-    const perLaag = sec.per_laag||4;
-    const sOff = rek.secties.slice(0,i).reduce((s,x)=>s+x.per_laag,0);
-    // Verwijder bestaande slots
-    await supabaseClient.from('wms_slots').delete().eq('sectie_id',sec.id);
-    // Maak nieuwe slots met juiste nummering
-    const slots=[];
-    for(let laag=0;laag<lagen;laag++){
-      for(let pos=0;pos<perLaag;pos++){
-        const positieNr = richting==='rechts'
-          ? start+totaalPosities-1-sOff-pos
-          : start+sOff+pos;
-        slots.push({sectie_id:sec.id,code:rekNaam+laag+String(positieNr).padStart(2,'0'),artikel_id:null});
+
+  showToast('Bezig met herberekenen...');
+
+  try {
+    const totaalPosities = rek.secties.reduce((s,sec)=>s+sec.per_laag,0);
+    console.log('[Nummering] totaalPosities=',totaalPosities,'secties=',rek.secties.length);
+
+    for(let i=0;i<rek.secties.length;i++){
+      const sec = rek.secties[i];
+      const lagen = sec.lagen||3;
+      const perLaag = sec.per_laag||4;
+      const sOff = rek.secties.slice(0,i).reduce((s,x)=>s+x.per_laag,0);
+
+      // Verwijder bestaande slots
+      const {error:delErr} = await supabaseClient.from('wms_slots').delete().eq('sectie_id',sec.id);
+      if(delErr) console.error('[Nummering] delete fout sectie',sec.id,delErr.message);
+
+      // Maak nieuwe slots
+      const slots=[];
+      for(let laag=0;laag<lagen;laag++){
+        for(let pos=0;pos<perLaag;pos++){
+          const positieNr = richting==='rechts'
+            ? start+totaalPosities-1-sOff-pos
+            : start+sOff+pos;
+          const code = rekNaam+laag+String(positieNr).padStart(2,'0');
+          slots.push({sectie_id:sec.id,code,artikel_id:null});
+        }
       }
+      console.log('[Nummering] sectie',i+1,'inserting',slots.length,'slots, eerste:',slots[0]?.code,'laatste:',slots[slots.length-1]?.code);
+      const {error:insErr} = await supabaseClient.from('wms_slots').insert(slots);
+      if(insErr) console.error('[Nummering] insert fout:', insErr.message);
     }
-    await supabaseClient.from('wms_slots').insert(slots);
+
+    await wmsLoadAll();
+    wmsCloseModal('wms-rek-nummering-modal');
+    wmsRenderAdminRekken();
+    showToast('Nummering van rek '+rekNaam+' bijgewerkt ✓');
+  } catch(e) {
+    console.error('[Nummering] Fout:', e.message);
+    showToast('Fout bij herberekenen: '+e.message);
   }
-  await wmsLoadAll();
-  wmsCloseModal('wms-rek-nummering-modal');
-  wmsRenderAdminRekken();
-  showToast('Nummering van rek '+rekNaam+' bijgewerkt ✓');
 }
 
 function wmsOpenRekModal(){
