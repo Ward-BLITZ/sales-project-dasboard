@@ -11661,16 +11661,41 @@ function wmsRenderAdminRekken(){
     </div>`;
   }).join('');
 }
-function wmsOpenRekModal(){document.getElementById('wms-rek-naam').value='';document.getElementById('wms-rek-start').value=1;wmsModalSecties=[{lagen:3,perLaag:4},{lagen:3,perLaag:4}];wmsRenderSectieList();wmsUpdateRekPreview();wmsOpenModal('wms-rek-modal');}
+function wmsOpenRekModal(){
+  document.getElementById('wms-rek-naam').value='';
+  document.getElementById('wms-rek-start').value=1;
+  document.getElementById('wms-rek-richting').value='links';
+  wmsModalSecties=[{lagen:3,perLaag:4},{lagen:3,perLaag:4}];
+  wmsRenderSectieList();wmsUpdateRekPreview();wmsOpenModal('wms-rek-modal');
+}
 function wmsRenderSectieList(){document.getElementById('wms-sectie-list').innerHTML=wmsModalSecties.map((sec,i)=>'<div class="wms-sectie-item"><div class="wms-sectie-nr">'+(i+1)+'</div><div style="display:flex;gap:9px;flex:1;align-items:center"><div><div style="font-size:11px;color:var(--tx2);margin-bottom:2px">Lagen</div><input class="wms-sectie-input-sm" type="number" min="1" max="10" value="'+sec.lagen+'" oninput="wmsModalSecties['+i+'].lagen=Math.max(1,parseInt(this.value)||1);wmsUpdateRekPreview()"></div><div><div style="font-size:11px;color:var(--tx2);margin-bottom:2px">Plekken/laag</div><input class="wms-sectie-input-sm" type="number" min="1" max="20" value="'+sec.perLaag+'" oninput="wmsModalSecties['+i+'].perLaag=Math.max(1,parseInt(this.value)||1);wmsUpdateRekPreview()"></div></div>'+(wmsModalSecties.length>1?'<button class="btn danger sm" onclick="wmsRemoveSectie('+i+')"><i class="ti ti-x"></i></button>':'')+' </div>').join('');}
 function wmsAddSectie(){const l=wmsModalSecties[wmsModalSecties.length-1]||{lagen:3,perLaag:4};wmsModalSecties.push({lagen:l.lagen,perLaag:l.perLaag});wmsRenderSectieList();wmsUpdateRekPreview();}
 function wmsRemoveSectie(i){wmsModalSecties.splice(i,1);wmsRenderSectieList();wmsUpdateRekPreview();}
 function wmsUpdateRekPreview(){document.getElementById('wms-rek-preview-svg').innerHTML=wmsPreviewHTML(document.getElementById('wms-rek-naam').value||'?',parseInt(document.getElementById('wms-rek-start').value)||1,wmsModalSecties);}
 async function wmsSaveRek(){
-  const naam=document.getElementById('wms-rek-naam').value.trim(),start=parseInt(document.getElementById('wms-rek-start').value)||1;
-  if(!naam){showToast('Naam is verplicht.');return;}if(wmsRekken.find(r=>r.naam.toLowerCase()===naam.toLowerCase())){showToast('Rek "'+naam+'" bestaat al.');return;}if(!wmsModalSecties.length){showToast('Voeg minstens één sectie toe.');return;}
+  const naam=document.getElementById('wms-rek-naam').value.trim().toUpperCase();
+  const start=parseInt(document.getElementById('wms-rek-start').value)||1;
+  const richting=document.getElementById('wms-rek-richting')?.value||'links';
+  if(!naam){showToast('Naam is verplicht.');return;}
+  if(wmsRekken.find(r=>r.naam.toLowerCase()===naam.toLowerCase())){showToast('Rek "'+naam+'" bestaat al.');return;}
+  if(!wmsModalSecties.length){showToast('Voeg minstens één sectie toe.');return;}
   const{data:rek}=await supabaseClient.from('wms_rekken').insert({naam}).select().single();
-  for(let i=0;i<wmsModalSecties.length;i++){const sec=wmsModalSecties[i],lagen=Math.max(1,sec.lagen||3),perLaag=Math.max(1,sec.perLaag||4);const{data:sectie}=await supabaseClient.from('wms_secties').insert({rek_id:rek.id,sectie_nr:i+1,lagen,per_laag:perLaag}).select().single();const sOff=wmsModalSecties.slice(0,i).reduce((s,x)=>s+(x.perLaag||4),0);const slots=[];for(let laag=0;laag<lagen;laag++)for(let pos=0;pos<perLaag;pos++)slots.push({sectie_id:sectie.id,code:naam+laag+String(start+sOff+pos).padStart(2,'0'),artikel_id:null});await supabaseClient.from('wms_slots').insert(slots);}
+  const totaalPosities=wmsModalSecties.reduce((s,x)=>s+(x.perLaag||4),0);
+  for(let i=0;i<wmsModalSecties.length;i++){
+    const sec=wmsModalSecties[i],lagen=Math.max(1,sec.lagen||3),perLaag=Math.max(1,sec.perLaag||4);
+    const{data:sectie}=await supabaseClient.from('wms_secties').insert({rek_id:rek.id,sectie_nr:i+1,lagen,per_laag:perLaag}).select().single();
+    const sOff=wmsModalSecties.slice(0,i).reduce((s,x)=>s+(x.perLaag||4),0);
+    const slots=[];
+    for(let laag=0;laag<lagen;laag++){
+      for(let pos=0;pos<perLaag;pos++){
+        const positieNr=richting==='rechts'
+          ? start+totaalPosities-1-sOff-pos
+          : start+sOff+pos;
+        slots.push({sectie_id:sectie.id,code:naam+laag+String(positieNr).padStart(2,'0'),artikel_id:null});
+      }
+    }
+    await supabaseClient.from('wms_slots').insert(slots);
+  }
   await wmsLoadAll();wmsCloseModal('wms-rek-modal');wmsRenderAdminRekken();showToast('Rek '+naam+' aangemaakt ✓');
 }
 async function wmsAddSectieToRek(rekId,rekNaam){const rek=wmsRekken.find(r=>r.id===rekId);if(!rek)return;const nieuwNr=rek.secties.length+1;const lagen=parseInt(prompt('Lagen voor Stuk '+nieuwNr+'?','3'))||3;const perLaag=parseInt(prompt('Plekken/laag voor Stuk '+nieuwNr+'?','4'))||4;const{data:sectie}=await supabaseClient.from('wms_secties').insert({rek_id:rekId,sectie_nr:nieuwNr,lagen,per_laag:perLaag}).select().single();const bOff=rek.secties.reduce((s,x)=>s+x.per_laag,0);const slots=[];for(let laag=0;laag<lagen;laag++)for(let pos=0;pos<perLaag;pos++)slots.push({sectie_id:sectie.id,code:rekNaam+laag+String(1+bOff+pos).padStart(2,'0'),artikel_id:null});await supabaseClient.from('wms_slots').insert(slots);await wmsLoadAll();wmsRenderAdminRekken();showToast('Stuk '+nieuwNr+' toegevoegd ✓');}
@@ -13110,9 +13135,15 @@ window.addEventListener('resize',()=>{if(typeof agView!=='undefined'&&agView==='
 <div class="wms-modal-overlay" id="wms-rek-modal">
   <div class="wms-modal wms-modal-wide">
     <div class="wms-modal-title">Nieuw rek aanmaken</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:6px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin-bottom:6px">
       <div class="wms-field"><label>Reknaam (bijv. A, B, Rek-01)</label><input id="wms-rek-naam" placeholder="A" oninput="wmsUpdateRekPreview()" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px;outline:none"></div>
       <div class="wms-field"><label>Positienummering start bij</label><input type="number" id="wms-rek-start" min="1" value="1" oninput="wmsUpdateRekPreview()" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px;outline:none"></div>
+      <div class="wms-field"><label>Nummering richting</label>
+        <select id="wms-rek-richting" onchange="wmsUpdateRekPreview()" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px">
+          <option value="links">← Links naar rechts</option>
+          <option value="rechts">→ Rechts naar links</option>
+        </select>
+      </div>
     </div>
     <div style="font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:7px">Secties</div>
     <div id="wms-sectie-list"></div>
