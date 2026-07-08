@@ -2104,6 +2104,8 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <div class="inner-tabs" style="flex-shrink:0;padding:0 24px">
       <button class="inner-tab active" id="b2b-dtab-dossier" onclick="b2bShowDetailTab('dossier')"><i class="ti ti-info-circle" style="margin-right:5px"></i>Dossier</button>
       <button class="inner-tab" id="b2b-dtab-offerte" onclick="b2bShowDetailTab('offerte')"><i class="ti ti-file-invoice" style="margin-right:5px"></i>Offerte</button>
+      <button class="inner-tab" id="b2b-dtab-klantopvolging" onclick="b2bShowDetailTab('klantopvolging')"><i class="ti ti-map-pin" style="margin-right:5px"></i>Klantopvolging</button>
+      <button class="inner-tab" id="b2b-dtab-chat" onclick="b2bShowDetailTab('chat')"><i class="ti ti-message" style="margin-right:5px"></i>Chat <span id="b2b-chat-badge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;font-size:10px;padding:1px 5px;margin-left:2px">!</span></button>
     </div>
     <div style="flex:1;overflow-y:auto">
     <div id="b2b-tab-dossier">
@@ -2225,6 +2227,8 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     </div><!-- einde dossier tab padding -->
     </div><!-- einde b2b-tab-dossier -->
     <div id="b2b-tab-offerte" style="display:none;padding:20px 24px 24px"></div>
+    <div id="b2b-tab-klantopvolging" style="display:none"></div>
+    <div id="b2b-tab-chat" style="display:none"></div>
     </div><!-- einde scrollbare content -->
     <div class="modal-footer" style="flex-shrink:0">
       <button class="btn danger" id="m-delete-btn" style="display:none;margin-right:auto" onclick="deleteProject()"><i class="ti ti-trash"></i> Verwijderen</button>
@@ -2253,12 +2257,16 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="inner-tab" id="b2c-dtab-screening" onclick="b2cShowDetailTab('screening')"><i class="ti ti-clipboard-list" style="margin-right:5px"></i>Screening</button>
       <button class="inner-tab" id="b2c-dtab-contract" onclick="b2cShowDetailTab('contract')"><i class="ti ti-file-invoice" style="margin-right:5px"></i>Contract</button>
       <button class="inner-tab" id="b2c-dtab-documenten" onclick="b2cShowDetailTab('documenten')"><i class="ti ti-paperclip" style="margin-right:5px"></i>Documenten</button>
+      <button class="inner-tab" id="b2c-dtab-klantopvolging" onclick="b2cShowDetailTab('klantopvolging')"><i class="ti ti-map-pin" style="margin-right:5px"></i>Klantopvolging</button>
+      <button class="inner-tab" id="b2c-dtab-chat" onclick="b2cShowDetailTab('chat')"><i class="ti ti-message" style="margin-right:5px"></i>Chat <span id="b2c-chat-badge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;font-size:10px;padding:1px 5px;margin-left:2px">!</span></button>
     </div>
     <div style="flex:1;overflow-y:auto">
       <div id="b2c-detail-info"></div>
       <div id="b2c-detail-screening" style="display:none"></div>
       <div id="b2c-detail-contract" style="display:none"></div>
       <div id="b2c-tab-offerte" style="display:none;padding:20px 24px 24px"></div>
+      <div id="b2c-detail-klantopvolging" style="display:none"></div>
+      <div id="b2c-detail-chat" style="display:none"></div>
       <div id="b2c-detail-documenten" style="display:none">
         <div style="padding:16px 20px">
           <div style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Upload hier offertes, foto's, attesten, facturen, ...</div>
@@ -3054,6 +3062,8 @@ async function loadAll(){
     if(typeof agView!=='undefined'&&agView==='week')agRenderWeek();
     else{agRenderCalendar();agRenderAankomende();}
   }
+  // Check ongelezen klantberichten
+  if(typeof ttCheckOngelezen==='function') ttCheckOngelezen();
 }
 
 async function sbSaveProject(p){
@@ -7386,15 +7396,19 @@ function b2cVerwijderLead(id){
 }
 
 function b2cShowDetailTab(tab){
-  ['info','screening','contract','offerte','documenten'].forEach(t=>{
-    document.getElementById('b2c-dtab-'+t).classList.toggle('active',t===tab);
-    document.getElementById(t==='offerte' ? 'b2c-tab-offerte' : 'b2c-detail-'+t).style.display=t===tab?'block':'none';
+  ['info','screening','contract','offerte','documenten','klantopvolging','chat'].forEach(t=>{
+    const btn=document.getElementById('b2c-dtab-'+t);
+    const pane=document.getElementById(t==='offerte'?'b2c-tab-offerte':'b2c-detail-'+t);
+    if(btn)btn.classList.toggle('active',t===tab);
+    if(pane)pane.style.display=t===tab?'block':'none';
   });
   const l=b2cLeads.find(x=>String(x.id)===String(b2cOpenLeadId));if(!l)return;
   if(tab==='info')b2cRenderInfo(l);
   if(tab==='screening')b2cRenderScreening(l);
   if(tab==='contract')b2cRenderContract(l);
   if(tab==='documenten')b2cRenderDocumenten(l);
+  if(tab==='klantopvolging')renderKlantOpvolging(l,'b2c');
+  if(tab==='chat')renderKlantChat(l,'b2c');
   if(tab==='offerte'){
     b2bOfferteHostType='lead'; b2bOfferteNS='b2cof';
     b2bRenderOfferteTab();
@@ -10084,7 +10098,7 @@ async function b2bNieuweOfferteState() {
 
 function b2bShowDetailTab(tab){
   b2bOfferteHostType='project'; b2bOfferteNS='off';
-  ['dossier','offerte'].forEach(t=>{
+  ['dossier','offerte','klantopvolging','chat'].forEach(t=>{
     const btn=document.getElementById('b2b-dtab-'+t);
     const pane=document.getElementById('b2b-tab-'+t);
     if(btn)btn.classList.toggle('active',t===tab);
@@ -10093,6 +10107,16 @@ function b2bShowDetailTab(tab){
   if(tab==='offerte'){
     b2bRenderOfferteTab();
     b2bZorgArtikelDataGeladen().then(()=>{ if(document.getElementById('b2b-dtab-offerte')?.classList.contains('active')) b2bRenderGroeperingen(); });
+  }
+  if(tab==='klantopvolging'){
+    const idx=editingIdx;
+    const proj=projects[idx];
+    if(proj)renderKlantOpvolging(proj,'b2b');
+  }
+  if(tab==='chat'){
+    const idx=editingIdx;
+    const proj=projects[idx];
+    if(proj)renderKlantChat(proj,'b2b');
   }
 }
 
@@ -11924,7 +11948,273 @@ async function afasResetEnResync(){
   showToast('AFAS leads verwijderd, opnieuw syncen...');
   await afasSyncWebOffertes();
 }
-// ── MOBILE NAV ────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// KLANT TRACK & TRACE + CHAT SYSTEEM
+// ══════════════════════════════════════════════════════════════
+
+const TT_STAPPEN_B2C = ['Offerte','Contract','Planning installatie','Installatie','Keuring','Afgerond'];
+const TT_STAPPEN_B2B = ['Offerte','Contract','Planning installatie','Installatie','Keuring','Afgerond'];
+
+function ttGenToken(){
+  return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+}
+
+// ── Klantopvolging tab renderen ──────────────────────────────
+function renderKlantOpvolging(obj, type){
+  const panelId = type==='b2c' ? 'b2c-detail-klantopvolging' : 'b2b-tab-klantopvolging';
+  const el = document.getElementById(panelId);
+  if(!el) return;
+
+  const tt = obj.trackTrace || {};
+  const stappen = type==='b2c' ? TT_STAPPEN_B2C : TT_STAPPEN_B2B;
+  const huidigeStap = tt.stap || 0;
+  const token = tt.token || '';
+  const base = window.location.href.replace(/[^/]*$/, '');
+  const trackUrl = token ? base+'track.html?t='+token : '';
+  const docs = obj.docs || obj.documenten || [];
+
+  el.innerHTML = `
+    <div style="padding:20px 24px">
+      <!-- Token / Link -->
+      <div style="background:var(--bg2);border-radius:var(--r);padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:4px"><i class="ti ti-link"></i> Klantlink</div>
+          ${token
+            ? `<div style="font-size:12px;color:var(--green);word-break:break-all">${trackUrl}</div>`
+            : `<div style="font-size:12px;color:var(--tx3);font-style:italic">Nog geen klantlink gegenereerd</div>`
+          }
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          ${token ? `<button class="btn sm" onclick="navigator.clipboard.writeText('${trackUrl}').then(()=>showToast('Link gekopieerd ✓'))"><i class="ti ti-copy"></i> Kopieer</button>` : ''}
+          <button class="btn sm primary" onclick="ttGenereerLink('${obj.id||obj._sbid||''}','${type}')">
+            <i class="ti ti-${token?'refresh':'link'}"></i> ${token?'Vernieuw link':'Genereer klantlink'}
+          </button>
+        </div>
+      </div>
+
+      <!-- Statusbalk -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;font-weight:700;color:var(--tx2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.4px">Huidige status</div>
+        <div style="display:flex;gap:0;margin-bottom:16px;overflow-x:auto">
+          ${stappen.map((s,i)=>`
+            <div onclick="ttSetStap('${obj.id||''}','${type}',${i})" style="flex:1;min-width:80px;text-align:center;cursor:pointer;padding:8px 4px;position:relative">
+              <div style="width:32px;height:32px;border-radius:50%;background:${i<=huidigeStap?'var(--green)':'var(--bg3)'};color:${i<=huidigeStap?'#fff':'var(--tx3)'};display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:13px;font-weight:700;border:2px solid ${i===huidigeStap?'var(--green)':i<huidigeStap?'var(--green)':'var(--bd)'}">
+                ${i<huidigeStap?'<i class="ti ti-check" style="font-size:14px"></i>':i+1}
+              </div>
+              <div style="font-size:10px;color:${i<=huidigeStap?'var(--tx)':'var(--tx3)'};font-weight:${i===huidigeStap?700:400};line-height:1.2">${s}</div>
+              ${i<stappen.length-1?`<div style="position:absolute;top:22px;right:-4px;left:60%;height:2px;background:${i<huidigeStap?'var(--green)':'var(--bd)'}"></div>`:''}
+            </div>
+          `).join('')}
+        </div>
+        ${huidigeStap===stappen.length-1?`
+          <div style="background:rgba(0,223,163,.1);border:1px solid var(--green);border-radius:var(--r);padding:12px 16px;display:flex;align-items:center;gap:10px">
+            <i class="ti ti-star" style="color:#f59e0b;font-size:18px"></i>
+            <div>
+              <div style="font-size:13px;font-weight:600">Project afgerond — Review uitnodiging</div>
+              <div style="font-size:12px;color:var(--tx2)">Klant kan via de trackpagina een review achterlaten</div>
+            </div>
+          </div>
+        `:''}
+      </div>
+
+      <!-- Documenten zichtbaarheid -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;font-weight:700;color:var(--tx2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">Documenten voor klant</div>
+        ${docs.length===0
+          ? `<div style="font-size:12px;color:var(--tx3);font-style:italic;padding:10px 0">Geen documenten geüpload. Upload via het tabblad Documenten.</div>`
+          : docs.map((d,di)=>`
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border-radius:var(--r);margin-bottom:6px">
+              <i class="ti ti-file" style="color:var(--tx3);font-size:16px;flex-shrink:0"></i>
+              <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.naam||d.name||'Document'}</span>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:var(--tx2);flex-shrink:0">
+                <input type="checkbox" ${(tt.zichtbaareDocs||[]).includes(di)?'checked':''} 
+                  onchange="ttToggleDoc('${obj.id||''}','${type}',${di},this.checked)" style="width:14px;height:14px">
+                Zichtbaar voor klant
+              </label>
+            </div>
+          `).join('')
+        }
+      </div>
+
+      <!-- Opmerking voor klant -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--tx2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Bericht voor klant (zichtbaar op trackpagina)</div>
+        <textarea id="tt-klant-bericht-${type}" rows="3" placeholder="bv. Uw installateur neemt contact op om een datum af te spreken..." style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;resize:vertical">${tt.klantBericht||''}</textarea>
+        <button class="btn sm primary" style="margin-top:8px" onclick="ttSlaBerichtOp('${obj.id||''}','${type}')"><i class="ti ti-check"></i> Opslaan</button>
+      </div>
+    </div>
+  `;
+}
+
+// ── Chat tab renderen ────────────────────────────────────────
+function renderKlantChat(obj, type){
+  const panelId = type==='b2c' ? 'b2c-detail-chat' : 'b2b-tab-chat';
+  const el = document.getElementById(panelId);
+  if(!el) return;
+
+  const berichten = (obj.trackTrace?.chat || []).sort((a,b)=>a.ts.localeCompare(b.ts));
+
+  el.innerHTML = `
+    <div style="padding:20px 24px;display:flex;flex-direction:column;height:calc(100% - 40px);min-height:400px">
+      <div style="font-size:12px;font-weight:700;color:var(--tx2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.4px">
+        <i class="ti ti-message"></i> Chat met klant
+      </div>
+
+      <!-- Berichten -->
+      <div id="tt-chat-berichten-${type}" style="flex:1;overflow-y:auto;padding-right:4px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px;max-height:350px;scrollbar-width:thin">
+        ${berichten.length===0
+          ? `<div style="text-align:center;color:var(--tx3);font-size:12px;font-style:italic;padding:20px">Nog geen berichten. De klant kan berichten sturen via de trackpagina.</div>`
+          : berichten.map(b=>`
+            <div style="display:flex;flex-direction:column;align-items:${b.van==='klant'?'flex-start':'flex-end'}">
+              <div style="max-width:75%;background:${b.van==='klant'?'var(--bg2)':'var(--green)'};color:${b.van==='klant'?'var(--tx)':'#fff'};border-radius:${b.van==='klant'?'4px 14px 14px 14px':'14px 4px 14px 14px'};padding:9px 13px;font-size:13px;line-height:1.4">
+                ${b.tekst}
+              </div>
+              <div style="font-size:10px;color:var(--tx3);margin-top:2px;padding:0 4px">
+                ${b.van==='klant'?'Klant':'Jij'} · ${b.ts?.slice(0,16).replace('T',' ')}
+                ${b.van==='klant'&&!b.gelezen?'<span style="background:#ef4444;color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;margin-left:4px">Nieuw</span>':''}
+              </div>
+            </div>
+          `).join('')
+        }
+      </div>
+
+      <!-- Stuur bericht -->
+      <div style="display:flex;gap:8px;border-top:1px solid var(--bd);padding-top:12px">
+        <input id="tt-chat-input-${type}" type="text" placeholder="Typ een bericht naar de klant..." 
+          style="flex:1;padding:9px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px"
+          onkeydown="if(event.key==='Enter')ttStuurBericht('${obj.id||''}','${type}')">
+        <button class="btn primary" onclick="ttStuurBericht('${obj.id||''}','${type}')"><i class="ti ti-send"></i></button>
+      </div>
+    </div>
+  `;
+
+  // Scroll naar beneden
+  const chatEl = document.getElementById(`tt-chat-berichten-${type}`);
+  if(chatEl) setTimeout(()=>{ chatEl.scrollTop=chatEl.scrollHeight; }, 50);
+
+  // Markeer klantberichten als gelezen
+  if(obj.trackTrace?.chat){
+    let changed = false;
+    obj.trackTrace.chat.forEach(b=>{ if(b.van==='klant'&&!b.gelezen){ b.gelezen=true; changed=true; } });
+    if(changed){
+      if(type==='b2c') sbSaveB2cLead(obj);
+      else sbSaveProject(obj);
+      // Verberg badge
+      const badge = document.getElementById(`${type==='b2c'?'b2c':'b2b'}-chat-badge`);
+      if(badge) badge.style.display='none';
+    }
+  }
+}
+
+// ── Track & Trace acties ─────────────────────────────────────
+function ttGetObj(id, type){
+  if(type==='b2c') return b2cLeads.find(x=>String(x.id)===String(id));
+  return projects.find(x=>String(x.id)===String(id)||String(x._rowid)===String(id));
+}
+
+function ttGenereerLink(id, type){
+  const obj = ttGetObj(id, type);
+  if(!obj) return;
+  if(!obj.trackTrace) obj.trackTrace = {};
+  obj.trackTrace.token = ttGenToken();
+  obj.trackTrace.stap = obj.trackTrace.stap || 0;
+  obj.trackTrace.zichtbaareDocs = obj.trackTrace.zichtbaareDocs || [];
+  obj.trackTrace.chat = obj.trackTrace.chat || [];
+  if(type==='b2c'){ sbSaveB2cLead(obj); renderKlantOpvolging(obj, type); }
+  else { sbSaveProject(obj); renderKlantOpvolging(obj, type); }
+  showToast('Klantlink aangemaakt ✓');
+}
+
+function ttSetStap(id, type, stap){
+  const obj = ttGetObj(id, type);
+  if(!obj) return;
+  if(!obj.trackTrace) obj.trackTrace = {};
+  obj.trackTrace.stap = stap;
+  if(type==='b2c'){ sbSaveB2cLead(obj); renderKlantOpvolging(obj, type); }
+  else { sbSaveProject(obj); renderKlantOpvolging(obj, type); }
+  showToast('Status bijgewerkt ✓');
+}
+
+function ttToggleDoc(id, type, docIdx, zichtbaar){
+  const obj = ttGetObj(id, type);
+  if(!obj) return;
+  if(!obj.trackTrace) obj.trackTrace = {};
+  if(!obj.trackTrace.zichtbaareDocs) obj.trackTrace.zichtbaareDocs = [];
+  if(zichtbaar){
+    if(!obj.trackTrace.zichtbaareDocs.includes(docIdx)) obj.trackTrace.zichtbaareDocs.push(docIdx);
+  } else {
+    obj.trackTrace.zichtbaareDocs = obj.trackTrace.zichtbaareDocs.filter(i=>i!==docIdx);
+  }
+  if(type==='b2c') sbSaveB2cLead(obj);
+  else sbSaveProject(obj);
+}
+
+function ttSlaBerichtOp(id, type){
+  const obj = ttGetObj(id, type);
+  if(!obj) return;
+  if(!obj.trackTrace) obj.trackTrace = {};
+  const inputEl = document.getElementById(`tt-klant-bericht-${type}`);
+  obj.trackTrace.klantBericht = inputEl?.value || '';
+  if(type==='b2c') sbSaveB2cLead(obj);
+  else sbSaveProject(obj);
+  showToast('Bericht opgeslagen ✓');
+}
+
+function ttStuurBericht(id, type){
+  const obj = ttGetObj(id, type);
+  if(!obj) return;
+  const inputEl = document.getElementById(`tt-chat-input-${type}`);
+  const tekst = inputEl?.value?.trim();
+  if(!tekst) return;
+  if(!obj.trackTrace) obj.trackTrace = {};
+  if(!obj.trackTrace.chat) obj.trackTrace.chat = [];
+  obj.trackTrace.chat.push({
+    van: 'intern',
+    tekst,
+    ts: new Date().toISOString(),
+    gelezen: true,
+    gebruiker: currentUserNaam || userNaam || '',
+  });
+  inputEl.value = '';
+  if(type==='b2c') sbSaveB2cLead(obj);
+  else sbSaveProject(obj);
+  renderKlantChat(obj, type);
+}
+
+// ── Check ongelezen berichten bij laden ──────────────────────
+function ttCheckOngelezen(){
+  // B2C
+  b2cLeads.forEach(l=>{
+    const nieuweB = (l.trackTrace?.chat||[]).filter(b=>b.van==='klant'&&!b.gelezen);
+    if(nieuweB.length){
+      const badge = document.getElementById('b2c-chat-badge');
+      // Voeg opvolging toe voor verantwoordelijke
+      if(l.resp===currentUserNaam||l.resp===userNaam){
+        const msg = `💬 Klantbericht via trackpagina: "${nieuweB[nieuweB.length-1].tekst.slice(0,50)}"`;
+        if(!(l.opvolgingen||[]).some(op=>op.tekst===msg&&!op.gedaan)){
+          l.opvolgingen = l.opvolgingen||[];
+          l.opvolgingen.push({datum:today(),tekst:msg,gedaan:false});
+          sbSaveB2cLead(l);
+        }
+      }
+    }
+  });
+  // B2B
+  projects.forEach(p=>{
+    const nieuweB = (p.trackTrace?.chat||[]).filter(b=>b.van==='klant'&&!b.gelezen);
+    if(nieuweB.length && (p.resp===currentUserNaam||p.resp===userNaam)){
+      const msg = `💬 Klantbericht: "${nieuweB[nieuweB.length-1].tekst.slice(0,50)}"`;
+      if(!(p.opvolgingen||[]).some(op=>op.tekst===msg&&!op.gedaan)){
+        p.opvolgingen = p.opvolgingen||[];
+        p.opvolgingen.push({datum:today(),tekst:msg,gedaan:false});
+        sbSaveProject(p);
+      }
+    }
+  });
+}
+
+// ── TRACK PAGINA (publieke HTML pagina) ──────────────────────
+// Aparte track.html pagina — zie track.html bestand
 function mobNavOpen(){
   document.getElementById('mobile-nav-panel').classList.add('open');
   document.body.style.overflow='hidden';
