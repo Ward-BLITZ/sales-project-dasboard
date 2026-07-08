@@ -74,9 +74,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg2);color:var(--tx);min-he
 </div>
 
 <script>
-// ── Config — zelfde als dashboard ───────────────────────────
-const SB_URL = localStorage.getItem('blitz_sb_url') || '';
-const SB_KEY = localStorage.getItem('blitz_sb_key') || '';
+// ── Supabase configuratie ────────────────────────────
+const SB_URL = 'https://rhztaqutznafsgprnkvn.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoenRhcXV0em5hZnNncHJua3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTI2MjYsImV4cCI6MjA5NzI2ODYyNn0.n-ojVvnlm8x-g-O6WNoN8un67oR-yHMSlaJVuh_8caI';
 
 const STAPPEN = ['Offerte','Contract','Planning installatie','Installatie','Keuring','Afgerond'];
 
@@ -86,22 +86,11 @@ let trackToken = null;
 let sb = null;
 
 async function init(){
-  // Haal token uit URL
   const params = new URLSearchParams(window.location.search);
   trackToken = params.get('t');
   if(!trackToken){ showError(); return; }
 
-  // Init Supabase
-  if(!SB_URL||!SB_KEY){
-    // Probeer uit URL hash (indien meegegeven bij link generatie)
-    const hashParams = new URLSearchParams(window.location.hash.slice(1));
-    const u = hashParams.get('u') || SB_URL;
-    const k = hashParams.get('k') || SB_KEY;
-    if(!u||!k){ showError(); return; }
-    sb = window.supabase.createClient(u, k);
-  } else {
-    sb = window.supabase.createClient(SB_URL, SB_KEY);
-  }
+  sb = window.supabase.createClient(SB_URL, SB_KEY);
 
   // Zoek in b2c_leads
   const {data:b2cRows} = await sb.from('b2c_leads').select('*');
