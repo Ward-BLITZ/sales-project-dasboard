@@ -11645,7 +11645,8 @@ function wmsRenderAdminRekken(){
   container.innerHTML=wmsRekken.map(r=>{
     const allSlots=r.secties.flatMap(s=>s.slots),bezet=allSlots.filter(s=>s.artikel_id).length;
     const beheerKnoppen=wmsIsManager
-      ?`<button class="btn sm" onclick="wmsAddSectieToRek('${r.id}','${r.naam}')"><i class="ti ti-plus"></i> Sectie</button>
+      ?`<button class="btn sm" onclick="wmsOpenRekNummering('${r.id}','${r.naam}')"><i class="ti ti-sort-ascending-numbers"></i> Nummering</button>
+         <button class="btn sm" onclick="wmsAddSectieToRek('${r.id}','${r.naam}')"><i class="ti ti-plus"></i> Sectie</button>
          <button class="btn danger sm" onclick="wmsDeleteRek('${r.id}')"><i class="ti ti-x"></i> Verwijder</button>`
       :'';
     const sectieKnoppen=wmsIsManager
@@ -11661,6 +11662,51 @@ function wmsRenderAdminRekken(){
     </div>`;
   }).join('');
 }
+function wmsOpenRekNummering(rekId, rekNaam){
+  const rek = wmsRekken.find(r=>r.id===rekId);
+  if(!rek) return;
+  document.getElementById('wms-rek-nummering-titel').textContent = 'Nummering aanpassen — Rek '+rekNaam;
+  document.getElementById('wms-rek-nummering-id').value = rekId;
+  document.getElementById('wms-rek-nummering-naam').value = rekNaam;
+  document.getElementById('wms-rek-nummering-start').value = 1;
+  document.getElementById('wms-rek-nummering-richting').value = 'links';
+  wmsOpenModal('wms-rek-nummering-modal');
+}
+
+async function wmsSaveRekNummering(){
+  const rekId = document.getElementById('wms-rek-nummering-id').value;
+  const rekNaam = document.getElementById('wms-rek-nummering-naam').value;
+  const richting = document.getElementById('wms-rek-nummering-richting').value;
+  const start = parseInt(document.getElementById('wms-rek-nummering-start').value)||1;
+  const rek = wmsRekken.find(r=>r.id===rekId);
+  if(!rek) return;
+  if(!confirm(`Alle slotnummers van rek "${rekNaam}" herberekenen? Bezette vakken worden losgekoppeld.`)) return;
+  const totaalPosities = rek.secties.reduce((s,sec)=>s+sec.per_laag,0);
+  for(let i=0;i<rek.secties.length;i++){
+    const sec = rek.secties[i];
+    const lagen = sec.lagen||3;
+    const perLaag = sec.per_laag||4;
+    const sOff = rek.secties.slice(0,i).reduce((s,x)=>s+x.per_laag,0);
+    // Verwijder bestaande slots
+    await supabaseClient.from('wms_slots').delete().eq('sectie_id',sec.id);
+    // Maak nieuwe slots met juiste nummering
+    const slots=[];
+    for(let laag=0;laag<lagen;laag++){
+      for(let pos=0;pos<perLaag;pos++){
+        const positieNr = richting==='rechts'
+          ? start+totaalPosities-1-sOff-pos
+          : start+sOff+pos;
+        slots.push({sectie_id:sec.id,code:rekNaam+laag+String(positieNr).padStart(2,'00'),artikel_id:null});
+      }
+    }
+    await supabaseClient.from('wms_slots').insert(slots);
+  }
+  await wmsLoadAll();
+  wmsCloseModal('wms-rek-nummering-modal');
+  wmsRenderAdminRekken();
+  showToast('Nummering van rek '+rekNaam+' bijgewerkt ✓');
+}
+
 function wmsOpenRekModal(){
   document.getElementById('wms-rek-naam').value='';
   document.getElementById('wms-rek-start').value=1;
@@ -13183,6 +13229,32 @@ window.addEventListener('resize',()=>{if(typeof agView!=='undefined'&&agView==='
     <div class="wms-modal-footer">
       <button class="btn" onclick="wmsCloseModal('wms-lev-modal')">Annuleren</button>
       <button class="btn primary" onclick="wmsSaveLeverancier()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<div class="wms-modal-overlay" id="wms-rek-nummering-modal">
+  <div class="wms-modal">
+    <div class="wms-modal-title" id="wms-rek-nummering-titel">Nummering aanpassen</div>
+    <input type="hidden" id="wms-rek-nummering-id">
+    <input type="hidden" id="wms-rek-nummering-naam">
+    <div class="wms-field">
+      <label>Nummering richting</label>
+      <select id="wms-rek-nummering-richting" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px">
+        <option value="links">← Links naar rechts (01 links)</option>
+        <option value="rechts">→ Rechts naar links (01 rechts)</option>
+      </select>
+    </div>
+    <div class="wms-field">
+      <label>Start bij nummer</label>
+      <input type="number" id="wms-rek-nummering-start" min="1" value="1" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px;outline:none">
+    </div>
+    <div style="background:#fff8e6;border:1px solid #f59e0b;border-radius:var(--r);padding:10px 12px;font-size:12px;color:#854f0b;margin-bottom:12px">
+      <i class="ti ti-alert-triangle"></i> Dit verwijdert alle bestaande slotnummers en maakt nieuwe aan. Artikelen in bezette vakken worden losgekoppeld.
+    </div>
+    <div class="wms-modal-footer">
+      <button class="btn" onclick="wmsCloseModal('wms-rek-nummering-modal')">Annuleren</button>
+      <button class="btn primary" onclick="wmsSaveRekNummering()">Nummering herberekenen</button>
     </div>
   </div>
 </div>
