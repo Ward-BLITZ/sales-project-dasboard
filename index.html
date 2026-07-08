@@ -53,6 +53,176 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .field{margin-bottom:14px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:600px){.grid2{grid-template-columns:1fr}}
+
+/* ═══════════════════════════════════════════════
+   MOBILE & TABLET RESPONSIVE  (≤900px)
+═══════════════════════════════════════════════ */
+@media(max-width:900px){
+
+  /* ── Navigatie: hamburger menu ── */
+  .tabs{
+    padding:0;
+    flex-wrap:nowrap;
+    overflow:visible;
+    position:sticky;top:0;z-index:50;
+  }
+  .tab-btn:not(#tab-hamburger):not(#tab-zoek){ display:none!important; }
+  .nav-dropdown{ display:none!important; }
+
+  #tab-hamburger{
+    display:inline-flex!important;
+    align-items:center;gap:6px;
+    font-size:15px;padding:10px 14px;
+    margin-left:auto;
+  }
+  #tab-zoek{
+    padding:10px 12px;
+  }
+
+  /* Hamburger menu panel */
+  #mobile-nav-panel{
+    position:fixed;top:0;left:0;right:0;bottom:0;
+    background:var(--bg);z-index:200;
+    display:none;
+    flex-direction:column;
+    overflow-y:auto;
+  }
+  #mobile-nav-panel.open{ display:flex; }
+  .mob-nav-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 20px;border-bottom:1px solid var(--bd);
+    background:var(--dark);color:#fff;
+    font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;
+  }
+  .mob-nav-section{
+    padding:8px 0;border-bottom:1px solid var(--bd2);
+  }
+  .mob-nav-label{
+    font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+    color:var(--tx3);padding:10px 20px 4px;
+  }
+  .mob-nav-btn{
+    display:flex;align-items:center;gap:12px;
+    width:100%;padding:13px 20px;
+    background:none;border:none;cursor:pointer;
+    font-size:14px;color:var(--tx);text-align:left;
+    font-family:'Inter',sans-serif;font-weight:500;
+  }
+  .mob-nav-btn:active{ background:var(--bg2); }
+  .mob-nav-btn i{ font-size:17px;color:var(--green);width:20px;text-align:center; }
+
+  /* ── Pages ── */
+  .page{ padding:1rem; }
+  .page.wide{ padding:.75rem; }
+
+  /* ── Modals: volledig scherm op mobiel ── */
+  .modal-overlay.open{
+    align-items:flex-end;
+    padding:0;
+  }
+  .modal-box{
+    max-width:100%!important;
+    width:100%!important;
+    max-height:92vh;
+    border-radius:20px 20px 0 0;
+    padding:1.25rem 1rem;
+  }
+
+  /* ── B2C Kanban: horizontaal scroll ── */
+  #b2c-kanban-board{
+    flex-direction:row!important;
+    overflow-x:auto;
+    padding-bottom:.75rem;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+  }
+  #b2c-kanban-board > div{
+    flex:0 0 85vw!important;
+    max-height:calc(100vh - 180px)!important;
+    scroll-snap-align:start;
+  }
+
+  /* ── Agenda week: scrollbaar ── */
+  #ag-view-week-pane{
+    flex-direction:column!important;
+    height:auto!important;
+  }
+  #ag-week-sidebar{
+    width:100%!important;
+    max-height:200px;
+    overflow-y:auto;
+    border-right:none!important;
+    border-bottom:1px solid var(--bd);
+  }
+  #ag-week-main{ height:auto!important; }
+  #ag-week-scroll{
+    height:calc(8 * 48px + 38px)!important;
+    max-height:none!important;
+  }
+  #ag-week-grid{
+    grid-template-columns:36px repeat(7,minmax(80px,1fr))!important;
+    min-width:640px;
+  }
+  /* Agenda nav en pills wrap */
+  #pane-agenda .page{ overflow-x:auto; }
+
+  /* ── Prospects tabel → cards ── */
+  #prosp-tabel thead{ display:none; }
+  #prosp-tabel tr{
+    display:block;
+    background:var(--bg);border:1px solid var(--bd);
+    border-radius:var(--r);margin-bottom:8px;padding:10px 12px;
+  }
+  #prosp-tabel td{
+    display:block;border:none;padding:2px 0;font-size:13px;
+  }
+  #prosp-tabel td:first-child{
+    font-weight:700;font-size:14px;margin-bottom:4px;
+  }
+
+  /* ── Topbar rechts ── */
+  #topbar-right{ gap:6px!important; }
+  #topbar-right .tv-btn{ display:none; }
+
+  /* ── Formuliervelden groter op touch ── */
+  input,select,textarea{
+    font-size:16px!important; /* voorkomt auto-zoom op iOS */
+    padding:10px 12px!important;
+  }
+
+  /* ── B2C dossier tabs ── */
+  .inner-tabs{ overflow-x:auto;flex-wrap:nowrap!important; }
+  .inner-tab{ white-space:nowrap; }
+
+  /* ── Kanban B2B ── */
+  #kanban-board{
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+  }
+  #kanban-board .kanban-col{
+    flex:0 0 80vw!important;
+    scroll-snap-align:start;
+  }
+
+  /* ── Buttons in modal footer ── */
+  .modal-box > div:last-child{
+    flex-wrap:wrap;
+    gap:8px;
+  }
+}
+
+/* Tablet only (601px–900px): iets minder drastisch */
+@media(min-width:601px) and (max-width:900px){
+  .modal-overlay.open{ align-items:center;padding:1rem; }
+  .modal-box{
+    border-radius:var(--rl)!important;
+    max-height:90vh;
+  }
+  #b2c-kanban-board > div{
+    flex:0 0 240px!important;
+  }
+}
 /* LAYOUT */
 .page{padding:1.5rem;max-width:960px;margin:0 auto}
 .page.wide{max-width:100%;padding:1.5rem}
@@ -533,6 +703,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 <!-- TABS -->
 <div class="tabs" id="main-tabs" style="display:none">
   <button class="tab-btn" id="tab-zoek" onclick="zoekOpen()" title="Zoeken" style="font-size:15px;padding:6px 10px"><i class="ti ti-search"></i></button>
+  <button class="tab-btn" id="tab-hamburger" onclick="mobNavOpen()" style="display:none;margin-left:auto"><i class="ti ti-menu-2"></i> Menu</button>
 
   <!-- Agenda knop -->
   <button class="tab-btn" id="tab-agenda" onclick="showTab('agenda')"><i class="ti ti-calendar"></i> Agenda</button>
@@ -613,6 +784,46 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
     <span id="current-user-name" style="font-size:11px;color:var(--tx2);margin-left:4px"></span>
     <button class="btn sm" onclick="doLogout()" title="Afmelden"><i class="ti ti-logout"></i></button>
     <button class="btn sm" onclick="openTV()"><i class="ti ti-tv"></i> TV-scherm</button>
+  </div>
+</div>
+
+<!-- MOBILE NAV PANEL -->
+<div id="mobile-nav-panel" style="display:none">
+  <div class="mob-nav-header">
+    <span><i class="ti ti-zap" style="color:var(--green)"></i> Blitz Power</span>
+    <button onclick="mobNavClose()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="mob-nav-section">
+    <div class="mob-nav-label">Agenda</div>
+    <button class="mob-nav-btn" onclick="mobNav('agenda')"><i class="ti ti-calendar"></i> Agenda</button>
+    <button class="mob-nav-btn" onclick="mobNav('todo')"><i class="ti ti-check"></i> To Do</button>
+  </div>
+  <div class="mob-nav-section">
+    <div class="mob-nav-label">B2C</div>
+    <button class="mob-nav-btn" onclick="mobNav('b2c')"><i class="ti ti-users"></i> Leads &amp; Opvolging</button>
+    <button class="mob-nav-btn" onclick="mobNav('b2c-gewonnen')"><i class="ti ti-trophy"></i> Gewonnen</button>
+    <button class="mob-nav-btn" onclick="mobNav('b2c-verloren')"><i class="ti ti-x"></i> Verloren</button>
+  </div>
+  <div class="mob-nav-section">
+    <div class="mob-nav-label">B2B</div>
+    <button class="mob-nav-btn" onclick="mobNav('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+    <button class="mob-nav-btn" onclick="mobNav('lopend')"><i class="ti ti-briefcase"></i> Projecten</button>
+    <button class="mob-nav-btn" onclick="mobNav('prospects')"><i class="ti ti-target"></i> Prospects</button>
+    <button class="mob-nav-btn" onclick="mobNav('verkocht')"><i class="ti ti-trophy"></i> Verkocht</button>
+  </div>
+  <div class="mob-nav-section">
+    <div class="mob-nav-label">Service &amp; Installatie</div>
+    <button class="mob-nav-btn" onclick="mobNav('installaties')"><i class="ti ti-tool"></i> Installaties</button>
+    <button class="mob-nav-btn" onclick="mobNav('si-opvolging')"><i class="ti ti-phone"></i> Opvolging</button>
+  </div>
+  <div class="mob-nav-section">
+    <div class="mob-nav-label">Beheer</div>
+    <button class="mob-nav-btn" onclick="mobNav('crm')"><i class="ti ti-address-book"></i> CRM</button>
+    <button class="mob-nav-btn" onclick="mobNav('rapportage')"><i class="ti ti-chart-bar"></i> Rapportage</button>
+    <button class="mob-nav-btn" onclick="mobNav('wms')"><i class="ti ti-packages"></i> Operations</button>
+  </div>
+  <div style="padding:16px 20px;margin-top:auto">
+    <button class="btn" onclick="doLogout();mobNavClose()" style="width:100%;justify-content:center"><i class="ti ti-logout"></i> Afmelden</button>
   </div>
 </div>
 
@@ -11713,6 +11924,32 @@ async function afasResetEnResync(){
   showToast('AFAS leads verwijderd, opnieuw syncen...');
   await afasSyncWebOffertes();
 }
+// ── MOBILE NAV ────────────────────────────────────────
+function mobNavOpen(){
+  document.getElementById('mobile-nav-panel').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function mobNavClose(){
+  document.getElementById('mobile-nav-panel').classList.remove('open');
+  document.body.style.overflow='';
+}
+function mobNav(tab){
+  mobNavClose();
+  setTimeout(()=>showTab(tab),200);
+}
+function mobCheckNav(){
+  const isSmall=window.innerWidth<=900;
+  const hb=document.getElementById('tab-hamburger');
+  if(hb)hb.style.display=isSmall?'inline-flex':'none';
+}
+window.addEventListener('resize',mobCheckNav);
+document.addEventListener('DOMContentLoaded',mobCheckNav);
+setTimeout(mobCheckNav,100);
+document.addEventListener('click',e=>{
+  const panel=document.getElementById('mobile-nav-panel');
+  if(panel?.classList.contains('open')&&!panel.contains(e.target)&&!e.target.closest('#tab-hamburger'))mobNavClose();
+});
+
 let _afasSyncBusy = false;
 
 async function afasSyncWebOffertes() {
