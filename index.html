@@ -11679,53 +11679,52 @@ async function wmsSaveRekNummering(){
   const richting = document.getElementById('wms-rek-nummering-richting').value;
   const start = parseInt(document.getElementById('wms-rek-nummering-start').value)||1;
 
-  console.log('[Nummering] rekId=',rekId,'naam=',rekNaam,'richting=',richting,'start=',start);
-
-  // String vergelijking voor UUID ids
   const rek = wmsRekken.find(r=>String(r.id)===String(rekId));
-  if(!rek){ showToast('Rek niet gevonden.'); console.error('[Nummering] rek niet gevonden, rekken:', wmsRekken.map(r=>r.id)); return; }
+  if(!rek){ showToast('Rek niet gevonden.'); return; }
   if(!supabaseClient){ showToast('Geen verbinding met database.'); return; }
   if(!confirm(`Alle slotnummers van rek "${rekNaam}" herberekenen? Bezette vakken worden losgekoppeld.`)) return;
 
-  showToast('Bezig met herberekenen...');
-
+  showToast('Bezig...');
   try {
-    const totaalPosities = rek.secties.reduce((s,sec)=>s+sec.per_laag,0);
-    console.log('[Nummering] totaalPosities=',totaalPosities,'secties=',rek.secties.length);
+    // Verwijder alle bestaande slots van dit rek via rek_id
+    const {error:delErr} = await supabaseClient.from('wms_slots').delete().eq('rek_id', rekId);
+    if(delErr){ showToast('Fout bij verwijderen: '+delErr.message); return; }
 
-    for(let i=0;i<rek.secties.length;i++){
+    // Bereken totaal posities
+    const totaalPosities = rek.secties.reduce((s,sec)=>s+sec.per_laag, 0);
+
+    // Maak alle nieuwe slots aan
+    const slots = [];
+    let sOff = 0;
+    for(let i=0; i<rek.secties.length; i++){
       const sec = rek.secties[i];
       const lagen = sec.lagen||3;
       const perLaag = sec.per_laag||4;
-      const sOff = rek.secties.slice(0,i).reduce((s,x)=>s+x.per_laag,0);
-
-      // Verwijder bestaande slots
-      const {error:delErr} = await supabaseClient.from('wms_slots').delete().eq('sectie_id',sec.id);
-      if(delErr) console.error('[Nummering] delete fout sectie',sec.id,delErr.message);
-
-      // Maak nieuwe slots
-      const slots=[];
-      for(let laag=0;laag<lagen;laag++){
-        for(let pos=0;pos<perLaag;pos++){
+      for(let laag=0; laag<lagen; laag++){
+        for(let pos=0; pos<perLaag; pos++){
           const positieNr = richting==='rechts'
-            ? start+totaalPosities-1-sOff-pos
-            : start+sOff+pos;
-          const code = rekNaam+laag+String(positieNr).padStart(2,'0');
-          slots.push({sectie_id:sec.id,code,artikel_id:null});
+            ? start + totaalPosities - 1 - sOff - pos
+            : start + sOff + pos;
+          slots.push({
+            rek_id: rekId,
+            code: rekNaam + laag + String(positieNr).padStart(2,'0'),
+            artikel_id: null
+          });
         }
       }
-      console.log('[Nummering] sectie',i+1,'inserting',slots.length,'slots, eerste:',slots[0]?.code,'laatste:',slots[slots.length-1]?.code);
-      const {error:insErr} = await supabaseClient.from('wms_slots').insert(slots);
-      if(insErr) console.error('[Nummering] insert fout:', insErr.message);
+      sOff += perLaag;
     }
+
+    console.log('[Nummering] inserting',slots.length,'slots, eerste:',slots[0]?.code,'laatste:',slots[slots.length-1]?.code);
+    const {error:insErr} = await supabaseClient.from('wms_slots').insert(slots);
+    if(insErr){ showToast('Fout bij aanmaken: '+insErr.message); return; }
 
     await wmsLoadAll();
     wmsCloseModal('wms-rek-nummering-modal');
     wmsRenderAdminRekken();
     showToast('Nummering van rek '+rekNaam+' bijgewerkt ✓');
-  } catch(e) {
-    console.error('[Nummering] Fout:', e.message);
-    showToast('Fout bij herberekenen: '+e.message);
+  } catch(e){
+    showToast('Fout: '+e.message);
   }
 }
 
@@ -11759,17 +11758,26 @@ async function wmsSaveRek(){
         const positieNr=richting==='rechts'
           ? start+totaalPosities-1-sOff-pos
           : start+sOff+pos;
-        slots.push({sectie_id:sectie.id,code:naam+laag+String(positieNr).padStart(2,'0'),artikel_id:null});
+        slots.push({rek_id:rek.id,code:naam+laag+String(positieNr).padStart(2,'0'),artikel_id:null});
       }
     }
     await supabaseClient.from('wms_slots').insert(slots);
   }
   await wmsLoadAll();wmsCloseModal('wms-rek-modal');wmsRenderAdminRekken();showToast('Rek '+naam+' aangemaakt ✓');
 }
-async function wmsAddSectieToRek(rekId,rekNaam){const rek=wmsRekken.find(r=>r.id===rekId);if(!rek)return;const nieuwNr=rek.secties.length+1;const lagen=parseInt(prompt('Lagen voor Stuk '+nieuwNr+'?','3'))||3;const perLaag=parseInt(prompt('Plekken/laag voor Stuk '+nieuwNr+'?','4'))||4;const{data:sectie}=await supabaseClient.from('wms_secties').insert({rek_id:rekId,sectie_nr:nieuwNr,lagen,per_laag:perLaag}).select().single();const bOff=rek.secties.reduce((s,x)=>s+x.per_laag,0);const slots=[];for(let laag=0;laag<lagen;laag++)for(let pos=0;pos<perLaag;pos++)slots.push({sectie_id:sectie.id,code:rekNaam+laag+String(1+bOff+pos).padStart(2,'0'),artikel_id:null});await supabaseClient.from('wms_slots').insert(slots);await wmsLoadAll();wmsRenderAdminRekken();showToast('Stuk '+nieuwNr+' toegevoegd ✓');}
+async function wmsAddSectieToRek(rekId,rekNaam){const rek=wmsRekken.find(r=>r.id===rekId);if(!rek)return;const nieuwNr=rek.secties.length+1;const lagen=parseInt(prompt('Lagen voor Stuk '+nieuwNr+'?','3'))||3;const perLaag=parseInt(prompt('Plekken/laag voor Stuk '+nieuwNr+'?','4'))||4;const{data:sectie}=await supabaseClient.from('wms_secties').insert({rek_id:rekId,sectie_nr:nieuwNr,lagen,per_laag:perLaag}).select().single();const bOff=rek.secties.reduce((s,x)=>s+x.per_laag,0);const slots=[];for(let laag=0;laag<lagen;laag++)for(let pos=0;pos<perLaag;pos++)slots.push({rek_id:rekId,code:rekNaam+laag+String(1+bOff+pos).padStart(2,'0'),artikel_id:null});await supabaseClient.from('wms_slots').insert(slots);await wmsLoadAll();wmsRenderAdminRekken();showToast('Stuk '+nieuwNr+' toegevoegd ✓');}
 function wmsOpenSectieEdit(secId,rekNaam,secNr){const sec=wmsRekken.flatMap(r=>r.secties).find(s=>s.id===secId);if(!sec)return;document.getElementById('wms-sectie-edit-title').textContent='Rek '+rekNaam+' — Stuk '+secNr+' bewerken';document.getElementById('wms-sectie-edit-id').value=secId;document.getElementById('wms-sectie-edit-lagen').value=sec.lagen;document.getElementById('wms-sectie-edit-per-laag').value=sec.per_laag;wmsOpenModal('wms-sectie-edit-modal');}
-async function wmsSaveSectieEdit(){const secId=document.getElementById('wms-sectie-edit-id').value;const sec=wmsRekken.flatMap(r=>r.secties).find(s=>s.id===secId);if(!sec)return;const nl=parseInt(document.getElementById('wms-sectie-edit-lagen').value)||sec.lagen,np=parseInt(document.getElementById('wms-sectie-edit-per-laag').value)||sec.per_laag;if(sec.slots.some(s=>s.artikel_id)&&!confirm('Bezette vakken aanwezig. Toch bewerken?'))return;await supabaseClient.from('wms_slots').delete().eq('sectie_id',secId);await supabaseClient.from('wms_secties').update({lagen:nl,per_laag:np}).eq('id',secId);const rek=wmsRekken.find(r=>r.secties.some(s=>s.id===secId));const secIndex=rek.secties.findIndex(s=>s.id===secId);const sOff=rek.secties.slice(0,secIndex).reduce((s,x)=>s+x.per_laag,0);const slots=[];for(let laag=0;laag<nl;laag++)for(let pos=0;pos<np;pos++)slots.push({sectie_id:secId,code:rek.naam+laag+String(1+sOff+pos).padStart(2,'0'),artikel_id:null});await supabaseClient.from('wms_slots').insert(slots);await wmsLoadAll();wmsCloseModal('wms-sectie-edit-modal');wmsRenderAdminRekken();showToast('Sectie bijgewerkt ✓');}
-async function wmsDeleteRek(id){const rek=wmsRekken.find(r=>r.id===id);if(!rek)return;const bezet=rek.secties.flatMap(s=>s.slots).filter(s=>s.artikel_id).length;if(!confirm((bezet?'Rek '+rek.naam+' heeft '+bezet+' bezette vakken. Toch verwijderen?':'Rek '+rek.naam+' verwijderen?')))return;for(const sec of rek.secties)await supabaseClient.from('wms_slots').delete().eq('sectie_id',sec.id);await supabaseClient.from('wms_secties').delete().eq('rek_id',id);await supabaseClient.from('wms_rek_posities').delete().eq('rek_id',id);await supabaseClient.from('wms_rekken').delete().eq('id',id);await wmsLoadAll();wmsRenderAdminRekken();showToast('Rek verwijderd');}
+async function wmsSaveSectieEdit(){const secId=document.getElementById('wms-sectie-edit-id').value;const sec=wmsRekken.flatMap(r=>r.secties).find(s=>s.id===secId);if(!sec)return;const nl=parseInt(document.getElementById('wms-sectie-edit-lagen').value)||sec.lagen,np=parseInt(document.getElementById('wms-sectie-edit-per-laag').value)||sec.per_laag;if(sec.slots.some(s=>s.artikel_id)&&!confirm('Bezette vakken aanwezig. Toch bewerken?'))return;// Sectie updaten + alle slots van het rek opnieuw aanmaken
+await supabaseClient.from('wms_secties').update({lagen:nl,per_laag:np}).eq('id',secId);
+const rek=wmsRekken.find(r=>r.secties.some(s=>s.id===secId));
+await supabaseClient.from('wms_slots').delete().eq('rek_id',rek.id);
+// Update lokale sectie zodat herberekening klopt
+const secRef=rek.secties.find(s=>s.id===secId);if(secRef){secRef.lagen=nl;secRef.per_laag=np;}
+const totP=rek.secties.reduce((s,x)=>s+x.per_laag,0);
+const slots=[];let sOff2=0;
+rek.secties.forEach(s=>{for(let laag=0;laag<s.lagen;laag++)for(let pos=0;pos<s.per_laag;pos++)slots.push({rek_id:rek.id,code:rek.naam+laag+String(1+sOff2+pos).padStart(2,'0'),artikel_id:null});sOff2+=s.per_laag;});
+await supabaseClient.from('wms_slots').insert(slots);await wmsLoadAll();wmsCloseModal('wms-sectie-edit-modal');wmsRenderAdminRekken();showToast('Sectie bijgewerkt ✓');}
+async function wmsDeleteRek(id){const rek=wmsRekken.find(r=>r.id===id);if(!rek)return;const bezet=rek.secties.flatMap(s=>s.slots).filter(s=>s.artikel_id).length;if(!confirm((bezet?'Rek '+rek.naam+' heeft '+bezet+' bezette vakken. Toch verwijderen?':'Rek '+rek.naam+' verwijderen?')))return;await supabaseClient.from('wms_slots').delete().eq('rek_id',id);await supabaseClient.from('wms_secties').delete().eq('rek_id',id);await supabaseClient.from('wms_rek_posities').delete().eq('rek_id',id);await supabaseClient.from('wms_rekken').delete().eq('id',id);await wmsLoadAll();wmsRenderAdminRekken();showToast('Rek verwijderd');}
 function wmsRenderLeveranciers(){const tbody=document.getElementById('wms-lev-tbody'),emptyEl=document.getElementById('wms-lev-empty');if(!wmsLeveranciers.length){tbody.innerHTML='';emptyEl.style.display='block';return;}emptyEl.style.display='none';tbody.innerHTML=wmsLeveranciers.map(l=>'<tr><td style="font-weight:600">'+l.naam+'</td><td>'+(l.contact||'—')+'</td><td>'+(l.email?'<a href="mailto:'+l.email+'" style="color:#00805e">'+l.email+'</a>':'—')+'</td><td>'+(l.tel||'—')+'</td><td style="text-align:right;white-space:nowrap"><button class="btn sm" style="margin-right:5px" onclick="wmsOpenLevModal(\''+l.id+'\')">Bewerken</button><button class="btn danger sm" onclick="wmsDeleteLev(\''+l.id+'\')">Verwijder</button></td></tr>').join('');}
 function wmsOpenLevModal(id){const l=id?wmsLeveranciers.find(x=>x.id===id):null;document.getElementById('wms-lev-modal-title').textContent=l?'Leverancier bewerken':'Nieuwe leverancier';document.getElementById('wms-lev-id').value=id||'';document.getElementById('wms-lev-naam').value=l?l.naam:'';document.getElementById('wms-lev-contact').value=l?(l.contact||''):'';document.getElementById('wms-lev-email').value=l?(l.email||''):'';document.getElementById('wms-lev-tel').value=l?(l.tel||''):'';wmsOpenModal('wms-lev-modal');}
 async function wmsSaveLeverancier(){const naam=document.getElementById('wms-lev-naam').value.trim();if(!naam){showToast('Naam is verplicht.');return;}const id=document.getElementById('wms-lev-id').value;const p={naam,contact:document.getElementById('wms-lev-contact').value.trim()||null,email:document.getElementById('wms-lev-email').value.trim()||null,tel:document.getElementById('wms-lev-tel').value.trim()||null};if(id)await supabaseClient.from('wms_leveranciers').update(p).eq('id',id);else await supabaseClient.from('wms_leveranciers').insert(p);await wmsLoadAll();wmsCloseModal('wms-lev-modal');wmsRenderLeveranciers();showToast('Leverancier opgeslagen ✓');}
