@@ -11702,9 +11702,15 @@ async function wmsSaveRekNummering(){
       const perLaag = sec.per_laag||4;
       for(let laag=0; laag<lagen; laag++){
         for(let pos=0; pos<perLaag; pos++){
-          const positieNr = richting==='rechts'
-            ? start + totaalPosities - 1 - sOff - pos
-            : start + sOff + pos;
+          let positieNr;
+          if(richting==='rechts'){
+            // Rechts → links: sectie rechts (laatste) krijgt laagste nummer
+            // Positie 0 van laatste sectie = start (01)
+            const omgekeerdePos = totaalPosities - 1 - sOff - pos;
+            positieNr = start + omgekeerdePos;
+          } else {
+            positieNr = start + sOff + pos;
+          }
           slots.push({
             rek_id: rekId,
             code: rekNaam + laag + String(positieNr).padStart(2,'0'),
@@ -11756,7 +11762,7 @@ async function wmsSaveRek(){
     for(let laag=0;laag<lagen;laag++){
       for(let pos=0;pos<perLaag;pos++){
         const positieNr=richting==='rechts'
-          ? start+totaalPosities-1-sOff-pos
+          ? start+totaalPosities-1-(wmsModalSecties.slice(0,i).reduce((s,x)=>s+(x.perLaag||4),0))-pos
           : start+sOff+pos;
         slots.push({rek_id:rek.id,code:naam+laag+String(positieNr).padStart(2,'0'),artikel_id:null});
       }
