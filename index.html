@@ -11648,7 +11648,7 @@ function wmsRenderAdminRekken(){
       ?`<button class="btn sm" onclick="wmsOpenRekNummering('${r.id}','${r.naam}')"><i class="ti ti-sort-ascending-numbers"></i> Nummering</button>
          <button class="btn sm" onclick="wmsAddSectieToRek('${r.id}','${r.naam}')"><i class="ti ti-plus"></i> Sectie</button>
          <button class="btn danger sm" onclick="wmsDeleteRek('${r.id}')"><i class="ti ti-x"></i> Verwijder</button>`
-      :'';
+      :`<button class="btn sm" onclick="wmsOpenRekNummering('${r.id}','${r.naam}')"><i class="ti ti-sort-ascending-numbers"></i> Nummering</button>`;
     const sectieKnoppen=wmsIsManager
       ?r.secties.map(s=>`<button class="btn sm" onclick="wmsOpenSectieEdit('${s.id}','${r.naam}',${s.sectie_nr})"><i class="ti ti-edit"></i> Stuk ${s.sectie_nr}</button>`).join('')
       :`<span style="font-size:12px;color:var(--tx3);font-style:italic;padding:4px 8px">${r.secties.length} sectie(s) · alleen-lezen</span>`;
@@ -11696,7 +11696,7 @@ async function wmsSaveRekNummering(){
         const positieNr = richting==='rechts'
           ? start+totaalPosities-1-sOff-pos
           : start+sOff+pos;
-        slots.push({sectie_id:sec.id,code:rekNaam+laag+String(positieNr).padStart(2,'00'),artikel_id:null});
+        slots.push({sectie_id:sec.id,code:rekNaam+laag+String(positieNr).padStart(2,'0'),artikel_id:null});
       }
     }
     await supabaseClient.from('wms_slots').insert(slots);
