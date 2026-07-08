@@ -11695,6 +11695,24 @@ async function wmsSaveRekNummering(){
 
     // Maak alle nieuwe slots aan
     const slots = [];
+    // Genereer posities per sectie
+    // Bij "rechts": sectie rechts (laatste) krijgt laagste nummers
+    // We maken eerst een lijst van alle (sectieIndex, pos) in de gewenste volgorde
+    const sectieLijst = rek.secties.map((sec,i)=>({sec,i}));
+    if(richting==='rechts') sectieLijst.reverse(); // begin bij laatste sectie (rechts)
+
+    let teller = start;
+    // Bouw een map: (sectieIndex, pos) → positieNr
+    const positieMap = new Map();
+    sectieLijst.forEach(({sec,i})=>{
+      const perLaag = sec.per_laag||4;
+      // Bij rechts: binnen sectie ook omgekeerd (rechts=laag, links=hoog)
+      for(let pos=richting==='rechts'?perLaag-1:0; richting==='rechts'?pos>=0:pos<perLaag; richting==='rechts'?pos--:pos++){
+        positieMap.set(`${i}-${pos}`, teller++);
+      }
+    });
+
+    // Nu slots aanmaken in originele volgorde (sectie 0 eerst)
     let sOff = 0;
     for(let i=0; i<rek.secties.length; i++){
       const sec = rek.secties[i];
@@ -11702,15 +11720,7 @@ async function wmsSaveRekNummering(){
       const perLaag = sec.per_laag||4;
       for(let laag=0; laag<lagen; laag++){
         for(let pos=0; pos<perLaag; pos++){
-          let positieNr;
-          if(richting==='rechts'){
-            // Rechts → links: sectie rechts (laatste) krijgt laagste nummer
-            // Positie 0 van laatste sectie = start (01)
-            const omgekeerdePos = totaalPosities - 1 - sOff - pos;
-            positieNr = start + omgekeerdePos;
-          } else {
-            positieNr = start + sOff + pos;
-          }
+          const positieNr = positieMap.get(`${i}-${pos}`);
           slots.push({
             rek_id: rekId,
             code: rekNaam + laag + String(positieNr).padStart(2,'0'),
@@ -11720,6 +11730,7 @@ async function wmsSaveRekNummering(){
       }
       sOff += perLaag;
     }
+    console.log('[Nummering] richting='+richting+' eerste slot:',slots[0]?.code,'laatste:',slots[slots.length-1]?.code);
 
     console.log('[Nummering] inserting',slots.length,'slots, eerste:',slots[0]?.code,'laatste:',slots[slots.length-1]?.code);
     const {error:insErr} = await supabaseClient.from('wms_slots').insert(slots);
