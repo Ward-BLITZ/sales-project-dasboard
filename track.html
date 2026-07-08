@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Blitz Power — Uw project opvolgen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#00DFA3;--dark:#1D252D;
+  --bg:#fff;--bg2:#f2f4f3;--bg3:#e8eceb;
+  --tx:#1D252D;--tx2:#4a5760;--tx3:#8a9ba3;
+  --bd:#dde3e0;--r:8px;--rl:14px;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg2);color:var(--tx);min-height:100vh}
+.header{background:var(--dark);padding:16px 20px;display:flex;align-items:center;gap:12px}
+.header-logo{color:var(--green);font-family:'Poppins',sans-serif;font-weight:700;font-size:18px}
+.container{max-width:680px;margin:0 auto;padding:20px 16px 60px}
+.card{background:var(--bg);border-radius:var(--rl);padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.tabs{display:flex;border-bottom:1px solid var(--bd);margin-bottom:0;gap:0}
+.tab{padding:10px 16px;font-size:13px;font-weight:500;color:var(--tx3);cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:'Inter',sans-serif}
+.tab.active{color:var(--dark);border-bottom-color:var(--green)}
+.tab-panel{display:none;padding:16px 0}
+.tab-panel.active{display:block}
+.stap-row{display:flex;overflow-x:auto;gap:0;padding:4px 0 12px}
+.stap{flex:1;min-width:70px;text-align:center;position:relative}
+.stap-circle{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:13px;font-weight:700;border:2px solid var(--bd)}
+.stap-circle.done{background:var(--green);color:#fff;border-color:var(--green)}
+.stap-circle.active{background:#fff;color:var(--green);border-color:var(--green);box-shadow:0 0 0 3px rgba(0,223,163,.15)}
+.stap-circle.todo{background:var(--bg3);color:var(--tx3);border-color:var(--bd)}
+.stap-line{position:absolute;top:18px;left:60%;right:-10%;height:2px;background:var(--bd)}
+.stap-line.done{background:var(--green)}
+.stap-label{font-size:10px;line-height:1.3;color:var(--tx3)}
+.stap-label.active,.stap-label.done{color:var(--tx);font-weight:600}
+.doc-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--r);margin-bottom:8px;text-decoration:none;color:var(--tx)}
+.doc-item:hover{background:var(--bg3)}
+.msg{display:flex;flex-direction:column;margin-bottom:10px}
+.msg-bubble{max-width:80%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5}
+.msg-klant .msg-bubble{background:var(--bg2);border-radius:4px 14px 14px 14px;align-self:flex-start}
+.msg-intern .msg-bubble{background:var(--green);color:#fff;border-radius:14px 4px 14px 14px;align-self:flex-end}
+.msg-meta{font-size:10px;color:var(--tx3);margin-top:3px;padding:0 4px}
+.msg-klant .msg-meta{text-align:left}
+.msg-intern .msg-meta{text-align:right}
+.chat-input-row{display:flex;gap:8px;border-top:1px solid var(--bd);padding-top:12px;margin-top:8px}
+.chat-input{flex:1;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:'Inter',sans-serif}
+.btn{padding:9px 16px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:'Inter',sans-serif;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--green);color:#fff}
+.btn-primary:hover{opacity:.9}
+.star{font-size:28px;cursor:pointer;transition:transform .1s;line-height:1}
+.star:hover,.star.active{transform:scale(1.2)}
+.review-textarea{width:100%;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:'Inter',sans-serif;resize:vertical;margin-top:10px}
+.loading{text-align:center;padding:40px;color:var(--tx3);font-size:14px}
+.error-box{background:#fff0f0;border:1px solid #fcc;border-radius:var(--r);padding:16px;text-align:center;color:#a32d2d;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo"><i class="ti ti-zap"></i> Blitz Power</div>
+  <div style="color:#fff;opacity:.6;font-size:13px;margin-left:auto">Project opvolging</div>
+</div>
+
+<div class="container">
+  <div id="loading" class="loading"><i class="ti ti-loader" style="font-size:24px;display:block;margin-bottom:8px"></i>Uw project wordt geladen...</div>
+  <div id="content" style="display:none"></div>
+  <div id="error" style="display:none" class="card">
+    <div class="error-box"><i class="ti ti-alert-circle" style="font-size:24px;display:block;margin-bottom:8px"></i>Link niet gevonden of verlopen.<br>Neem contact op met ons.</div>
+  </div>
+</div>
+
+<script>
+// ── Config — zelfde als dashboard ───────────────────────────
+const SB_URL = localStorage.getItem('blitz_sb_url') || '';
+const SB_KEY = localStorage.getItem('blitz_sb_key') || '';
+
+const STAPPEN = ['Offerte','Contract','Planning installatie','Installatie','Keuring','Afgerond'];
+
+let trackData = null; // het gevonden project/lead object
+let trackType = null; // 'b2c' of 'b2b'
+let trackToken = null;
+let sb = null;
+
+async function init(){
+  // Haal token uit URL
+  const params = new URLSearchParams(window.location.search);
+  trackToken = params.get('t');
+  if(!trackToken){ showError(); return; }
+
+  // Init Supabase
+  if(!SB_URL||!SB_KEY){
+    // Probeer uit URL hash (indien meegegeven bij link generatie)
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const u = hashParams.get('u') || SB_URL;
+    const k = hashParams.get('k') || SB_KEY;
+    if(!u||!k){ showError(); return; }
+    sb = window.supabase.createClient(u, k);
+  } else {
+    sb = window.supabase.createClient(SB_URL, SB_KEY);
+  }
+
+  // Zoek in b2c_leads
+  const {data:b2cRows} = await sb.from('b2c_leads').select('*');
+  if(b2cRows){
+    for(const row of b2cRows){
+      const d = row.data || {};
+      if(d.trackTrace?.token === trackToken){
+        trackData = {...d, _sbid: row.id};
+        trackType = 'b2c';
+        break;
+      }
+    }
+  }
+
+  // Zoek in projects
+  if(!trackData){
+    const {data:projRows} = await sb.from('projects').select('*');
+    if(projRows){
+      for(const row of projRows){
+        const d = row.data || {};
+        if(d.trackTrace?.token === trackToken){
+          trackData = {...d, _sbid: row.id};
+          trackType = 'b2b';
+          break;
+        }
+      }
+    }
+  }
+
+  if(!trackData){ showError(); return; }
+
+  document.getElementById('loading').style.display='none';
+  document.getElementById('content').style.display='block';
+  renderAll();
+}
+
+function showError(){
+  document.getElementById('loading').style.display='none';
+  document.getElementById('error').style.display='block';
+}
+
+function renderAll(){
+  const tt = trackData.trackTrace || {};
+  const stap = tt.stap || 0;
+  const afgerond = stap >= STAPPEN.length-1;
+  const naam = [trackData.voornaam||'', trackData.naam||trackData.achternaam||'', trackData.klant||''].filter(Boolean).join(' ') || 'Uw project';
+  const docs = (trackData.docs||trackData.documenten||[]).filter((_,i)=>(tt.zichtbaareDocs||[]).includes(i));
+  const berichten = (tt.chat||[]).sort((a,b)=>a.ts.localeCompare(b.ts));
+  const heeftReview = tt.review;
+
+  document.getElementById('content').innerHTML = `
+    <!-- Welkom -->
+    <div class="card">
+      <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:18px;margin-bottom:4px">Welkom, ${naam}</div>
+      <div style="font-size:13px;color:var(--tx2)">Hier kunt u de status van uw project opvolgen en ons berichten sturen.</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="card" style="padding:0">
+      <div class="tabs" id="tabs">
+        <button class="tab active" onclick="showTab('status')"><i class="ti ti-map-pin" style="margin-right:5px"></i>Status</button>
+        <button class="tab" onclick="showTab('documenten')"><i class="ti ti-paperclip" style="margin-right:5px"></i>Documenten${docs.length>0?` (${docs.length})`:''}</button>
+        <button class="tab" onclick="showTab('chat')"><i class="ti ti-message" style="margin-right:5px"></i>Chat</button>
+        ${afgerond&&!heeftReview?`<button class="tab" onclick="showTab('review')"><i class="ti ti-star" style="margin-right:5px"></i>Review</button>`:''}
+      </div>
+
+      <!-- Status tab -->
+      <div class="tab-panel active" id="panel-status" style="padding:20px">
+        <div class="card-title"><i class="ti ti-route" style="color:var(--green)"></i> Projectstatus</div>
+        <div class="stap-row">
+          ${STAPPEN.map((s,i)=>{
+            const staat = i<stap?'done':i===stap?'active':'todo';
+            return `<div class="stap">
+              ${i<STAPPEN.length-1?`<div class="stap-line ${i<stap?'done':''}"></div>`:''}
+              <div class="stap-circle ${staat}">${i<stap?'<i class="ti ti-check"></i>':i+1}</div>
+              <div class="stap-label ${staat}">${s}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="margin-top:16px;padding:12px 14px;background:rgba(0,223,163,.08);border-radius:var(--r);border-left:3px solid var(--green)">
+          <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:4px">Huidige stap</div>
+          <div style="font-size:14px;font-weight:600">${STAPPEN[stap]}</div>
+        </div>
+        ${tt.klantBericht?`
+          <div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border-radius:var(--r)">
+            <div style="font-size:11px;font-weight:600;color:var(--tx3);margin-bottom:6px">BERICHT VAN ONS TEAM</div>
+            <div style="font-size:13px;line-height:1.5">${tt.klantBericht}</div>
+          </div>
+        `:''}
+      </div>
+
+      <!-- Documenten tab -->
+      <div class="tab-panel" id="panel-documenten" style="padding:20px">
+        <div class="card-title"><i class="ti ti-paperclip" style="color:var(--green)"></i> Uw documenten</div>
+        ${docs.length===0
+          ? `<div style="color:var(--tx3);font-size:13px;font-style:italic;padding:10px 0">Er zijn nog geen documenten beschikbaar voor u.</div>`
+          : docs.map(d=>`
+            <a class="doc-item" href="${d.url||d.data||'#'}" target="_blank" download="${d.naam||d.name}">
+              <i class="ti ti-file-text" style="font-size:20px;color:var(--green);flex-shrink:0"></i>
+              <span style="flex:1;font-size:13px;font-weight:500">${d.naam||d.name||'Document'}</span>
+              <i class="ti ti-download" style="color:var(--tx3)"></i>
+            </a>
+          `).join('')
+        }
+      </div>
+
+      <!-- Chat tab -->
+      <div class="tab-panel" id="panel-chat" style="padding:20px">
+        <div class="card-title"><i class="ti ti-message" style="color:var(--green)"></i> Berichten</div>
+        <div id="chat-msgs" style="display:flex;flex-direction:column;gap:8px;min-height:80px;max-height:350px;overflow-y:auto;margin-bottom:4px">
+          ${berichten.length===0
+            ? `<div style="color:var(--tx3);font-size:13px;font-style:italic;text-align:center;padding:20px">Stuur ons een vraag — we antwoorden zo snel mogelijk.</div>`
+            : berichten.map(b=>`
+              <div class="msg ${b.van==='klant'?'msg-klant':'msg-intern'}">
+                <div class="msg-bubble">${b.tekst}</div>
+                <div class="msg-meta">${b.van==='klant'?'U':'Blitz Power'} · ${(b.ts||'').slice(0,16).replace('T',' ')}</div>
+              </div>
+            `).join('')
+          }
+        </div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chat-input" type="text" placeholder="Schrijf een bericht..." onkeydown="if(event.key==='Enter')stuurBericht()">
+          <button class="btn btn-primary" onclick="stuurBericht()"><i class="ti ti-send"></i></button>
+        </div>
+      </div>
+
+      <!-- Review tab -->
+      ${afgerond&&!heeftReview?`
+        <div class="tab-panel" id="panel-review" style="padding:20px">
+          <div class="card-title"><i class="ti ti-star" style="color:#f59e0b"></i> Uw mening telt!</div>
+          <div style="font-size:13px;color:var(--tx2);margin-bottom:16px">Hoe tevreden bent u over de installatie en service van Blitz Power?</div>
+          <div style="display:flex;gap:6px;margin-bottom:4px" id="sterren-row">
+            ${[1,2,3,4,5].map(i=>`<span class="star" onclick="setSter(${i})" id="ster-${i}">☆</span>`).join('')}
+          </div>
+          <div style="font-size:11px;color:var(--tx3);margin-bottom:12px">Klik op een ster</div>
+          <textarea class="review-textarea" id="review-tekst" rows="4" placeholder="Vertel ons meer over uw ervaring... (optioneel)"></textarea>
+          <button class="btn btn-primary" onclick="stuurReview()" style="margin-top:12px;width:100%;justify-content:center"><i class="ti ti-send"></i> Review versturen</button>
+        </div>
+      `:afgerond&&heeftReview?`
+        <div class="tab-panel" id="panel-review" style="padding:20px">
+          <div style="text-align:center;padding:16px">
+            <div style="font-size:32px;margin-bottom:8px">${'★'.repeat(tt.review.score)}${'☆'.repeat(5-tt.review.score)}</div>
+            <div style="font-weight:600;font-size:14px;margin-bottom:4px">Bedankt voor uw review!</div>
+            <div style="font-size:12px;color:var(--tx3)">Uw mening helpt ons om onze service te verbeteren.</div>
+          </div>
+        </div>
+      `:''}
+    </div>
+  `;
+
+  // Scroll chat naar beneden
+  const chatEl = document.getElementById('chat-msgs');
+  if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function showTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const panels = ['status','documenten','chat','review'];
+    t.classList.toggle('active', t.textContent.toLowerCase().includes(tab.slice(0,4)));
+  });
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  const panel = document.getElementById('panel-'+tab);
+  if(panel) panel.classList.add('active');
+
+  // Markeer tabs correct
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.classList.remove('active');
+  });
+  const tabEls = document.querySelectorAll('.tab');
+  const tabMap = {status:0,documenten:1,chat:2,review:3};
+  if(tabEls[tabMap[tab]]) tabEls[tabMap[tab]].classList.add('active');
+}
+
+let gekozenSter = 0;
+function setSter(n){
+  gekozenSter = n;
+  for(let i=1;i<=5;i++){
+    const s = document.getElementById('ster-'+i);
+    if(s) s.textContent = i<=n?'★':'☆';
+    s?.classList.toggle('active', i<=n);
+  }
+}
+
+async function stuurBericht(){
+  const input = document.getElementById('chat-input');
+  const tekst = input?.value?.trim();
+  if(!tekst) return;
+  input.value = '';
+
+  if(!trackData.trackTrace) trackData.trackTrace = {};
+  if(!trackData.trackTrace.chat) trackData.trackTrace.chat = [];
+  trackData.trackTrace.chat.push({
+    van: 'klant',
+    tekst,
+    ts: new Date().toISOString(),
+    gelezen: false,
+  });
+
+  await slaOp();
+
+  // Herrender chat
+  const chatMsgs = document.getElementById('chat-msgs');
+  if(chatMsgs){
+    const b = trackData.trackTrace.chat[trackData.trackTrace.chat.length-1];
+    chatMsgs.innerHTML += `<div class="msg msg-klant"><div class="msg-bubble">${b.tekst}</div><div class="msg-meta">U · ${b.ts.slice(0,16).replace('T',' ')}</div></div>`;
+    chatMsgs.scrollTop = chatMsgs.scrollHeight;
+  }
+}
+
+async function stuurReview(){
+  if(!gekozenSter){ alert('Kies eerst een aantal sterren.'); return; }
+  const tekst = document.getElementById('review-tekst')?.value?.trim() || '';
+  if(!trackData.trackTrace) trackData.trackTrace = {};
+  trackData.trackTrace.review = {
+    score: gekozenSter,
+    tekst,
+    datum: new Date().toISOString().slice(0,10),
+  };
+  await slaOp();
+  renderAll();
+  showTab('review');
+}
+
+async function slaOp(){
+  if(!sb) return;
+  const table = trackType==='b2c' ? 'b2c_leads' : 'projects';
+  const data = {...trackData};
+  delete data._sbid;
+  data.updatedAt = new Date().toISOString();
+  await sb.from(table).update({data}).eq('id', trackData._sbid);
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
