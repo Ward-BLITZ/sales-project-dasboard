@@ -11260,27 +11260,40 @@ function wmsRenderLocaties(){
 function wmsRekHTML(rek,hlCode,clickable){
   if(!rek.secties||!rek.secties.length)return'<p style="color:var(--tx3);font-size:13px">Geen secties.</p>';
   const maxLagen=Math.max(...rek.secties.map(s=>s.lagen));
+  const richting=rek.richting||'links';
+  const totaalPosities=rek.secties.reduce((s,sec)=>s+sec.per_laag,0);
   let html='<div style="display:flex;align-items:flex-end;gap:0">',offset=0;
   rek.secties.forEach((sec,i)=>{
     html+='<div class="wms-sectie-wrap"><div class="wms-sectie-label">Stuk '+sec.sectie_nr+'</div>';
-    html+=wmsSectieSVG(rek.naam,sec.lagen,sec.per_laag,hlCode,maxLagen,offset);
+    html+=wmsSectieSVG(rek.naam,sec.lagen,sec.per_laag,hlCode,maxLagen,offset,richting,totaalPosities);
     offset+=sec.per_laag;html+='</div>';
     if(i<rek.secties.length-1)html+='<div style="display:flex;flex-direction:column;align-items:center;padding:20px 7px 0"><div style="width:2px;background:var(--bd);flex:1;min-height:36px"></div><div style="width:7px;height:7px;border-radius:50%;background:var(--bd);margin:3px 0"></div><div style="width:2px;background:var(--bd);flex:1;min-height:36px"></div></div>';
   });
   return html+'</div>';
 }
-function wmsSectieSVG(rekNaam,lagen,perLaag,hlCode,maxLagen,offset){
+function wmsSectieSVG(rekNaam,lagen,perLaag,hlCode,maxLagen,offset,richting,totaalPosities){
+  richting=richting||'links';
+  totaalPosities=totaalPosities||(offset+perLaag);
   const CW=78,CH=58,PAD=4,LW=38,topPad=18,drawLagen=maxLagen||lagen,MAXCODES=4;
   const W=LW+perLaag*(CW+PAD)+PAD,H=topPad+drawLagen*(CH+PAD)+PAD;
   let s='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="display:block;flex-shrink:0"><rect width="'+W+'" height="'+H+'" fill="var(--bg2)" rx="5"/>';
   const realH=topPad+lagen*(CH+PAD)+PAD,realY=H-realH;
   s+='<rect y="'+realY+'" width="'+W+'" height="'+realH+'" fill="var(--bg3)" rx="4"/>';
-  for(let cc=0;cc<perLaag;cc++)s+='<text x="'+(LW+cc*(CW+PAD)+PAD+CW/2)+'" y="12" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" fill="#9CA3AF">'+(offset+cc+1)+'</text>';
+  // Kolomnummers bovenaan
+  for(let cc=0;cc<perLaag;cc++){
+    const globalPos=richting==='rechts'
+      ? totaalPosities-offset-cc  // rechts→links
+      : offset+cc+1;              // links→rechts
+    s+='<text x="'+(LW+cc*(CW+PAD)+PAD+CW/2)+'" y="12" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" fill="#9CA3AF">'+globalPos+'</text>';
+  }
   for(let r=0;r<lagen;r++){
     const laag=lagen-1-r,drawRow=(drawLagen-lagen)+r,y=topPad+drawRow*(CH+PAD)+PAD;
     s+='<text x="'+(LW-3)+'" y="'+(y+CH/2+4)+'" text-anchor="end" font-family="Inter,sans-serif" font-size="9" fill="#6B7280">'+(laag===0?'Vloer':'L'+laag)+'</text>';
     for(let cc=0;cc<perLaag;cc++){
-      const globalPos=offset+cc+1,code=rekNaam+laag+String(globalPos).padStart(2,'0'),x=LW+cc*(CW+PAD)+PAD;
+      const globalPos=richting==='rechts'
+        ? totaalPosities-offset-cc
+        : offset+cc+1;
+      const code=rekNaam+laag+String(globalPos).padStart(2,'0'),x=LW+cc*(CW+PAD)+PAD;
       const isHL=hlCode&&code.toLowerCase()===hlCode.toLowerCase();
       const arts=wmsArtikelen.filter(a=>{const locs=wmsLocatiesVanArtikel(a);return locs.some(lc=>lc.toLowerCase()===code.toLowerCase());});
       const isOcc=arts.length>0&&!isHL;
@@ -11727,6 +11740,9 @@ async function wmsSaveRekNummering(){
     if(insErr){ showToast('Fout bij aanmaken: '+insErr.message); return; }
 
     await wmsLoadAll();
+    // Sla richting op in geheugen zodat weergave correct is
+    const rekRef = wmsRekken.find(r=>String(r.id)===String(rekId));
+    if(rekRef) rekRef.richting = richting;
     wmsCloseModal('wms-rek-nummering-modal');
     wmsRenderAdminRekken();
     showToast('Nummering van rek '+rekNaam+' bijgewerkt ✓');
