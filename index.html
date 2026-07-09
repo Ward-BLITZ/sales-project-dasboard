@@ -11739,8 +11739,11 @@ async function wmsSaveRekNummering(){
     const {error:insErr} = await supabaseClient.from('wms_slots').insert(slots);
     if(insErr){ showToast('Fout bij aanmaken: '+insErr.message); return; }
 
+    // Sla richting op in Supabase
+    await supabaseClient.from('wms_rekken').update({richting}).eq('id', rekId);
+
     await wmsLoadAll();
-    // Sla richting op in geheugen zodat weergave correct is
+    // Sla richting ook in geheugen op zodat weergave direct klopt
     const rekRef = wmsRekken.find(r=>String(r.id)===String(rekId));
     if(rekRef) rekRef.richting = richting;
     wmsCloseModal('wms-rek-nummering-modal');
@@ -11769,7 +11772,7 @@ async function wmsSaveRek(){
   if(!naam){showToast('Naam is verplicht.');return;}
   if(wmsRekken.find(r=>r.naam.toLowerCase()===naam.toLowerCase())){showToast('Rek "'+naam+'" bestaat al.');return;}
   if(!wmsModalSecties.length){showToast('Voeg minstens één sectie toe.');return;}
-  const{data:rek}=await supabaseClient.from('wms_rekken').insert({naam}).select().single();
+  const{data:rek}=await supabaseClient.from('wms_rekken').insert({naam,richting}).select().single();
   const totaalPosities=wmsModalSecties.reduce((s,x)=>s+(x.perLaag||4),0);
   for(let i=0;i<wmsModalSecties.length;i++){
     const sec=wmsModalSecties[i],lagen=Math.max(1,sec.lagen||3),perLaag=Math.max(1,sec.perLaag||4);
