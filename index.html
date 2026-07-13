@@ -8184,13 +8184,12 @@ function b2cCloseScModal(){
 function b2cExportScreening(id){
   const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l||!l.screening)return;
   const sc=l.screening;
-  const secties=[
-    {kop:'Algemeen',velden:[['Datum',sc.datum||today()],['Naam',b2cNaam(l)],['Adres',l.adres||'—']]},
-    {kop:'Screening',velden:pdfVeldenVanObject(sc,B2C_SCREENING_LABELS,['fotos','datum'])},
-    {kop:'Foto\'s',velden:[["Aantal foto's",(sc.fotos||[]).length]]},
-  ];
-  const doc=pdfKeyWaardeDoc('Screeningsformulier — Installatie laadstation',secties);
-  doc.save(`Screening_${b2cNaam(l).replace(/\s+/g,'_')}_${today()}.pdf`);
+  const doc=pdfVraagAntwoordDoc('1st Screening Visit — Sales',[
+    {kop:'Algemeen',vragen:[['Datum',sc.datum||today()],['Naam',b2cNaam(l)],['Adres',l.adres||'—']]},
+    {kop:'Screening (afgenomen tijdens de sales-visit)',vragen:screeningVragen(sc,B2C_SCREENING_VRAGEN,['fotos','datum'])},
+    {kop:"Foto's",vragen:[["Aantal foto's",(sc.fotos||[]).length]]},
+  ]);
+  doc.save(`1st_Screening_Visit_Sales_${b2cNaam(l).replace(/\s+/g,'_')}_${today()}.pdf`);
   showToast('Screening geëxporteerd!');
 }
 
@@ -8800,6 +8799,55 @@ function pdfVeldenVanObject(obj, labelMap, negeer){
   });
 }
 
+// Zelfde als pdfVeldenVanObject, maar met vraag-formulering i.p.v. een kort label — gebruikt
+// voor screeningsformulieren zodat de vraag (zin) en het antwoord duidelijk apart staan.
+function screeningVragen(obj, vraagMap, negeer){
+  vraagMap=vraagMap||{};negeer=negeer||[];
+  return Object.keys(obj||{}).filter(k=>!negeer.includes(k)).map(k=>{
+    let v=obj[k];
+    if(Array.isArray(v))v=v.length?`${v.length} item(s)`:'';
+    else if(v&&typeof v==='object')v=JSON.stringify(v);
+    const vraag=vraagMap[k]||(k.charAt(0).toUpperCase()+k.slice(1).replace(/_/g,' ')+'?');
+    return [vraag,v];
+  });
+}
+
+// PDF-layout speciaal voor screeningsformulieren: de vraag (zin) op een regel, en eronder
+// ingesprongen ("tab") het antwoord in het vet — zo is in 1 oogopslag te zien wat wel/niet is.
+function pdfVraagAntwoordDoc(titel, secties){
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF({unit:'pt',format:'a4'});
+  const margin=48, rechts=547, inspring=22;
+  let y=60;
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(20,24,29);
+  doc.text(titel,margin,y);y+=10;
+  doc.setDrawColor(0,223,163);doc.setLineWidth(1.5);doc.line(margin,y,rechts,y);y+=26;
+
+  (secties||[]).forEach(sec=>{
+    if(!sec.vragen||!sec.vragen.length)return;
+    if(y>730){doc.addPage();y=60;}
+    if(sec.kop){
+      doc.setFont('helvetica','bold');doc.setFontSize(11.5);doc.setTextColor(0,128,94);
+      doc.text(String(sec.kop).toUpperCase(),margin,y);y+=18;
+    }
+    sec.vragen.forEach(([vraag,antwoord])=>{
+      if(y>750){doc.addPage();y=60;}
+      doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(20,24,29);
+      const vraagLines=doc.splitTextToSize(String(vraag),rechts-margin);
+      doc.text(vraagLines,margin,y);
+      y+=vraagLines.length*13+5;
+      if(y>760){doc.addPage();y=60;}
+      const antwTxt=(antwoord===null||antwoord===undefined||antwoord==='')?'—':String(antwoord);
+      doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(0,110,80);
+      const antwLines=doc.splitTextToSize(antwTxt,rechts-margin-inspring);
+      doc.text(antwLines,margin+inspring,y);
+      y+=antwLines.length*13+16;
+    });
+    y+=6;
+  });
+  return doc;
+}
+
 const B2C_SCREENING_LABELS={
   digitale_meter:'Digitale meter',p1_bezet:'P1-poort bezet',eigendom:'Eigendom muur',
   vrije_route:'Vrije route kabeldoorvoer',gevelbekleding:'Gevelbekleding',afstand:'Afstand meterkast-laadpunt',
@@ -8807,19 +8855,71 @@ const B2C_SCREENING_LABELS={
   lan:'LAN (bekabeld internet)',vierg:'4G-ontvangst',extra_werken:'Extra werkzaamheden nodig',
   opmerkingen:'Opmerkingen',datum:'Datum screening'
 };
+// Vraag-formulering van dezelfde screeningsvelden (b2c, ingevuld tijdens de sales-visit).
+const B2C_SCREENING_VRAGEN={
+  datum:'Datum screening',
+  digitale_meter:'Is er een digitale meter aanwezig?',
+  p1_bezet:'Is de P1-poort al in gebruik?',
+  eigendom:'Is de muur eigendom van de klant?',
+  vrije_route:'Is er een vrije route voor de kabeldoorvoer (zonder grote obstakels, boor- of graafwerken)?',
+  gevelbekleding:'Wat is de gevelbekleding (steen / hout / crepi)?',
+  afstand:'Wat is de afstand tussen meterkast en laadpunt?',
+  hoofdzekering:'Wat is de hoofdzekering (in Ampère)?',
+  aansluiting:'Is de aansluiting van de woning 1-fase of 3-fase?',
+  vrije_ruimte:'Is er vrije ruimte in de zekeringskast?',
+  lan:'Is er bekabeld internet (LAN) aanwezig?',
+  vierg:'Heeft de klant 4G-ontvangst?',
+  extra_werken:'Zijn er extra werkzaamheden nodig?',
+  opmerkingen:'Opmerkingen',
+};
+// Vraag-formulering voor de (andere, latere) screening die het service-/installatieteam zelf invult.
+// Exact dezelfde vragen (en volgorde van onderwerp) als het echte screeningsformulier
+// in het service-dossier (tabblad Screening) — zie data-sc attributen daar.
+const INST_SCREENING_VRAGEN={
+  'aansluiting-1f':'Heeft de woning een enkelfasige aansluiting (1x230V)?',
+  'aansluiting-3f':'Heeft de woning een driefasige aansluiting (3x400V)?',
+  'zekering':'Zekeringskast geschikt voor laadpaal?',
+  'aarding':'Vrije aardingspin aanwezig?',
+  'locatie':'Voorziene locatie laadpaal (garage / carport / oprit)',
+  'afstand':'Afstand zekeringskast tot laadpaal (m)',
+  'kabel-muur':'Kabel door muur / vloer nodig?',
+  'buiten':'Buiten montage (weerbestendig vereist)?',
+  'typePaal':'Type laadpaal',
+  'smart':'Smart charging / load balancing gewenst?',
+  'zonnepanelen':'Zonnepanelen aanwezig?',
+  'opmerkingen':'Opmerkingen screening',
+};
+// Ja/Nee/Nader-toggles slaan lowercase 'ja'/'nee'/'nader' op — netjes weergeven in de PDF.
+function instScWaarde(v){
+  if(v==='ja')return 'Ja';
+  if(v==='nee')return 'Nee';
+  if(v==='nader')return 'Nader te bekijken';
+  return v;
+}
 
-// Bouwt en downloadt de zip zelf. docsArrays: [{map, lijst:[{naam,data}]}]
-async function dossierBouwZip(bestandNaamPrefix, secties, screeningSecties, docsArrays){
+// Activiteitenlog (l.acties / inst.acties) als leesbare regels voor in "Algemene informatie".
+function actielogVelden(acties){
+  return (acties||[]).slice().reverse().map(a=>[
+    `${a.datum||''}${a.tijdstip?' '+a.tijdstip:''}`.trim()||'—',
+    (a.tekst||'')+(a.gebruiker?' — '+a.gebruiker:'')
+  ]);
+}
+
+// Bouwt en downloadt de zip zelf.
+// extraPdfDocs: [{bestandsnaam, titel, secties, vraagStijl}] — losse PDF's naast Algemene_informatie.pdf
+// docsArrays: [{map, lijst:[{naam,data}]}] — bestaande bestanden (offerte/contract/documenten/foto's)
+async function dossierBouwZip(bestandNaamPrefix, algemeneSecties, extraPdfDocs, docsArrays){
   if(typeof JSZip==='undefined'){showToast('ZIP-bibliotheek nog niet geladen, probeer opnieuw.');return;}
   const zip=new JSZip();
 
-  const algemeneDoc=pdfKeyWaardeDoc('Algemene informatie',secties);
+  const algemeneDoc=pdfKeyWaardeDoc('Algemene informatie',algemeneSecties);
   zip.file('Algemene_informatie.pdf',algemeneDoc.output('arraybuffer'));
 
-  if(screeningSecties&&screeningSecties.some(s=>s.velden&&s.velden.length)){
-    const scDoc=pdfKeyWaardeDoc('Screeningsformulier',screeningSecties);
-    zip.file('Screeningsformulier.pdf',scDoc.output('arraybuffer'));
-  }
+  (extraPdfDocs||[]).forEach(ed=>{
+    if(!ed.secties||!ed.secties.some(s=>(s.velden&&s.velden.length)||(s.vragen&&s.vragen.length)))return;
+    const doc=ed.vraagStijl?pdfVraagAntwoordDoc(ed.titel||ed.bestandsnaam,ed.secties):pdfKeyWaardeDoc(ed.titel||ed.bestandsnaam,ed.secties);
+    zip.file(ed.bestandsnaam,doc.output('arraybuffer'));
+  });
 
   const namenPerMap={};
   (docsArrays||[]).forEach(({map,lijst})=>{
@@ -8857,13 +8957,19 @@ async function b2cDossierDownloadZip(id){
         ['Installatiepartner',l.installatiepartner],
       ]},
       {kop:'Notities',velden:[['Notities',l.notities]]},
+      {kop:'Activiteitenlog',velden:actielogVelden(l.acties)},
     ];
-    const screeningSecties=(l.screening&&Object.keys(l.screening).length)
-      ?[{kop:'Screening',velden:pdfVeldenVanObject(l.screening,B2C_SCREENING_LABELS,['fotos'])}]
-      :null;
+    // De screening die tijdens de eerste sales-visit werd afgenomen — apart en duidelijk benoemd
+    // zodat dit niet verward wordt met een eventuele latere screening door het service-team.
+    const extraPdfDocs=(l.screening&&Object.keys(l.screening).length)?[{
+      bestandsnaam:'1st_Screening_Visit_Sales.pdf',
+      titel:'1st Screening Visit — Sales',
+      vraagStijl:true,
+      secties:[{kop:'Screening (afgenomen tijdens de sales-visit)',vragen:screeningVragen(l.screening,B2C_SCREENING_VRAGEN,['fotos'])}]
+    }]:null;
     await dossierBouwZip(
       'Dossier_'+(b2cNaam(l)||'lead').replace(/[^a-z0-9]+/gi,'_'),
-      secties,screeningSecties,
+      secties,extraPdfDocs,
       [{map:'Documenten',lijst:l.documenten},{map:'Offerte-Contract',lijst:l.docs}]
     );
     showToast('ZIP gedownload!');
@@ -8885,6 +8991,7 @@ async function b2bDossierDownloadZip(idx){
         ['Geschatte omzet',p.omzet],
       ]},
       {kop:'Projectinfo',velden:[['Projectinfo',p.info]]},
+      {kop:'Activiteitenlog',velden:actielogVelden(p.acties)},
     ];
     await dossierBouwZip(
       'Dossier_'+(p.naam||p.klant||'project').replace(/[^a-z0-9]+/gi,'_'),
@@ -8899,23 +9006,45 @@ async function instDossierDownloadZip(id){
   const inst=installaties.find(x=>x.id===(id!=null?id:instDossierOpenId));if(!inst)return;
   showToast('ZIP wordt samengesteld...');
   try{
-    const secties=[
-      {kop:'Klantgegevens',velden:[
-        ['Naam',inst.naam],['Project',inst.project],['Adres',inst.adres],['Telefoon',inst.tel],['E-mail',inst.email],
-      ]},
-      {kop:'Ticketdetails',velden:[
-        ['Fase',inst.fase],['Verantwoordelijke',inst.resp],
-        ['Installatie',inst.datumInst?(inst.datumInst+(inst.uurInst?' '+inst.uurInst:'')):'Niet gepland'],
-        ['Keuring',inst.datumKeur?(inst.datumKeur+(inst.uurKeur?' '+inst.uurKeur:'')):'Niet gepland'],
-        ['Gekoppeld dossier',inst.linkLabel],
-      ]},
+    // Algemene informatie = alles uit het dossier, BEHALVE de installatie-planning zelf
+    // (die staat enkel in het aparte "Installatiegegevens"-document hieronder).
+    const algemeneKlantVelden=[
+      ['Naam',inst.naam],['Project',inst.project],['Adres',inst.adres],['Telefoon',inst.tel],['E-mail',inst.email],
+      ['Verantwoordelijke',inst.resp],['Gekoppeld dossier',inst.linkLabel],
     ];
-    const screeningSecties=(inst.screening&&Object.keys(inst.screening).length)
-      ?[{kop:'Screening',velden:pdfVeldenVanObject(inst.screening,B2C_SCREENING_LABELS,['fotos'])}]
-      :null;
+    const secties=[
+      {kop:'Klantgegevens',velden:algemeneKlantVelden},
+      {kop:'Activiteitenlog',velden:actielogVelden(inst.acties)},
+    ];
+
+    // Apart document "Installatiegegevens": bevat zowel de installatie-specifieke data
+    // (datum/uur installatie & keuring, fase, ...) ALS diezelfde algemene gegevens,
+    // zodat dit document ook op zichzelf leesbaar is.
+    const extraPdfDocs=[{
+      bestandsnaam:'Installatiegegevens.pdf',
+      titel:'Installatiegegevens',
+      secties:[
+        {kop:'Klantgegevens',velden:algemeneKlantVelden},
+        {kop:'Installatiedetails',velden:[
+          ['Fase',inst.fase],
+          ['Installatie',inst.datumInst?(inst.datumInst+(inst.uurInst?' '+inst.uurInst:'')+(inst.uurInstEind?'–'+inst.uurInstEind:'')):'Niet gepland'],
+          ['Keuring',inst.datumKeur?(inst.datumKeur+(inst.uurKeur?' '+inst.uurKeur:'')+(inst.uurKeurEind?'–'+inst.uurKeurEind:'')):'Niet gepland'],
+        ]},
+      ]
+    }];
+    if(inst.screening&&Object.keys(inst.screening).length){
+      const vragen=screeningVragen(inst.screening,INST_SCREENING_VRAGEN,['fotos'])
+        .map(([vraag,antwoord])=>[vraag, ['ja','nee','nader'].includes(antwoord)?instScWaarde(antwoord):antwoord]);
+      extraPdfDocs.push({
+        bestandsnaam:'Screeningsformulier.pdf',
+        titel:'Screeningsformulier — Installatie',
+        vraagStijl:true,
+        secties:[{kop:'Screening',vragen}]
+      });
+    }
     await dossierBouwZip(
       'Dossier_'+(inst.naam||'installatie').replace(/[^a-z0-9]+/gi,'_'),
-      secties,screeningSecties,
+      secties,extraPdfDocs,
       [{map:'Documenten',lijst:inst.docs},{map:'Fotos',lijst:inst.fotos}]
     );
     showToast('ZIP gedownload!');
