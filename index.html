@@ -12,6 +12,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1202,6 +1203,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
           <option>Installatie gepland</option><option>Installatie &amp; Keuring gepland</option>
           <option>Installatie &amp; Keuring compleet</option>
         </select>
+        <button class="btn sm" id="inst-zip-btn" style="display:none" onclick="instDossierDownloadZip(instDossierOpenId)" title="Download alles rond dit dossier als ZIP"><i class="ti ti-file-zip"></i> Download ZIP</button>
         <button class="modal-close" onclick="instDossierClose()"><i class="ti ti-x"></i></button>
       </div>
     </div>
@@ -1763,7 +1765,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 <!-- AGENDA NIEUW MODAL -->
-<div class="modal-overlay" id="ag-nieuw-overlay">
+<div class="modal-overlay above-modal" id="ag-nieuw-overlay">
   <div class="modal-box" style="max-width:540px">
     <div class="modal-header">
       <span class="modal-title" id="ag-nieuw-titel">Afspraak toevoegen</span>
@@ -2101,7 +2103,10 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   <div class="modal-box" style="max-width:1500px;width:98vw;display:flex;flex-direction:column;max-height:90vh" onclick="event.stopPropagation()">
     <div class="modal-header" style="flex-shrink:0">
       <span class="modal-title" id="modal-title">Nieuw project</span>
-      <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        <button class="btn sm" id="b2b-zip-btn" style="display:none" onclick="b2bDossierDownloadZip(editingIdx)" title="Download alles rond dit dossier als ZIP"><i class="ti ti-file-zip"></i> Download ZIP</button>
+        <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
+      </div>
     </div>
     <div class="inner-tabs" style="flex-shrink:0;padding:0 24px">
       <button class="inner-tab active" id="b2b-dtab-dossier" onclick="b2bShowDetailTab('dossier')"><i class="ti ti-info-circle" style="margin-right:5px"></i>Dossier</button>
@@ -2248,6 +2253,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <div class="modal-header" style="flex-shrink:0">
       <span class="modal-title" id="b2c-detail-titel">Klantdossier</span>
       <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        <button class="btn sm" onclick="b2cDossierDownloadZip(b2cOpenLeadId)" title="Download alles rond dit dossier als ZIP"><i class="ti ti-file-zip"></i> Download ZIP</button>
         <button class="btn sm" style="color:#639922;border-color:rgba(99,153,34,.3)" onclick="b2cMarkeerStatus('Gewonnen')" title="Markeer als Gewonnen"><i class="ti ti-trophy"></i> Gewonnen</button>
         <button class="btn sm" style="color:#a32d2d;border-color:rgba(163,45,45,.3)" onclick="b2cMarkeerStatus('Verloren')" title="Markeer als Verloren"><i class="ti ti-x"></i> Verloren</button>
         <button class="modal-close" onclick="b2cCloseDetail()"><i class="ti ti-x"></i></button>
@@ -2599,7 +2605,7 @@ let siOpvRespFilter = 'alle';
 
 // ── HELPERS ────────────────────────────────────────────
 function pctColor(p){const t=Math.max(0,Math.min(1,p/100));return`hsl(${Math.round(30+t*100)},${Math.round(90-t*25)}%,${Math.round(48-t*10)}%)`;}
-function today(){return new Date().toISOString().split('T')[0];}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function nowTijdstip(){return new Date().toLocaleTimeString('nl-BE',{hour:'2-digit',minute:'2-digit'});}
 function logEntry(tekst){
   const gebruiker=currentUser?.user_metadata?.naam||currentUser?.email||'';
@@ -3511,6 +3517,8 @@ function openModal(idx){
   editingIdx=idx;editingId=null;
   b2bOfferteState=null;
   b2bShowDetailTab('dossier');
+  const zipBtn=document.getElementById('b2b-zip-btn');
+  if(zipBtn)zipBtn.style.display=(idx!==null&&projects[idx])?'inline-flex':'none';
   const respSel=document.getElementById('m-resp');
   const curResp=(idx!==null&&projects[idx])?(projects[idx].resp||''):'';
   respSel.innerHTML='<option value="">— kies —</option>'+respNames('sales').map(r=>`<option value="${r}"${r===curResp?' selected':''}>${r}</option>`).join('');
@@ -3955,7 +3963,7 @@ const STC=['#0F6E56','#854F0B','#185FA5','#3C3489','#993556','#A32D2D','#3B6D11'
 let projects=${pData};let closed=${cData};
 let prevSold=new Set(projects.filter(p=>p.pct===100).map(p=>p.naam));
 function pc(p){const t=Math.max(0,Math.min(1,p/100));return'hsl('+Math.round(30+t*100)+','+Math.round(90-t*25)+'%,'+Math.round(48-t*10)+'%)';}
-function today(){return new Date().toISOString().split('T')[0];}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function nowTijdstip(){return new Date().toLocaleTimeString('nl-BE',{hour:'2-digit',minute:'2-digit'});}
 function logEntry(tekst){
   const gebruiker=currentUser?.user_metadata?.naam||currentUser?.email||'';
@@ -5404,8 +5412,12 @@ function agOpenEdit(id){
   const sid=String(id);
   if(sid.startsWith('b2c-')){b2cOpenDetail(sid.replace('b2c-',''));return;}
   if(sid.startsWith('b2b-')){const idx=projects.findIndex(p=>p.id===sid.replace('b2b-','')||p._rowid===sid.replace('b2b-',''));if(idx>-1)openModal(idx);return;}
-  const a=agAfspraken.find(x=>x.id===id);if(!a)return;
-  agEditId=id;
+  // LET OP: id komt hier binnen als string (uit een DOM data-attribuut), maar handmatig
+  // aangemaakte afspraken hebben een numeriek id (agNextId). Vergelijk daarom op String(x.id)
+  // i.p.v. x.id===id, anders faalt de match altijd stil (=== doet geen type-omzetting) en
+  // gebeurt er niets bij het klikken op zo'n afspraak.
+  const a=agAfspraken.find(x=>String(x.id)===sid);if(!a)return;
+  agEditId=a.id; // bewaar het originele id (string of nummer) zodat opslaan nadien blijft werken
   agWizHoofd=(['Installatie','Keuring','Andere'].includes(a.type)&&a.type!=='Andere')?'service':'sales';
   agWizSub=a.linkType||'andere';
   agWizTicketId=null;agWizB2cId=null;agWizB2bId=null;
@@ -5831,6 +5843,8 @@ function instRenderSidebar(){
 function instDossierOpen(id){
   const i=installaties.find(x=>x.id===id);if(!i)return;
   instDossierOpenId=id;
+  const zipBtn=document.getElementById('inst-zip-btn');
+  if(zipBtn)zipBtn.style.display='inline-flex';
   instCurrentFotos=[...(i.fotos||[])];
   instCurrentDocs=[...(i.docs||[])];
   instScreeningData={...(i.screening||{})};
@@ -5878,6 +5892,8 @@ function instDossierOpen(id){
 
 function instOpenNieuw(){
   instDossierOpenId=null;
+  const zipBtn=document.getElementById('inst-zip-btn');
+  if(zipBtn)zipBtn.style.display='none';
   instCurrentFotos=[];
   instCurrentDocs=[];
   instScreeningData={};
@@ -7484,6 +7500,14 @@ function b2cActLogHtml(acties){
     </div>`).join('');
 }
 
+// Alle agenda-afspraken die expliciet aan deze lead gekoppeld zijn (via de agendawizard,
+// los van het eigen visitDatum-veld hieronder) — getoond in het dossier onder "Visit / Afspraak".
+// LET OP: linkId wordt voor b2c-afspraken opgeslagen als "b2c-<id>" (zie agSave), dus het
+// voorvoegsel moet eerst weg voor we vergelijken met l.id.
+function b2cGekoppeldeAfspraken(l){
+  return (agAfspraken||[]).filter(a=>a.linkType==='b2c'&&String(a.linkId||'').replace('b2c-','')===String(l.id))
+    .sort((a,b)=>(a.datum||'').localeCompare(b.datum||'')||(a.uur||'').localeCompare(b.uur||''));
+}
 function b2cRenderInfo(l){
   const wBg={Koud:'#E6F1FB',Lauw:'#FAEEDA',Warm:'#E1F5EE',Hot:'#FCEBEB'};
   const wCol={Koud:'#185FA5',Lauw:'#854F0B',Warm:'#0F6E56',Hot:'#A32D2D'};
@@ -7548,7 +7572,7 @@ function b2cRenderInfo(l){
         </div>
         <div class="grid2" style="gap:10px">
           <div class="field" style="margin-bottom:10px"><label><i class="ti ti-file-invoice" style="color:var(--green);margin-right:3px"></i>Offertenummer</label><input id="bi-offertenr" value="${l.offertenr||''}" placeholder="bv. OFF-2026-001" style="font-size:13px"></div>
-          <div class="field" style="margin-bottom:10px"><label>Visit</label>
+          <div class="field" style="margin-bottom:10px"><label>Visit / Afspraak</label>
             <div style="display:flex;align-items:center;gap:6px">
               ${l.visitDatum
                 ?`<span style="font-size:12px;font-weight:600;color:var(--green)">${l.visitDatum}${l.visitUur?' '+l.visitUur:''}</span>`
@@ -7557,6 +7581,19 @@ function b2cRenderInfo(l){
             </div>
           </div>
         </div>
+        ${(()=>{const gekoppeld=b2cGekoppeldeAfspraken(l);return gekoppeld.length?`
+        <div class="field" style="margin-bottom:14px">
+          <label>Gekoppelde afspraken in de agenda</label>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${gekoppeld.map(a=>`
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg2);border-radius:6px;padding:6px 10px">
+                <span style="font-size:12px"><strong>${a.titel||'Afspraak'}</strong> — ${a.datum||'—'}${a.uur?' '+a.uur+(a.einduur?'-'+a.einduur:''):''}${a.type?` <span style="color:var(--tx3)">· ${a.type}</span>`:''}</span>
+                <button class="btn sm" onclick="agOpenEdit('${a.id}')" style="flex-shrink:0"><i class="ti ti-pencil"></i></button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        `:'';})()}
 
         <!-- Installatiepartner -->
         <div style="border-top:1px solid var(--bd);padding-top:14px;margin-top:4px">
@@ -8147,8 +8184,13 @@ function b2cCloseScModal(){
 function b2cExportScreening(id){
   const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l||!l.screening)return;
   const sc=l.screening;
-  const txt=`SCREENINGSFORMULIER — INSTALLATIE LAADSTATION\nBLITZ Power BV · Heirbaan 395, 9150 Kruibeke\n\nDATUM: ${sc.datum||today()}\nNAAM: ${b2cNaam(l)}\nADRES: ${l.adres||'—'}\n\nLOCATIE\nDigitale meter: ${sc.digitale_meter||'—'}\nP1-poort bezet: ${sc.p1_bezet||'—'}\nEigendom muur: ${sc.eigendom||'—'}\nVrije route: ${sc.vrije_route||'—'}\nGevelbekleding: ${sc.gevelbekleding||'—'}\nAfstand: ${sc.afstand||'—'}\n\nELEKTRISCH\nHoofdzekering: ${sc.hoofdzekering||'—'} A\nAansluiting: ${sc.aansluiting||'—'}\nVrije ruimte kast: ${sc.vrije_ruimte||'—'}\n\nINTERNET\nLAN: ${sc.lan||'—'}\n4G: ${sc.vierg||'—'}\n\nCONCLUSIE\nExtra werken: ${sc.extra_werken||'—'}\nOpmerkingen: ${sc.opmerkingen||'—'}\nFoto's: ${(sc.fotos||[]).length}\n`;
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));a.download=`Screening_${b2cNaam(l).replace(' ','_')}_${today()}.txt`;a.click();
+  const secties=[
+    {kop:'Algemeen',velden:[['Datum',sc.datum||today()],['Naam',b2cNaam(l)],['Adres',l.adres||'—']]},
+    {kop:'Screening',velden:pdfVeldenVanObject(sc,B2C_SCREENING_LABELS,['fotos','datum'])},
+    {kop:'Foto\'s',velden:[["Aantal foto's",(sc.fotos||[]).length]]},
+  ];
+  const doc=pdfKeyWaardeDoc('Screeningsformulier — Installatie laadstation',secties);
+  doc.save(`Screening_${b2cNaam(l).replace(/\s+/g,'_')}_${today()}.pdf`);
   showToast('Screening geëxporteerd!');
 }
 
@@ -8689,6 +8731,196 @@ function b2cCopyContract(){
   navigator.clipboard.writeText(txt).then(()=>showToast('Gekopieerd naar klembord!'));
 }
 
+
+// ─── DOSSIER ZIP-EXPORT (B2C / B2B / Service) ────────
+// Verzamelt alles rond 1 dossier (algemene info, screening, documenten, offerte/contract)
+// in 1 gedownload zip-bestand. Bewust geen .txt-bestanden: alles gaat als PDF (info/screening)
+// of in het originele formaat (Word/Excel/PDF/foto's) mee.
+
+function zipVoegBase64Bestand(zip, map, naam, dataUri){
+  if(!dataUri)return;
+  const idx=dataUri.indexOf('base64,');
+  if(idx<0)return; // geen base64 data-uri — kunnen we niet mee (zou toch zelden voorkomen)
+  const base64=dataUri.slice(idx+7);
+  zip.folder(map).file(naam,base64,{base64:true});
+}
+
+function zipUniekeNaam(bestaandeNamen, naam){
+  if(!bestaandeNamen.includes(naam))return naam;
+  const dot=naam.lastIndexOf('.');
+  const basis=dot>0?naam.slice(0,dot):naam;
+  const ext=dot>0?naam.slice(dot):'';
+  let i=2;
+  while(bestaandeNamen.includes(`${basis} (${i})${ext}`))i++;
+  return `${basis} (${i})${ext}`;
+}
+
+// Simpele label/waarde PDF (voor "Algemene informatie" en screeningsformulieren) — geen .txt.
+function pdfKeyWaardeDoc(titel, secties){
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF({unit:'pt',format:'a4'});
+  const margin=48, rechts=547;
+  let y=60;
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(20,24,29);
+  doc.text(titel,margin,y);y+=10;
+  doc.setDrawColor(0,223,163);doc.setLineWidth(1.5);doc.line(margin,y,rechts,y);y+=26;
+
+  (secties||[]).forEach(sec=>{
+    if(!sec.velden||!sec.velden.length)return;
+    if(y>740){doc.addPage();y=60;}
+    if(sec.kop){
+      doc.setFont('helvetica','bold');doc.setFontSize(11.5);doc.setTextColor(0,128,94);
+      doc.text(String(sec.kop).toUpperCase(),margin,y);y+=16;
+    }
+    sec.velden.forEach(([label,waarde])=>{
+      if(y>770){doc.addPage();y=60;}
+      doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(60,70,78);
+      doc.text(String(label)+':',margin,y);
+      doc.setFont('helvetica','normal');doc.setTextColor(20,24,29);
+      const waardeTxt=(waarde===null||waarde===undefined||waarde==='')?'—':String(waarde);
+      const lines=doc.splitTextToSize(waardeTxt,rechts-margin-140);
+      doc.text(lines,margin+140,y);
+      y+=Math.max(14,lines.length*12)+4;
+    });
+    y+=10;
+  });
+  return doc;
+}
+
+// Zet een los object (bv. screeningdata) om naar [label,waarde]-parjes voor pdfKeyWaardeDoc,
+// met een label-vertaling waar we die kennen en een nette fallback voor de rest.
+function pdfVeldenVanObject(obj, labelMap, negeer){
+  labelMap=labelMap||{};negeer=negeer||[];
+  return Object.keys(obj||{}).filter(k=>!negeer.includes(k)).map(k=>{
+    let v=obj[k];
+    if(Array.isArray(v))v=v.length?`${v.length} item(s)`:'';
+    else if(v&&typeof v==='object')v=JSON.stringify(v);
+    const label=labelMap[k]||(k.charAt(0).toUpperCase()+k.slice(1).replace(/_/g,' '));
+    return [label,v];
+  });
+}
+
+const B2C_SCREENING_LABELS={
+  digitale_meter:'Digitale meter',p1_bezet:'P1-poort bezet',eigendom:'Eigendom muur',
+  vrije_route:'Vrije route kabeldoorvoer',gevelbekleding:'Gevelbekleding',afstand:'Afstand meterkast-laadpunt',
+  hoofdzekering:'Hoofdzekering (A)',aansluiting:'Aansluiting woning',vrije_ruimte:'Vrije ruimte zekeringskast',
+  lan:'LAN (bekabeld internet)',vierg:'4G-ontvangst',extra_werken:'Extra werkzaamheden nodig',
+  opmerkingen:'Opmerkingen',datum:'Datum screening'
+};
+
+// Bouwt en downloadt de zip zelf. docsArrays: [{map, lijst:[{naam,data}]}]
+async function dossierBouwZip(bestandNaamPrefix, secties, screeningSecties, docsArrays){
+  if(typeof JSZip==='undefined'){showToast('ZIP-bibliotheek nog niet geladen, probeer opnieuw.');return;}
+  const zip=new JSZip();
+
+  const algemeneDoc=pdfKeyWaardeDoc('Algemene informatie',secties);
+  zip.file('Algemene_informatie.pdf',algemeneDoc.output('arraybuffer'));
+
+  if(screeningSecties&&screeningSecties.some(s=>s.velden&&s.velden.length)){
+    const scDoc=pdfKeyWaardeDoc('Screeningsformulier',screeningSecties);
+    zip.file('Screeningsformulier.pdf',scDoc.output('arraybuffer'));
+  }
+
+  const namenPerMap={};
+  (docsArrays||[]).forEach(({map,lijst})=>{
+    namenPerMap[map]=namenPerMap[map]||[];
+    (lijst||[]).forEach(d=>{
+      if(!d||!d.data)return;
+      let naam=d.naam||'bestand';
+      naam=zipUniekeNaam(namenPerMap[map],naam);
+      namenPerMap[map].push(naam);
+      zipVoegBase64Bestand(zip,map,naam,d.data);
+    });
+  });
+
+  const blob=await zip.generateAsync({type:'blob'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=bestandNaamPrefix+'.zip';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1500);
+}
+
+async function b2cDossierDownloadZip(id){
+  const l=b2cLeads.find(x=>String(x.id)===String(id));if(!l)return;
+  showToast('ZIP wordt samengesteld...');
+  try{
+    const secties=[
+      {kop:'Klantgegevens',velden:[
+        ['Naam',b2cNaam(l)],['Adres installatie',l.adres],['Telefoon',l.tel],['E-mail',l.email],
+        ['Bedrijfsnaam',l.bedrijf],['BTW-nummer',l.btw],
+      ]},
+      {kop:'Lead details',velden:[
+        ['Status',l.status],['Verantwoordelijke',l.resp],['Warmte',l.warmte],['Bron',l.bron],
+        ['Aanmaakdatum',l.aanmaakdatum],['Offertenummer',l.offertenr],
+        ['Visit / Afspraak',l.visitDatum?(l.visitDatum+(l.visitUur?' '+l.visitUur:'')):'Niet gepland'],
+        ['Installatiepartner',l.installatiepartner],
+      ]},
+      {kop:'Notities',velden:[['Notities',l.notities]]},
+    ];
+    const screeningSecties=(l.screening&&Object.keys(l.screening).length)
+      ?[{kop:'Screening',velden:pdfVeldenVanObject(l.screening,B2C_SCREENING_LABELS,['fotos'])}]
+      :null;
+    await dossierBouwZip(
+      'Dossier_'+(b2cNaam(l)||'lead').replace(/[^a-z0-9]+/gi,'_'),
+      secties,screeningSecties,
+      [{map:'Documenten',lijst:l.documenten},{map:'Offerte-Contract',lijst:l.docs}]
+    );
+    showToast('ZIP gedownload!');
+  }catch(e){console.error('Zip export (B2C) mislukt:',e);showToast('⚠ ZIP maken mislukt: '+e.message);}
+}
+
+async function b2bDossierDownloadZip(idx){
+  const p=projects[idx];if(!p)return;
+  showToast('ZIP wordt samengesteld...');
+  try{
+    const secties=[
+      {kop:'Klant & contact',velden:[
+        ['Projectnaam',p.naam],['Klant',p.klant],['BTW-nummer',p.btw],['Contactpersoon',p.contact],
+        ['GSM contactpersoon',p.contactgsm],['E-mail contactpersoon',p.contactemail],['Installatieadres',p.adres],
+      ]},
+      {kop:'Projectdetails',velden:[
+        ['Productomschrijving',p.product],['Aantal laadpunten',p.lp],['Status',STATUSES[parseInt(p.status)]||p.status],
+        ['Verantwoordelijke',p.resp],['Offertenummer',p.offertenr],['Installatiepartner',p.installatiepartner],
+        ['Geschatte omzet',p.omzet],
+      ]},
+      {kop:'Projectinfo',velden:[['Projectinfo',p.info]]},
+    ];
+    await dossierBouwZip(
+      'Dossier_'+(p.naam||p.klant||'project').replace(/[^a-z0-9]+/gi,'_'),
+      secties,null,
+      [{map:'Documenten',lijst:p.attachments},{map:'Offerte-Contract',lijst:p.docs}]
+    );
+    showToast('ZIP gedownload!');
+  }catch(e){console.error('Zip export (B2B) mislukt:',e);showToast('⚠ ZIP maken mislukt: '+e.message);}
+}
+
+async function instDossierDownloadZip(id){
+  const inst=installaties.find(x=>x.id===(id!=null?id:instDossierOpenId));if(!inst)return;
+  showToast('ZIP wordt samengesteld...');
+  try{
+    const secties=[
+      {kop:'Klantgegevens',velden:[
+        ['Naam',inst.naam],['Project',inst.project],['Adres',inst.adres],['Telefoon',inst.tel],['E-mail',inst.email],
+      ]},
+      {kop:'Ticketdetails',velden:[
+        ['Fase',inst.fase],['Verantwoordelijke',inst.resp],
+        ['Installatie',inst.datumInst?(inst.datumInst+(inst.uurInst?' '+inst.uurInst:'')):'Niet gepland'],
+        ['Keuring',inst.datumKeur?(inst.datumKeur+(inst.uurKeur?' '+inst.uurKeur:'')):'Niet gepland'],
+        ['Gekoppeld dossier',inst.linkLabel],
+      ]},
+    ];
+    const screeningSecties=(inst.screening&&Object.keys(inst.screening).length)
+      ?[{kop:'Screening',velden:pdfVeldenVanObject(inst.screening,B2C_SCREENING_LABELS,['fotos'])}]
+      :null;
+    await dossierBouwZip(
+      'Dossier_'+(inst.naam||'installatie').replace(/[^a-z0-9]+/gi,'_'),
+      secties,screeningSecties,
+      [{map:'Documenten',lijst:inst.docs},{map:'Fotos',lijst:inst.fotos}]
+    );
+    showToast('ZIP gedownload!');
+  }catch(e){console.error('Zip export (service) mislukt:',e);showToast('⚠ ZIP maken mislukt: '+e.message);}
+}
 
 // ─── NIEUW LEAD MODAL ───────────────────────────────
 function b2cOpenNieuw(visitMode){
@@ -10436,7 +10668,7 @@ async function b2bVolgendOffertenummer() {
 async function b2bNieuweOfferteState() {
   return {
     offertenummer: await b2bVolgendOffertenummer(),
-    datum: today ? today() : new Date().toISOString().slice(0,10),
+    datum: today ? today() : ymdLocal(new Date()),
     referentie: '',
     btwPercentage: 21,
     opmerkingen: '',
@@ -11126,7 +11358,7 @@ function b2bGenereerOffertePDF(project){
   const BLACK = [20, 20, 20];
   const GRAY = [120, 120, 120];
 
-  const s = project.offerte || b2bOfferteState || {offertenummer:'—',datum:today?today():new Date().toISOString().slice(0,10),btwPercentage:21,groeperingen:[]};
+  const s = project.offerte || b2bOfferteState || {offertenummer:'—',datum:today?today():ymdLocal(new Date()),btwPercentage:21,groeperingen:[]};
 
   // ── Logo / Header ──
   doc.setFont('helvetica','bold');
@@ -12936,6 +13168,11 @@ async function afasSyncWebOffertes() {
 
 // === WEEK VIEW + TODO FEATURES ===
 // ── AGENDA VIEW (maand/week) ──────────────────────────
+// Lokale datum (YYYY-MM-DD) zonder tijdzone-verschuiving. LET OP: gebruik dit i.p.v.
+// d.toISOString().slice(0,10) — toISOString() rekent altijd om naar UTC, wat in
+// België (UTC+1/+2) een lokale kalenderdag naar de vorige dag laat "kantelen" en
+// afspraken zo een dag te laat in de agenda toont.
+function ymdLocal(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 let agView='maand'; // 'maand' of 'week'
 let agWeekStart=null; // Date van maandag van huidige week
 
@@ -13027,14 +13264,14 @@ function agRenderWeek(){
 
   // Haal alle afspraken + opvolgingen + todos op voor deze week
   const afspraken=agGetFiltered();
-  const dagenStr=dagen.map(d=>d.toISOString().slice(0,10));
+  const dagenStr=dagen.map(d=>ymdLocal(d));
 
   grid.style.gridTemplateColumns='48px repeat(7,minmax(0,1fr))';
 
   // Sticky dag-headers
   let html='<div style="position:sticky;top:0;z-index:10;background:var(--bg2);border-right:1px solid var(--bd);border-bottom:2px solid var(--bd2)"></div>';
   dagen.forEach((d,i)=>{
-    const ds=d.toISOString().slice(0,10);
+    const ds=ymdLocal(d);
     const isToday=ds===t;
     html+=`<div style="position:sticky;top:0;z-index:10;text-align:center;padding:6px 2px;border-right:1px solid var(--bd);border-bottom:2px solid var(--bd2);background:${isToday?'rgba(0,223,163,.12)':'var(--bg2)'};font-weight:${isToday?'800':'600'};font-size:11px;color:${isToday?'var(--green)':'var(--tx2)'}">
       ${DAGN[i]} <span style="font-size:17px;font-family:'Poppins',sans-serif;font-weight:800;display:block;line-height:1.1">${d.getDate()}</span>
@@ -13048,7 +13285,7 @@ function agRenderWeek(){
     const urBg=buiten?'rgba(0,0,0,0.03)':'var(--bg)';
     html+=`<div style="text-align:right;padding:3px 6px 0 2px;font-size:10px;color:var(--tx3);border-right:1px solid var(--bd);border-bottom:1px solid var(--bd2);background:${buiten?'rgba(0,0,0,0.04)':urBg};height:48px;box-sizing:border-box;font-weight:${buiten?'400':'500'}">${uurStr}</div>`;
     dagen.forEach(d=>{
-      const ds=d.toISOString().slice(0,10);
+      const ds=ymdLocal(d);
       const isToday=ds===t;
       const bg=buiten?(isToday?'rgba(0,223,163,.03)':'rgba(0,0,0,0.03)'):(isToday?'rgba(0,223,163,.05)':'var(--bg)');
       const evs=afspraken.filter(a=>a.datum===ds&&a.uur&&parseInt(a.uur)===u);
@@ -13084,7 +13321,7 @@ function agRenderWeek(){
   if(dagGrid){
     let dagHtml='<div style="background:var(--bg2);border-right:1px solid var(--bd);padding:2px 4px;font-size:9px;color:var(--tx3);font-style:italic;min-height:32px"></div>';
     dagen.forEach(d=>{
-      const ds=d.toISOString().slice(0,10);
+      const ds=ymdLocal(d);
       const isToday=ds===t;
       const evsDag=afspraken.filter(a=>a.datum===ds&&!a.uur);
       const opvsDag=[];
@@ -13335,14 +13572,14 @@ function agRenderWeek(){
 
   // Haal alle afspraken + opvolgingen + todos op voor deze week
   const afspraken=agGetFiltered();
-  const dagenStr=dagen.map(d=>d.toISOString().slice(0,10));
+  const dagenStr=dagen.map(d=>ymdLocal(d));
 
   grid.style.gridTemplateColumns='48px repeat(7,minmax(0,1fr))';
 
   // Sticky dag-headers
   let html='<div style="position:sticky;top:0;z-index:10;background:var(--bg2);border-right:1px solid var(--bd);border-bottom:2px solid var(--bd2)"></div>';
   dagen.forEach((d,i)=>{
-    const ds=d.toISOString().slice(0,10);
+    const ds=ymdLocal(d);
     const isToday=ds===t;
     html+=`<div style="position:sticky;top:0;z-index:10;text-align:center;padding:6px 2px;border-right:1px solid var(--bd);border-bottom:2px solid var(--bd2);background:${isToday?'rgba(0,223,163,.12)':'var(--bg2)'};font-weight:${isToday?'800':'600'};font-size:11px;color:${isToday?'var(--green)':'var(--tx2)'}">
       ${DAGN[i]} <span style="font-size:17px;font-family:'Poppins',sans-serif;font-weight:800;display:block;line-height:1.1">${d.getDate()}</span>
@@ -13356,7 +13593,7 @@ function agRenderWeek(){
     const urBg=buiten?'rgba(0,0,0,0.03)':'var(--bg)';
     html+=`<div style="text-align:right;padding:3px 6px 0 2px;font-size:10px;color:var(--tx3);border-right:1px solid var(--bd);border-bottom:1px solid var(--bd2);background:${buiten?'rgba(0,0,0,0.04)':urBg};height:48px;box-sizing:border-box;font-weight:${buiten?'400':'500'}">${uurStr}</div>`;
     dagen.forEach(d=>{
-      const ds=d.toISOString().slice(0,10);
+      const ds=ymdLocal(d);
       const isToday=ds===t;
       const bg=buiten?(isToday?'rgba(0,223,163,.03)':'rgba(0,0,0,0.03)'):(isToday?'rgba(0,223,163,.05)':'var(--bg)');
       const evs=afspraken.filter(a=>a.datum===ds&&a.uur&&parseInt(a.uur)===u);
@@ -13387,7 +13624,7 @@ function agRenderWeek(){
   // Hele-dag rij onderaan
   html+=`<div style="text-align:right;padding:4px 6px;font-size:10px;color:var(--tx3);border-right:1px solid var(--bd);border-top:2px solid var(--bd2);background:var(--bg2);font-style:italic">dag</div>`;
   dagen.forEach(d=>{
-    const ds=d.toISOString().slice(0,10);
+    const ds=ymdLocal(d);
     const isToday=ds===t;
     const evs=afspraken.filter(a=>a.datum===ds&&!a.uur);
     const opvs=[];
