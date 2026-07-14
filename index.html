@@ -8771,7 +8771,10 @@ async function b2cDownloadContractPDF(){
 }
 
 // ── DocuSign: contract versturen voor (ingebedde) ondertekening ──────
-// Vereist dat de docusign-handler Edge Function gedeployed is (zie docusign-function/index.ts)
+// Vereist dat de DocuSign Edge Function gedeployed is (zie docusign-function/index.ts).
+// LET OP: de URL hieronder moet exact overeenkomen met de echte functie-URL in Supabase
+// (te vinden bij Edge Functions → [functie] → bovenaan de pagina) — niet met de "Name"
+// die je aan de functie gaf, want die kan afwijken van de eigenlijke route/slug.
 // met de DocuSign-secrets ingesteld in Supabase.
 function b2cDocusignStatusTonen(l){
   const el=document.getElementById('ct-docusign-status');
@@ -10126,9 +10129,10 @@ let wmsIsManager=false;
 // Credentials staan NIET meer in de HTML — die zitten veilig in de Supabase Edge Function
 // Enkel de proxy-URL hieronder is nodig
 const AFAS_PROXY_URL = 'https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/super-handler';
-// Nieuwe, aparte Edge Function voor DocuSign (zelfde Supabase-project, andere functienaam).
-// Pas de naam hier aan als je de functie anders noemt bij het deployen.
-const DOCUSIGN_PROXY_URL = 'https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/docusign-handler';
+// Let op: de functie heet in Supabase weliswaar "docusign-handler" (weergavenaam), maar de
+// eigenlijke URL/slug is "rapid-worker" gebleven — Supabase's "Name" hernoemen verandert de
+// route niet. Pas dit hieronder aan als je de functie ooit opnieuw/anders deployt.
+const DOCUSIGN_PROXY_URL = 'https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/rapid-worker';
 
 let wmsAfasArtikelen = [];
 let wmsAfasSamenstellingen = []; // blijft leeg — Blitz_laadstations/samenstellingen niet meer opgehaald
