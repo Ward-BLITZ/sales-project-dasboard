@@ -8605,7 +8605,7 @@ function b2cContractToonPreview(c){
   if(l){b2cContractZichtbaarheidTonen(l);b2cDocusignStatusTonen(l);}
 }
 
-function b2cGenereerContract(id){
+async function b2cGenereerContract(id){
   const l=b2cContractGetLead(id);if(!l)return;
   l.contract=l.contract||{};
   if(!l.contract.installatieType){showToast('Kies eerst Muur of Tower als installatietype.');return;}
@@ -8636,6 +8636,18 @@ function b2cGenereerContract(id){
   l.acties=l.acties||[];l.acties.push(logEntry('Contract gegenereerd'));
   sbSaveB2cLead(l);
   showToast('Contract gegenereerd!');
+
+  // Meteen ook een PDF renderen en in het dossier opslaan (zoals de offerte al deed),
+  // zodat "Zichtbaar in klantportaal" meteen aanvinkbaar is — niet pas na "Downloaden".
+  try{
+    const pdf=await b2cContractRenderPdfDoc(b2cContractTekst);
+    b2cContractSlaOpAlsDoc(id,pdf,null);
+    b2cContractZichtbaarheidTonen(l);
+  }catch(e){
+    console.error('Contract-PDF automatisch opslaan mislukt:',e);
+    // Geen harde fout tonen — genereren zelf is gelukt, enkel het automatisch opslaan niet.
+    // "Downloaden" blijft als terugval werken.
+  }
 }
 
 // Rendert de 2 contractpagina's offscreen (html2canvas) en bouwt er een jsPDF-document van.
@@ -8789,7 +8801,8 @@ async function b2cDocusignVerstuur(id){
     const idx=contractDoc.data.indexOf('base64,');
     const pdfBase64=contractDoc.data.slice(idx+7);
     const resp=await fetch(DOCUSIGN_PROXY_URL,{
-      method:'POST',headers:{'Content-Type':'application/json'},
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'apikey':SUPABASE_ANON_KEY},
       body:JSON.stringify({
         action:'create_envelope',
         pdfBase64, bestandsnaam:contractDoc.naam,
@@ -8815,7 +8828,8 @@ async function b2cDocusignStatusCheck(id){
   const l=b2cContractGetLead(id);if(!l||!l.contract||!l.contract.docusign)return;
   try{
     const resp=await fetch(DOCUSIGN_PROXY_URL,{
-      method:'POST',headers:{'Content-Type':'application/json'},
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'apikey':SUPABASE_ANON_KEY},
       body:JSON.stringify({action:'get_status',envelopeId:l.contract.docusign.envelopeId}),
     });
     const data=await resp.json();
