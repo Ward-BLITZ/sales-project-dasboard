@@ -409,7 +409,7 @@ async function startOndertekenen(){
 
   try{
     const resp = await fetch(DOCUSIGN_PROXY_URL, {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY},
       body: JSON.stringify({
         action:'get_signing_url',
         envelopeId: ds.envelopeId, clientUserId: ds.clientUserId,
@@ -456,7 +456,7 @@ async function onOndertekenAfgerond(event){
   try{
     const ds = trackData.contract.docusign;
     const resp = await fetch(DOCUSIGN_PROXY_URL, {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY},
       body: JSON.stringify({action:'get_status', envelopeId: ds.envelopeId}),
     });
     const data = await resp.json();
