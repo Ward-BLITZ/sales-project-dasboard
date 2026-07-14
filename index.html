@@ -8305,6 +8305,7 @@ function b2cRenderContract(l){
           <button class="btn sm" onclick="b2cCopyContract()"><i class="ti ti-copy"></i> Kopiëren</button>
         </div>
         <div id="ct-portaal-toggle" style="margin-top:10px"></div>
+        <div id="ct-docusign-status" style="margin-top:10px"></div>
       </div>
     </div>
   `;
@@ -8601,7 +8602,7 @@ function b2cContractToonPreview(c){
   const acties=document.getElementById('ct-acties');
   if(acties)acties.style.display='flex';
   const l=b2cContractGetLead(c.leadId);
-  if(l)b2cContractZichtbaarheidTonen(l);
+  if(l){b2cContractZichtbaarheidTonen(l);b2cDocusignStatusTonen(l);}
 }
 
 function b2cGenereerContract(id){
@@ -8748,11 +8749,85 @@ async function b2cDownloadContractPDF(){
     if(l){
       b2cContractSlaOpAlsDoc(id,pdf,null);
       b2cContractZichtbaarheidTonen(l);
+      b2cDocusignStatusTonen(l);
       showToast('PDF gedownload en opgeslagen in het dossier!');
     }
   }catch(e){
     console.error('Contract-PDF genereren mislukt:',e);
     showToast('⚠ PDF genereren mislukt: '+e.message);
+  }
+}
+
+// ── DocuSign: contract versturen voor (ingebedde) ondertekening ──────
+// Vereist dat de docusign-handler Edge Function gedeployed is (zie docusign-function/index.ts)
+// met de DocuSign-secrets ingesteld in Supabase.
+function b2cDocusignStatusTonen(l){
+  const el=document.getElementById('ct-docusign-status');
+  if(!el)return;
+  const ds=l.contract&&l.contract.docusign;
+  if(!ds||!ds.envelopeId){
+    el.innerHTML=`<button class="btn sm" onclick="b2cDocusignVerstuur('${l.id}')"><i class="ti ti-signature"></i> Verstuur voor ondertekening (DocuSign)</button>`;
+    return;
+  }
+  const kleur=ds.status==='completed'?'#00805e':ds.status==='sent'||ds.status==='delivered'?'#9a7b00':'var(--tx3)';
+  const label=ds.status==='completed'?'Ondertekend ✓':ds.status==='sent'?'Verstuurd, wacht op ondertekening':ds.status==='delivered'?'Geopend door klant':ds.status||'Onbekend';
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:600;color:${kleur}"><i class="ti ti-signature"></i> DocuSign: ${label}</span>
+      <button class="btn sm" onclick="b2cDocusignStatusCheck('${l.id}')"><i class="ti ti-refresh"></i> Status verversen</button>
+      ${ds.status!=='completed'?`<button class="btn sm" onclick="b2cDocusignVerstuur('${l.id}')"><i class="ti ti-send"></i> Opnieuw versturen</button>`:''}
+    </div>`;
+}
+
+async function b2cDocusignVerstuur(id){
+  const l=b2cContractGetLead(id);if(!l)return;
+  if(!l.email){showToast('Geen e-mailadres gekend voor deze klant.');return;}
+  const contractDoc=(l.docs||[]).find(d=>d._type==='contract');
+  if(!contractDoc){showToast('Download eerst het contract (PDF) voor je het kan versturen ter ondertekening.');return;}
+  showToast('Contract wordt verstuurd naar DocuSign...');
+  try{
+    const idx=contractDoc.data.indexOf('base64,');
+    const pdfBase64=contractDoc.data.slice(idx+7);
+    const resp=await fetch(DOCUSIGN_PROXY_URL,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        action:'create_envelope',
+        pdfBase64, bestandsnaam:contractDoc.naam,
+        koperNaam:b2cNaam(l), koperEmail:l.email,
+        dossierId:String(l.id),
+        onderwerp:`Aankoopcontract BLITZ POWER — ${b2cNaam(l)}`,
+      }),
+    });
+    const data=await resp.json();
+    if(!resp.ok||data.error)throw new Error(data.error||'Onbekende fout bij DocuSign.');
+    l.contract=l.contract||{};
+    l.contract.docusign={envelopeId:data.envelopeId,clientUserId:data.clientUserId,status:'sent',verstuurdOp:new Date().toISOString()};
+    sbSaveB2cLead(l);
+    b2cDocusignStatusTonen(l);
+    showToast('Contract verstuurd — de klant kan nu ondertekenen via het klantportaal!');
+  }catch(e){
+    console.error('DocuSign versturen mislukt:',e);
+    showToast('⚠ DocuSign versturen mislukt: '+e.message);
+  }
+}
+
+async function b2cDocusignStatusCheck(id){
+  const l=b2cContractGetLead(id);if(!l||!l.contract||!l.contract.docusign)return;
+  try{
+    const resp=await fetch(DOCUSIGN_PROXY_URL,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'get_status',envelopeId:l.contract.docusign.envelopeId}),
+    });
+    const data=await resp.json();
+    if(!resp.ok||data.error)throw new Error(data.error||'Onbekende fout bij DocuSign.');
+    l.contract.docusign.status=data.status;
+    if(data.status==='completed')l.contract.docusign.ondertekendOp=new Date().toISOString();
+    sbSaveB2cLead(l);
+    b2cDocusignStatusTonen(l);
+    showToast('Status bijgewerkt: '+data.status);
+  }catch(e){
+    console.error('DocuSign status ophalen mislukt:',e);
+    showToast('⚠ Status ophalen mislukt: '+e.message);
   }
 }
 
@@ -10037,6 +10112,9 @@ let wmsIsManager=false;
 // Credentials staan NIET meer in de HTML — die zitten veilig in de Supabase Edge Function
 // Enkel de proxy-URL hieronder is nodig
 const AFAS_PROXY_URL = 'https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/super-handler';
+// Nieuwe, aparte Edge Function voor DocuSign (zelfde Supabase-project, andere functienaam).
+// Pas de naam hier aan als je de functie anders noemt bij het deployen.
+const DOCUSIGN_PROXY_URL = 'https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/docusign-handler';
 
 let wmsAfasArtikelen = [];
 let wmsAfasSamenstellingen = []; // blijft leeg — Blitz_laadstations/samenstellingen niet meer opgehaald
