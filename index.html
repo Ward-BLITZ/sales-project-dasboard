@@ -8268,6 +8268,12 @@ function b2cRenderContract(l){
         </div>
         <div style="font-size:11px;color:var(--tx3);margin-top:4px">Verplicht om te generen — bepaalt de installatiezin onderaan Artikel 1.</div>
 
+        <div class="ct-label" style="margin-top:14px">Geldigheidsduur contract</div>
+        <div class="toggle-group" id="ct-geldigheid-grp">
+          ${[1,3,6].map(m=>`<button type="button" class="toggle-opt${(l.contract.geldigheidsduur||3)===m?' active-sel':''}" onclick="b2cContractSetGeldigheid('${l.id}',${m},this)">${m} maand</button>`).join('')}
+        </div>
+        <div style="font-size:11px;color:var(--tx3);margin-top:4px">Bepaalt de vervaldatum onderaan Artikel 1 (datum van aanmaak + gekozen duur).</div>
+
         <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px">
           <div class="ct-label" style="margin:0">Productdetails (Artikel 1)</div>
           ${bewerkActief
@@ -8349,6 +8355,26 @@ function b2cContractSetInstType(id,type,btn){
   document.getElementById('ct-insttype-grp').querySelectorAll('.toggle-opt').forEach(b=>b.classList.remove('active-sel'));
   btn.classList.add('active-sel');
   sbSaveB2cLead(l);
+}
+
+function b2cContractSetGeldigheid(id,maanden,btn){
+  const l=b2cContractGetLead(id);if(!l)return;
+  l.contract=l.contract||{};l.contract.geldigheidsduur=maanden;
+  document.getElementById('ct-geldigheid-grp').querySelectorAll('.toggle-opt').forEach(b=>b.classList.remove('active-sel'));
+  btn.classList.add('active-sel');
+  sbSaveB2cLead(l);
+}
+
+// Telt N maanden bij een datum (Date-object of 'DD/MM/YYYY'-string) en geeft 'DD/MM/YYYY' terug.
+// Houdt rekening met kortere maanden (bv. 31 jan + 1 maand -> 28/29 feb, niet 3 maart).
+function b2cDatumPlusMaanden(basisDatum,maanden){
+  const d=new Date(basisDatum);
+  const dag=d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth()+maanden);
+  const laatsteDagVanMaand=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  d.setDate(Math.min(dag,laatsteDagVanMaand));
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
 }
 
 function b2cContractSaveVeld(id){
@@ -8506,6 +8532,9 @@ ol.artikel3 ol{list-style:lower-alpha;margin-left:20px;margin-top:3px}
       Indien P1-poort bezet zullen extra kosten in rekening gebracht worden voor de P1-splitter.<br>
       ${installatieZin}
     </div>
+    <div class="note" style="margin-top:10px;font-weight:700">
+      Dit contract is geldig tot ${c.geldigTot} (${c.geldigheidsduur} maand na datum van aanmaak).
+    </div>
   </div>
   <img class="logo-bottom" src="${B2C_CONTRACT_IMG_LOGO}">
 </div>
@@ -8591,9 +8620,11 @@ function b2cGenereerContract(id){
   const {btwPct,totaalIncl}=b2cContractBtwTotaal(l);
   const d=new Date();
   const datumStr=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+  const geldigheidsduur=l.contract.geldigheidsduur||3;
+  const geldigTot=b2cDatumPlusMaanden(d,geldigheidsduur);
 
   b2cContractTekst={naam,adres,btw,email,tel,groeperingen,installatieType:l.contract.installatieType,
-    opmerking:l.contract.opmerkingen,btwPct,totaalIncl,datumStr,leadId:id};
+    opmerking:l.contract.opmerkingen,btwPct,totaalIncl,datumStr,geldigheidsduur,geldigTot,leadId:id};
 
   // Blijvend opslaan op de lead, zodat het contract bij het heropenen van dit tabblad
   // meteen weer zichtbaar is (en niet opnieuw gegenereerd moet worden).
