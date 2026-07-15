@@ -462,11 +462,38 @@ async function onOndertekenAfgerond(event){
     const data = await resp.json();
     if(resp.ok && !data.error){
       trackData.contract.docusign.status = data.status;
-      if(data.status==='completed') trackData.contract.docusign.ondertekendOp = new Date().toISOString();
+      if(data.status==='completed'){
+        trackData.contract.docusign.ondertekendOp = new Date().toISOString();
+        await haalOndertekendDocumentOp(ds.envelopeId);
+      }
       await slaOp();
     }
   }catch(e){ console.error('Status na ondertekenen ophalen mislukt:', e); }
   renderAll();
+}
+
+// Haalt het definitieve, ondertekende PDF op bij DocuSign en zet het bij de documenten
+// van dit dossier — meteen ook zichtbaar/beschikbaar hier in het klantportaal.
+async function haalOndertekendDocumentOp(envelopeId){
+  const bestaandeDocs = trackData.docs || trackData.documenten || [];
+  if(bestaandeDocs.some(d=>d._type==='contract_ondertekend')) return; // al opgehaald
+  try{
+    const resp = await fetch(DOCUSIGN_PROXY_URL, {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY},
+      body: JSON.stringify({action:'get_signed_document', envelopeId}),
+    });
+    const data = await resp.json();
+    if(!resp.ok || data.error) throw new Error(data.error||'Onbekende fout.');
+    const naam = [trackData.voornaam||'', trackData.achternaam||''].filter(Boolean).join('_') || 'contract';
+    trackData.docs = bestaandeDocs;
+    trackData.docs.push({
+      naam:`Ondertekend_contract_${naam}.pdf`,
+      data:'data:application/pdf;base64,'+data.pdfBase64,
+      _type:'contract_ondertekend',
+      datum:new Date().toISOString().slice(0,10),
+      zichtbaarVoorKlant:true,
+    });
+  }catch(e){ console.error('Ondertekend document ophalen (klantportaal) mislukt:', e); }
 }
 
 function sluitOndertekenModal(){
