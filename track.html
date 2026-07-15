@@ -475,8 +475,9 @@ async function onOndertekenAfgerond(event){
 // Haalt het definitieve, ondertekende PDF op bij DocuSign en zet het bij de documenten
 // van dit dossier — meteen ook zichtbaar/beschikbaar hier in het klantportaal.
 async function haalOndertekendDocumentOp(envelopeId){
-  const bestaandeDocs = trackData.docs || trackData.documenten || [];
-  if(bestaandeDocs.some(d=>d._type==='contract_ondertekend')) return; // al opgehaald
+  const alDocs = trackData.docs || [];
+  const alDocumenten = trackData.documenten || [];
+  if(alDocs.some(d=>d._type==='contract_ondertekend') || alDocumenten.some(d=>d._type==='contract_ondertekend')) return; // al opgehaald
   try{
     const resp = await fetch(DOCUSIGN_PROXY_URL, {
       method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY},
@@ -485,14 +486,18 @@ async function haalOndertekendDocumentOp(envelopeId){
     const data = await resp.json();
     if(!resp.ok || data.error) throw new Error(data.error||'Onbekende fout.');
     const naam = [trackData.voornaam||'', trackData.achternaam||''].filter(Boolean).join('_') || 'contract';
-    trackData.docs = bestaandeDocs;
+    const bestandsnaam = `Ondertekend_contract_${naam}.pdf`;
+    const dataUri = 'data:application/pdf;base64,'+data.pdfBase64;
+    // In docs (met zichtbaarVoorKlant-vlag, voor het klantportaal zelf)...
+    trackData.docs = alDocs;
     trackData.docs.push({
-      naam:`Ondertekend_contract_${naam}.pdf`,
-      data:'data:application/pdf;base64,'+data.pdfBase64,
-      _type:'contract_ondertekend',
-      datum:new Date().toISOString().slice(0,10),
-      zichtbaarVoorKlant:true,
+      naam:bestandsnaam, data:dataUri, _type:'contract_ondertekend',
+      datum:new Date().toISOString().slice(0,10), zichtbaarVoorKlant:true,
     });
+    // ...én in documenten, zodat het ook rechtstreeks downloadbaar staat bij "Documenten"
+    // in het dashboard — net zoals wanneer dit via het dashboard zelf wordt opgehaald.
+    trackData.documenten = alDocumenten;
+    trackData.documenten.push({naam:bestandsnaam, type:'application/pdf', size:null, data:dataUri});
   }catch(e){ console.error('Ondertekend document ophalen (klantportaal) mislukt:', e); }
 }
 
