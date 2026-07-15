@@ -8814,7 +8814,19 @@ function b2cDocusignStatusTonen(l){
 async function b2cDocusignHaalOndertekendDocument(l){
   const ds=l.contract&&l.contract.docusign;
   if(!ds||!ds.envelopeId)return;
-  if((l.docs||[]).some(d=>d._type==='contract_ondertekend'))return; // al opgehaald
+  l.documenten=l.documenten||[];
+  const bestaandInDocs=(l.docs||[]).find(d=>d._type==='contract_ondertekend');
+  const heeftInDocumenten=l.documenten.some(d=>d._type==='contract_ondertekend'||/^Ondertekend_contract_/.test(d.naam||''));
+  if(bestaandInDocs&&!heeftInDocumenten){
+    // Al eerder opgehaald (bv. via het klantportaal) maar nog niet in "Documenten" beland
+    // door een oudere versie van deze functie — meteen bijwerken zonder opnieuw bij DocuSign
+    // te moeten ophalen.
+    l.documenten.push({naam:bestaandInDocs.naam,type:'application/pdf',size:null,data:bestaandInDocs.data});
+    sbSaveB2cLead(l);
+    if(b2cOpenLeadId&&String(b2cOpenLeadId)===String(l.id))b2cRenderDocumenten(l);
+    return;
+  }
+  if(bestaandInDocs)return; // zit al helemaal goed op beide plekken
   try{
     const resp=await fetch(DOCUSIGN_PROXY_URL,{
       method:'POST',
@@ -8836,7 +8848,6 @@ async function b2cDocusignHaalOndertekendDocument(l){
     });
     // Ook in "Documenten" zelf (l.documenten) zodat het intern net zo makkelijk terug te
     // vinden is als elk ander opgeladen bestand voor deze lead.
-    l.documenten=l.documenten||[];
     l.documenten.push({naam:bestandsnaam,type:'application/pdf',size:null,data:dataUri});
     sbSaveB2cLead(l);
     if(b2cOpenLeadId&&String(b2cOpenLeadId)===String(l.id))b2cRenderDocumenten(l);
@@ -8884,7 +8895,6 @@ async function b2cDocusignVerstuur(id){
 async function b2cDocusignStatusCheck(id){
   const l=b2cContractGetLead(id);if(!l||!l.contract||!l.contract.docusign)return;
   try{
-    const wasAlAfgerond=l.contract.docusign.status==='completed';
     const resp=await fetch(DOCUSIGN_PROXY_URL,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'apikey':SUPABASE_ANON_KEY},
@@ -8897,7 +8907,10 @@ async function b2cDocusignStatusCheck(id){
     sbSaveB2cLead(l);
     showToast('Status bijgewerkt: '+data.status);
     if(data.status==='completed'){
-      if(!wasAlAfgerond)await b2cDocusignHaalOndertekendDocument(l);
+      // Deze functie is zelf-herstellend: ze doet niets als alles al in orde is, haalt het
+      // document alsnog op als dat nog nooit gebeurde, en vult "Documenten" aan als het
+      // document wel al bij docs stond maar (bv. door het klantportaal) nog niet daar.
+      await b2cDocusignHaalOndertekendDocument(l);
       // Volledig herrenderen (niet enkel het statusblokje) zodat het tabblad meteen
       // vergrendelt zodra het contract ondertekend is bevonden.
       b2cRenderContract(l);
