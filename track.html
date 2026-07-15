@@ -1,224 +1,482 @@
-// ─────────────────────────────────────────────────────────────────────────
-// Supabase Edge Function: docusign-handler
-//
-// Doet 2 dingen (via ?action=... of body.action):
-//   1) create_envelope  — maakt een DocuSign envelope aan met het contract-PDF
-//                         en de koper als "embedded" ondertekenaar.
-//   2) get_signing_url  — vraagt de ondertekenlink (recipient view) op voor
-//                         een bestaande envelope, om in te bedden in track.html.
-//
-// Benodigde Supabase secrets (zet je via: supabase secrets set NAAM=waarde):
-//   DOCUSIGN_INTEGRATION_KEY   Integration Key / Client ID uit DocuSign
-//   DOCUSIGN_USER_ID           User ID (GUID) van het DocuSign-account dat ondertekent
-//   DOCUSIGN_ACCOUNT_ID        Account ID (GUID)
-//   DOCUSIGN_PRIVATE_KEY       De volledige inhoud van je RSA private key (-----BEGIN...-----)
-//   DOCUSIGN_BASE_PATH         bv. https://demo.docusign.net  (sandbox) of https://eu.docusign.net (productie)
-//   DOCUSIGN_AUTH_SERVER       bv. account-d.docusign.com     (sandbox) of account.docusign.com   (productie)
-//
-// Deploy met:
-//   supabase functions deploy docusign-handler --no-verify-jwt
-// (--no-verify-jwt omdat dit door zowel het dashboard als het publieke klantportaal
-//  wordt aangeroepen; de functie doet zelf geen gevoelige acties zonder geldig envelopeId)
-// ─────────────────────────────────────────────────────────────────────────
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Blitz Power — Uw project opvolgen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#00DFA3;--dark:#1D252D;
+  --bg:#fff;--bg2:#f2f4f3;--bg3:#e8eceb;
+  --tx:#1D252D;--tx2:#4a5760;--tx3:#8a9ba3;
+  --bd:#dde3e0;--r:8px;--rl:14px;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg2);color:var(--tx);min-height:100vh}
+.header{background:var(--dark);padding:16px 20px;display:flex;align-items:center;gap:12px}
+.header-logo{color:var(--green);font-family:'Poppins',sans-serif;font-weight:700;font-size:18px}
+.container{max-width:680px;margin:0 auto;padding:20px 16px 60px}
+.card{background:var(--bg);border-radius:var(--rl);padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card-title{font-family:'Poppins',sans-serif;font-weight:700;font-size:14px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.tabs{display:flex;border-bottom:1px solid var(--bd);margin-bottom:0;gap:0}
+.tab{padding:10px 16px;font-size:13px;font-weight:500;color:var(--tx3);cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:'Inter',sans-serif}
+.tab.active{color:var(--dark);border-bottom-color:var(--green)}
+.tab-panel{display:none;padding:16px 0}
+.tab-panel.active{display:block}
+.stap-row{display:flex;overflow-x:auto;gap:0;padding:4px 0 12px}
+.stap{flex:1;min-width:70px;text-align:center;position:relative}
+.stap-circle{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:13px;font-weight:700;border:2px solid var(--bd)}
+.stap-circle.done{background:var(--green);color:#fff;border-color:var(--green)}
+.stap-circle.active{background:#fff;color:var(--green);border-color:var(--green);box-shadow:0 0 0 3px rgba(0,223,163,.15)}
+.stap-circle.todo{background:var(--bg3);color:var(--tx3);border-color:var(--bd)}
+.stap-line{position:absolute;top:18px;left:60%;right:-10%;height:2px;background:var(--bd)}
+.stap-line.done{background:var(--green)}
+.stap-label{font-size:10px;line-height:1.3;color:var(--tx3)}
+.stap-label.active,.stap-label.done{color:var(--tx);font-weight:600}
+.doc-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--r);margin-bottom:8px;text-decoration:none;color:var(--tx)}
+.doc-item:hover{background:var(--bg3)}
+.msg{display:flex;flex-direction:column;margin-bottom:10px}
+.msg-bubble{max-width:80%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5}
+.msg-klant .msg-bubble{background:var(--bg2);border-radius:4px 14px 14px 14px;align-self:flex-start}
+.msg-intern .msg-bubble{background:var(--green);color:#fff;border-radius:14px 4px 14px 14px;align-self:flex-end}
+.msg-meta{font-size:10px;color:var(--tx3);margin-top:3px;padding:0 4px}
+.msg-klant .msg-meta{text-align:left}
+.msg-intern .msg-meta{text-align:right}
+.chat-input-row{display:flex;gap:8px;border-top:1px solid var(--bd);padding-top:12px;margin-top:8px}
+.chat-input{flex:1;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:'Inter',sans-serif}
+.btn{padding:9px 16px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:'Inter',sans-serif;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--green);color:#fff}
+.btn-primary:hover{opacity:.9}
+.star{font-size:28px;cursor:pointer;transition:transform .1s;line-height:1}
+.star:hover,.star.active{transform:scale(1.2)}
+.review-textarea{width:100%;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:'Inter',sans-serif;resize:vertical;margin-top:10px}
+.loading{text-align:center;padding:40px;color:var(--tx3);font-size:14px}
+.error-box{background:#fff0f0;border:1px solid #fcc;border-radius:var(--r);padding:16px;text-align:center;color:#a32d2d;font-size:13px}
+.sign-banner{background:var(--dark);border-radius:var(--rl);padding:18px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.sign-banner-txt{flex:1;min-width:180px;color:#fff}
+.sign-banner-txt .t{font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;margin-bottom:2px}
+.sign-banner-txt .s{font-size:12px;opacity:.75}
+.sign-banner.done{background:rgba(0,223,163,.1);border:1px solid var(--green)}
+.sign-banner.done .sign-banner-txt{color:var(--dark)}
+.sign-banner.done .sign-banner-txt .s{color:var(--tx2);opacity:1}
+.sign-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;align-items:center;justify-content:center;padding:16px}
+.sign-modal-overlay.open{display:flex}
+.sign-modal-box{background:#fff;border-radius:var(--rl);width:100%;max-width:820px;height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.sign-modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bd)}
+.sign-modal-header .t{font-family:'Poppins',sans-serif;font-weight:700;font-size:14px}
+.sign-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--tx3);padding:4px}
+.sign-modal-body{flex:1;position:relative}
+.sign-modal-body iframe{width:100%;height:100%;border:none}
+.sign-modal-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--tx3);font-size:13px;background:#fff}
+</style>
+</head>
+<body>
 
-import jwt from "npm:jsonwebtoken@9.0.2";
+<div class="header">
+  <div class="header-logo"><i class="ti ti-zap"></i> Blitz Power</div>
+  <div style="color:#fff;opacity:.6;font-size:13px;margin-left:auto">Project opvolging</div>
+</div>
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+<div class="container">
+  <div id="loading" class="loading"><i class="ti ti-loader" style="font-size:24px;display:block;margin-bottom:8px"></i>Uw project wordt geladen...</div>
+  <div id="content" style="display:none"></div>
+  <div id="error" style="display:none" class="card">
+    <div class="error-box"><i class="ti ti-alert-circle" style="font-size:24px;display:block;margin-bottom:8px"></i>Link niet gevonden of verlopen.<br>Neem contact op met ons.</div>
+  </div>
+</div>
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+<div class="sign-modal-overlay" id="sign-modal-overlay">
+  <div class="sign-modal-box">
+    <div class="sign-modal-header">
+      <span class="t"><i class="ti ti-signature" style="color:var(--green);margin-right:6px"></i>Contract ondertekenen</span>
+      <button class="sign-modal-close" onclick="sluitOndertekenModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="sign-modal-body" id="sign-modal-body">
+      <div class="sign-modal-loading" id="sign-modal-loading"><i class="ti ti-loader" style="font-size:22px"></i>Ondertekenpagina wordt geladen...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Supabase configuratie ────────────────────────────
+const SB_URL = 'https://rhztaqutznafsgprnkvn.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoenRhcXV0em5hZnNncHJua3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTI2MjYsImV4cCI6MjA5NzI2ODYyNn0.n-ojVvnlm8x-g-O6WNoN8un67oR-yHMSlaJVuh_8caI';
+// Zelfde Edge Function als het dashboard gebruikt om een contract te versturen.
+const DOCUSIGN_PROXY_URL = 'https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/rapid-worker';
+
+const STAPPEN = ['Offerte','Contract','Planning installatie','Installatie','Keuring','Afgerond'];
+
+let trackData = null; // het gevonden project/lead object
+let trackType = null; // 'b2c' of 'b2b'
+let trackToken = null;
+let sb = null;
+
+async function init(){
+  const params = new URLSearchParams(window.location.search);
+  trackToken = params.get('t');
+  if(!trackToken){ showError(); return; }
+
+  sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+  // Zoek in b2c_leads
+  const {data:b2cRows} = await sb.from('b2c_leads').select('*');
+  if(b2cRows){
+    for(const row of b2cRows){
+      const d = row.data || {};
+      if(d.trackTrace?.token === trackToken){
+        trackData = {...d, _sbid: row.id};
+        trackType = 'b2c';
+        break;
+      }
+    }
+  }
+
+  // Zoek in projects
+  if(!trackData){
+    const {data:projRows} = await sb.from('projects').select('*');
+    if(projRows){
+      for(const row of projRows){
+        const d = row.data || {};
+        if(d.trackTrace?.token === trackToken){
+          trackData = {...d, _sbid: row.id};
+          trackType = 'b2b';
+          break;
+        }
+      }
+    }
+  }
+
+  if(!trackData){ showError(); return; }
+
+  document.getElementById('loading').style.display='none';
+  document.getElementById('content').style.display='block';
+  renderAll();
+
+  // Vangnet: als de DocuSign-redirect toch buiten de iframe om op de hoofdpagina belandt
+  // (zeldzaam, maar sommige mobiele browsers doen dit) vangen we dat hier ook op.
+  if(params.get('docusign_callback')==='1'){
+    onOndertekenAfgerond(params.get('event'));
+    const cleanUrl = window.location.origin + window.location.pathname + '?t=' + encodeURIComponent(trackToken);
+    window.history.replaceState({}, '', cleanUrl);
+  }
+}
+
+function showError(){
+  document.getElementById('loading').style.display='none';
+  document.getElementById('error').style.display='block';
+}
+
+function renderAll(){
+  const tt = trackData.trackTrace || {};
+  const stap = tt.stap || 0;
+  const afgerond = stap >= STAPPEN.length-1;
+  const naam = [trackData.voornaam||'', trackData.naam||trackData.achternaam||'', trackData.klant||''].filter(Boolean).join(' ') || 'Uw project';
+  const docs = (trackData.docs||trackData.documenten||[]).filter(d=>d.zichtbaarVoorKlant);
+  const berichten = (tt.chat||[]).sort((a,b)=>a.ts.localeCompare(b.ts));
+  const heeftReview = tt.review;
+
+  // Contract + DocuSign: enkel relevant als er een zichtbaar contract-document is EN
+  // sales dit al via DocuSign heeft verstuurd (l.contract.docusign wordt door het dashboard gezet).
+  const contractDoc = docs.find(d=>d._type==='contract');
+  const docusign = trackData.contract && trackData.contract.docusign;
+  let signBannerHtml = '';
+  if(contractDoc && docusign && docusign.envelopeId){
+    if(docusign.status==='completed'){
+      signBannerHtml = `
+        <div class="sign-banner done">
+          <i class="ti ti-circle-check" style="font-size:28px;color:var(--green)"></i>
+          <div class="sign-banner-txt">
+            <div class="t">Contract ondertekend</div>
+            <div class="s">Bedankt! Uw ondertekend contract is in orde.</div>
+          </div>
+        </div>`;
+    }else{
+      signBannerHtml = `
+        <div class="sign-banner">
+          <i class="ti ti-signature" style="font-size:28px;color:var(--green)"></i>
+          <div class="sign-banner-txt">
+            <div class="t">Uw contract is klaar om te ondertekenen</div>
+            <div class="s">Dit duurt maar even en kan rechtstreeks hier op deze pagina.</div>
+          </div>
+          <button class="btn btn-primary" onclick="startOndertekenen()"><i class="ti ti-pencil"></i> Onderteken uw contract hier</button>
+        </div>`;
+    }
+  }
+
+  document.getElementById('content').innerHTML = `
+    <!-- Welkom -->
+    <div class="card">
+      <div style="font-family:'Poppins',sans-serif;font-weight:700;font-size:18px;margin-bottom:4px">Welkom, ${naam}</div>
+      <div style="font-size:13px;color:var(--tx2)">Hier kunt u de status van uw project opvolgen en ons berichten sturen.</div>
+    </div>
+
+    ${signBannerHtml}
+
+    <!-- Tabs -->
+    <div class="card" style="padding:0">
+      <div class="tabs" id="tabs">
+        <button class="tab active" onclick="showTab('status')"><i class="ti ti-map-pin" style="margin-right:5px"></i>Status</button>
+        <button class="tab" onclick="showTab('documenten')"><i class="ti ti-paperclip" style="margin-right:5px"></i>Documenten${docs.length>0?` (${docs.length})`:''}</button>
+        <button class="tab" onclick="showTab('chat')"><i class="ti ti-message" style="margin-right:5px"></i>Chat</button>
+        ${afgerond&&!heeftReview?`<button class="tab" onclick="showTab('review')"><i class="ti ti-star" style="margin-right:5px"></i>Review</button>`:''}
+      </div>
+
+      <!-- Status tab -->
+      <div class="tab-panel active" id="panel-status" style="padding:20px">
+        <div class="card-title"><i class="ti ti-route" style="color:var(--green)"></i> Projectstatus</div>
+        <div class="stap-row">
+          ${STAPPEN.map((s,i)=>{
+            const staat = i<stap?'done':i===stap?'active':'todo';
+            return `<div class="stap">
+              ${i<STAPPEN.length-1?`<div class="stap-line ${i<stap?'done':''}"></div>`:''}
+              <div class="stap-circle ${staat}">${i<stap?'<i class="ti ti-check"></i>':i+1}</div>
+              <div class="stap-label ${staat}">${s}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="margin-top:16px;padding:12px 14px;background:rgba(0,223,163,.08);border-radius:var(--r);border-left:3px solid var(--green)">
+          <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:4px">Huidige stap</div>
+          <div style="font-size:14px;font-weight:600">${STAPPEN[stap]}</div>
+        </div>
+        ${tt.klantBericht?`
+          <div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border-radius:var(--r)">
+            <div style="font-size:11px;font-weight:600;color:var(--tx3);margin-bottom:6px">BERICHT VAN ONS TEAM</div>
+            <div style="font-size:13px;line-height:1.5">${tt.klantBericht}</div>
+          </div>
+        `:''}
+      </div>
+
+      <!-- Documenten tab -->
+      <div class="tab-panel" id="panel-documenten" style="padding:20px">
+        <div class="card-title"><i class="ti ti-paperclip" style="color:var(--green)"></i> Uw documenten</div>
+        ${docs.length===0
+          ? `<div style="color:var(--tx3);font-size:13px;font-style:italic;padding:10px 0">Er zijn nog geen documenten beschikbaar voor u.</div>`
+          : docs.map(d=>`
+            <a class="doc-item" href="${d.data||d.url||'#'}" target="_blank" ${d.data?`download="${d.naam||d.name}"`:''}>
+              <i class="ti ti-${d._type==='offerte'?'file-invoice':'file-text'}" style="font-size:20px;color:var(--green);flex-shrink:0"></i>
+              <span style="flex:1;font-size:13px;font-weight:500">${d.naam||d.name||'Document'}</span>
+              <i class="ti ti-download" style="color:var(--tx3)"></i>
+            </a>
+          `).join('')
+        }
+      </div>
+
+      <!-- Chat tab -->
+      <div class="tab-panel" id="panel-chat" style="padding:20px">
+        <div class="card-title"><i class="ti ti-message" style="color:var(--green)"></i> Berichten</div>
+        <div id="chat-msgs" style="display:flex;flex-direction:column;gap:8px;min-height:80px;max-height:350px;overflow-y:auto;margin-bottom:4px">
+          ${berichten.length===0
+            ? `<div style="color:var(--tx3);font-size:13px;font-style:italic;text-align:center;padding:20px">Stuur ons een vraag — we antwoorden zo snel mogelijk.</div>`
+            : berichten.map(b=>`
+              <div class="msg ${b.van==='klant'?'msg-klant':'msg-intern'}">
+                <div class="msg-bubble">${b.tekst}</div>
+                <div class="msg-meta">${b.van==='klant'?'U':'Blitz Power'} · ${(b.ts||'').slice(0,16).replace('T',' ')}</div>
+              </div>
+            `).join('')
+          }
+        </div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chat-input" type="text" placeholder="Schrijf een bericht..." onkeydown="if(event.key==='Enter')stuurBericht()">
+          <button class="btn btn-primary" onclick="stuurBericht()"><i class="ti ti-send"></i></button>
+        </div>
+      </div>
+
+      <!-- Review tab -->
+      ${afgerond&&!heeftReview?`
+        <div class="tab-panel" id="panel-review" style="padding:20px">
+          <div class="card-title"><i class="ti ti-star" style="color:#f59e0b"></i> Uw mening telt!</div>
+          <div style="font-size:13px;color:var(--tx2);margin-bottom:16px">Hoe tevreden bent u over de installatie en service van Blitz Power?</div>
+          <div style="display:flex;gap:6px;margin-bottom:4px" id="sterren-row">
+            ${[1,2,3,4,5].map(i=>`<span class="star" onclick="setSter(${i})" id="ster-${i}">☆</span>`).join('')}
+          </div>
+          <div style="font-size:11px;color:var(--tx3);margin-bottom:12px">Klik op een ster</div>
+          <textarea class="review-textarea" id="review-tekst" rows="4" placeholder="Vertel ons meer over uw ervaring... (optioneel)"></textarea>
+          <button class="btn btn-primary" onclick="stuurReview()" style="margin-top:12px;width:100%;justify-content:center"><i class="ti ti-send"></i> Review versturen</button>
+        </div>
+      `:afgerond&&heeftReview?`
+        <div class="tab-panel" id="panel-review" style="padding:20px">
+          <div style="text-align:center;padding:16px">
+            <div style="font-size:32px;margin-bottom:8px">${'★'.repeat(tt.review.score)}${'☆'.repeat(5-tt.review.score)}</div>
+            <div style="font-weight:600;font-size:14px;margin-bottom:4px">Bedankt voor uw review!</div>
+            <div style="font-size:12px;color:var(--tx3)">Uw mening helpt ons om onze service te verbeteren.</div>
+          </div>
+        </div>
+      `:''}
+    </div>
+  `;
+
+  // Scroll chat naar beneden
+  const chatEl = document.getElementById('chat-msgs');
+  if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function showTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const panels = ['status','documenten','chat','review'];
+    t.classList.toggle('active', t.textContent.toLowerCase().includes(tab.slice(0,4)));
   });
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  const panel = document.getElementById('panel-'+tab);
+  if(panel) panel.classList.add('active');
+
+  // Markeer tabs correct
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.classList.remove('active');
+  });
+  const tabEls = document.querySelectorAll('.tab');
+  const tabMap = {status:0,documenten:1,chat:2,review:3};
+  if(tabEls[tabMap[tab]]) tabEls[tabMap[tab]].classList.add('active');
 }
 
-// ── JWT-token ophalen bij DocuSign (server-naar-server, geen klant-login nodig) ──
-async function getAccessToken(): Promise<string> {
-  const integrationKey = Deno.env.get("DOCUSIGN_INTEGRATION_KEY")!;
-  const userId = Deno.env.get("DOCUSIGN_USER_ID")!;
-  const privateKey = Deno.env.get("DOCUSIGN_PRIVATE_KEY")!;
-  const authServer = Deno.env.get("DOCUSIGN_AUTH_SERVER") || "account-d.docusign.com";
+let gekozenSter = 0;
+function setSter(n){
+  gekozenSter = n;
+  for(let i=1;i<=5;i++){
+    const s = document.getElementById('ster-'+i);
+    if(s) s.textContent = i<=n?'★':'☆';
+    s?.classList.toggle('active', i<=n);
+  }
+}
 
-  const assertion = jwt.sign(
-    {
-      iss: integrationKey,
-      sub: userId,
-      aud: authServer,
-      scope: "signature impersonation",
-    },
-    privateKey,
-    { algorithm: "RS256", expiresIn: "1h" },
-  );
+async function stuurBericht(){
+  const input = document.getElementById('chat-input');
+  const tekst = input?.value?.trim();
+  if(!tekst) return;
+  input.value = '';
 
-  const resp = await fetch(`https://${authServer}/oauth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion,
-    }),
+  if(!trackData.trackTrace) trackData.trackTrace = {};
+  if(!trackData.trackTrace.chat) trackData.trackTrace.chat = [];
+  trackData.trackTrace.chat.push({
+    van: 'klant',
+    tekst,
+    ts: new Date().toISOString(),
+    gelezen: false,
   });
 
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`DocuSign auth mislukt (${resp.status}): ${errText}`);
+  await slaOp();
+
+  // Herrender chat
+  const chatMsgs = document.getElementById('chat-msgs');
+  if(chatMsgs){
+    const b = trackData.trackTrace.chat[trackData.trackTrace.chat.length-1];
+    chatMsgs.innerHTML += `<div class="msg msg-klant"><div class="msg-bubble">${b.tekst}</div><div class="msg-meta">U · ${b.ts.slice(0,16).replace('T',' ')}</div></div>`;
+    chatMsgs.scrollTop = chatMsgs.scrollHeight;
   }
-  const data = await resp.json();
-  return data.access_token as string;
 }
 
-// ── Envelope aanmaken met het contract-PDF, klant als embedded ondertekenaar ──
-async function createEnvelope(payload: any) {
-  const { pdfBase64, bestandsnaam, koperNaam, koperEmail, dossierId, onderwerp } = payload;
-  if (!pdfBase64 || !koperNaam || !koperEmail) {
-    throw new Error("pdfBase64, koperNaam en koperEmail zijn verplicht.");
-  }
-
-  const accessToken = await getAccessToken();
-  const basePath = Deno.env.get("DOCUSIGN_BASE_PATH") || "https://demo.docusign.net";
-  const accountId = Deno.env.get("DOCUSIGN_ACCOUNT_ID")!;
-
-  // clientUserId koppelt de ondertekenaar aan "embedded signing" — zonder dit stuurt
-  // DocuSign automatisch een e-mail, en dat willen we hier niet (klant tekent in de portal).
-  const clientUserId = "dossier-" + (dossierId || koperEmail);
-
-  const envelopeDef = {
-    emailSubject: onderwerp || "Aankoopcontract BLITZ POWER — ter ondertekening",
-    documents: [
-      {
-        documentBase64: pdfBase64,
-        name: bestandsnaam || "Aankoopcontract.pdf",
-        fileExtension: "pdf",
-        documentId: "1",
-      },
-    ],
-    recipients: {
-      signers: [
-        {
-          email: koperEmail,
-          name: koperNaam,
-          recipientId: "1",
-          clientUserId,
-          tabs: {
-            signHereTabs: [
-              // Ankergebaseerd i.p.v. vaste x/y-coördinaten: DocuSign zoekt zelf naar dit
-              // (onzichtbare) tekstankertje in het document en plaatst het handtekenvakje
-              // er automatisch naast — veel betrouwbaarder dan geschatte pixel-posities.
-              // Het ankertje "/sig_koper/" wordt door het dashboard onzichtbaar in het
-              // contract-PDF gezet, net naast "Handtekening:" bij "Voor Koper" op pagina 2.
-              {
-                anchorString: "/sig_koper/",
-                anchorUnits: "pixels",
-                anchorXOffset: "0",
-                anchorYOffset: "-10",
-                anchorIgnoreIfNotPresent: "false",
-              },
-            ],
-          },
-        },
-      ],
-    },
-    status: "sent",
+async function stuurReview(){
+  if(!gekozenSter){ alert('Kies eerst een aantal sterren.'); return; }
+  const tekst = document.getElementById('review-tekst')?.value?.trim() || '';
+  if(!trackData.trackTrace) trackData.trackTrace = {};
+  trackData.trackTrace.review = {
+    score: gekozenSter,
+    tekst,
+    datum: new Date().toISOString().slice(0,10),
   };
-
-  const resp = await fetch(
-    `${basePath}/restapi/v2.1/accounts/${accountId}/envelopes`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(envelopeDef),
-    },
-  );
-
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Envelope aanmaken mislukt (${resp.status}): ${errText}`);
-  }
-  const data = await resp.json();
-  return { envelopeId: data.envelopeId, clientUserId };
+  await slaOp();
+  renderAll();
+  showTab('review');
 }
 
-// ── Ondertekenlink opvragen voor een bestaande envelope (embedded signing) ──
-async function getSigningUrl(payload: any) {
-  const { envelopeId, clientUserId, koperNaam, koperEmail, returnUrl } = payload;
-  if (!envelopeId || !clientUserId || !koperNaam || !koperEmail || !returnUrl) {
-    throw new Error("envelopeId, clientUserId, koperNaam, koperEmail en returnUrl zijn verplicht.");
-  }
-
-  const accessToken = await getAccessToken();
-  const basePath = Deno.env.get("DOCUSIGN_BASE_PATH") || "https://demo.docusign.net";
-  const accountId = Deno.env.get("DOCUSIGN_ACCOUNT_ID")!;
-
-  const viewRequest = {
-    returnUrl,
-    authenticationMethod: "none",
-    email: koperEmail,
-    userName: koperNaam,
-    clientUserId,
-  };
-
-  const resp = await fetch(
-    `${basePath}/restapi/v2.1/accounts/${accountId}/envelopes/${envelopeId}/views/recipient`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(viewRequest),
-    },
-  );
-
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Ondertekenlink ophalen mislukt (${resp.status}): ${errText}`);
-  }
-  const data = await resp.json();
-  return { signingUrl: data.url };
+async function slaOp(){
+  if(!sb) return;
+  const table = trackType==='b2c' ? 'b2c_leads' : 'projects';
+  const data = {...trackData};
+  delete data._sbid;
+  data.updatedAt = new Date().toISOString();
+  await sb.from(table).update({data}).eq('id', trackData._sbid);
 }
 
-// ── Envelope-status opvragen (voor "is dit al ondertekend?") ──
-async function getEnvelopeStatus(payload: any) {
-  const { envelopeId } = payload;
-  if (!envelopeId) throw new Error("envelopeId is verplicht.");
+// ── DocuSign: ingebed ondertekenen ───────────────────
+let signPollInterval = null;
 
-  const accessToken = await getAccessToken();
-  const basePath = Deno.env.get("DOCUSIGN_BASE_PATH") || "https://demo.docusign.net";
-  const accountId = Deno.env.get("DOCUSIGN_ACCOUNT_ID")!;
+async function startOndertekenen(){
+  const ds = trackData.contract && trackData.contract.docusign;
+  if(!ds || !ds.envelopeId){ alert('Er is nog geen contract klaar om te ondertekenen.'); return; }
 
-  const resp = await fetch(
-    `${basePath}/restapi/v2.1/accounts/${accountId}/envelopes/${envelopeId}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Status opvragen mislukt (${resp.status}): ${errText}`);
+  const overlay = document.getElementById('sign-modal-overlay');
+  const body = document.getElementById('sign-modal-body');
+  body.innerHTML = '<div class="sign-modal-loading" id="sign-modal-loading"><i class="ti ti-loader" style="font-size:22px"></i>Ondertekenpagina wordt geladen...</div>';
+  overlay.classList.add('open');
+
+  const returnUrl = window.location.origin + window.location.pathname + '?t=' + encodeURIComponent(trackToken) + '&docusign_callback=1';
+  const koperNaam = [trackData.voornaam||'', trackData.achternaam||''].filter(Boolean).join(' ') || trackData.naam || trackData.klant || 'Klant';
+  const koperEmail = trackData.email || trackData.contactemail;
+
+  try{
+    const resp = await fetch(DOCUSIGN_PROXY_URL, {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY},
+      body: JSON.stringify({
+        action:'get_signing_url',
+        envelopeId: ds.envelopeId, clientUserId: ds.clientUserId,
+        koperNaam, koperEmail, returnUrl,
+      }),
+    });
+    const data = await resp.json();
+    if(!resp.ok || data.error) throw new Error(data.error || 'Onbekende fout.');
+
+    const iframe = document.createElement('iframe');
+    iframe.src = data.signingUrl;
+    body.innerHTML = '';
+    body.appendChild(iframe);
+
+    // Peil om de zoveel tijd of de iframe is teruggekeerd naar onze eigen pagina
+    // (kan pas gelezen worden zodra same-origin — dus na de DocuSign-redirect terug).
+    clearInterval(signPollInterval);
+    signPollInterval = setInterval(()=>{
+      let href = null;
+      try{ href = iframe.contentWindow.location.href; }catch(e){ /* nog op docusign.net, normaal */ }
+      if(href && href.indexOf('docusign_callback=1') > -1){
+        clearInterval(signPollInterval);
+        const event = new URL(href).searchParams.get('event');
+        onOndertekenAfgerond(event);
+      }
+    }, 700);
+  }catch(e){
+    console.error('Ondertekenlink ophalen mislukt:', e);
+    body.innerHTML = `<div class="sign-modal-loading"><i class="ti ti-alert-circle" style="font-size:22px;color:#a32d2d"></i>Kon de ondertekenpagina niet laden. Probeer later opnieuw of neem contact op.</div>`;
   }
-  const data = await resp.json();
-  return { status: data.status }; // "sent" | "delivered" | "completed" | ...
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
-
-  try {
-    const body = await req.json();
-    const action = body.action;
-
-    if (action === "create_envelope") return json(await createEnvelope(body));
-    if (action === "get_signing_url") return json(await getSigningUrl(body));
-    if (action === "get_status") return json(await getEnvelopeStatus(body));
-
-    return json({ error: "Onbekende actie. Gebruik create_envelope, get_signing_url of get_status." }, 400);
-  } catch (e: any) {
-    console.error(e);
-    return json({ error: e?.message || String(e) }, 500);
+async function onOndertekenAfgerond(event){
+  sluitOndertekenModal();
+  // event is o.a. 'signing_complete', 'cancel', 'decline', 'exception' (DocuSign-conventie)
+  if(event && event!=='signing_complete'){
+    if(event==='cancel'||event==='decline'){
+      alert('Ondertekenen werd geannuleerd. U kan het later opnieuw proberen.');
+    }
+    return;
   }
-});
+  if(!trackData.contract || !trackData.contract.docusign) return;
+  // Status opvragen bij DocuSign en opslaan, zodat de banner meteen "ondertekend" toont.
+  try{
+    const ds = trackData.contract.docusign;
+    const resp = await fetch(DOCUSIGN_PROXY_URL, {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY},
+      body: JSON.stringify({action:'get_status', envelopeId: ds.envelopeId}),
+    });
+    const data = await resp.json();
+    if(resp.ok && !data.error){
+      trackData.contract.docusign.status = data.status;
+      if(data.status==='completed') trackData.contract.docusign.ondertekendOp = new Date().toISOString();
+      await slaOp();
+    }
+  }catch(e){ console.error('Status na ondertekenen ophalen mislukt:', e); }
+  renderAll();
+}
+
+function sluitOndertekenModal(){
+  document.getElementById('sign-modal-overlay').classList.remove('open');
+  document.getElementById('sign-modal-body').innerHTML = '';
+  clearInterval(signPollInterval);
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
