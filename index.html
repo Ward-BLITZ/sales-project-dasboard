@@ -8674,6 +8674,16 @@ async function b2cContractRenderPdfDoc(c){
       const imgData=canvas.toDataURL('image/jpeg',0.95);
       if(i>0)pdf.addPage([794,1123],'p');
       pdf.addImage(imgData,'JPEG',0,0,794,1123);
+      if(i===1){
+        // Onzichtbaar tekst-ankertje (witte tekst, dus niet zichtbaar) vlak naast "Handtekening:"
+        // bij "Voor Koper" op pagina 2. De rasterafbeelding hierboven bevat geen doorzoekbare
+        // tekst, dus DocuSign kan daar zelf niet in zoeken — dit stukje ECHTE PDF-tekst lost
+        // dat op: DocuSign zoekt naar "/sig_koper/" en plaatst het handtekenvakje daar automatisch,
+        // in plaats van te vertrouwen op geschatte x/y-coördinaten.
+        pdf.setTextColor(255,255,255);
+        pdf.setFontSize(1);
+        pdf.text('/sig_koper/',485,778);
+      }
     }
     return pdf;
   }finally{
@@ -8796,7 +8806,8 @@ function b2cDocusignStatusTonen(l){
 
 async function b2cDocusignVerstuur(id){
   const l=b2cContractGetLead(id);if(!l)return;
-  if(!l.email){showToast('Geen e-mailadres gekend voor deze klant.');return;}
+  const emailGeldig=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((l.email||'').trim());
+  if(!emailGeldig){showToast('⚠ Ongeldig of ontbrekend e-mailadres bij deze klant. Vul eerst een geldig e-mailadres in bij de klantgegevens.');return;}
   const contractDoc=(l.docs||[]).find(d=>d._type==='contract');
   if(!contractDoc){showToast('Download eerst het contract (PDF) voor je het kan versturen ter ondertekening.');return;}
   showToast('Contract wordt verstuurd naar DocuSign...');
