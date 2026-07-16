@@ -942,8 +942,15 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 
 <!-- LOPENDE PROJECTEN -->
 <div id="pane-lopend" class="page wide" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:1rem;max-width:1600px;margin-left:auto;margin-right:auto">
-    <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">Lopende projecten</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:1rem;max-width:1600px;margin-left:auto;margin-right:auto">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600;white-space:nowrap">Lopende projecten</div>
+      <div class="stats-bar" id="lopend-stats-bar" style="margin:0">
+        <div class="stat-card"><div class="stat-label">Aantal projecten</div><div class="stat-value" id="lopend-stat-aantal">0</div></div>
+        <div class="stat-card"><div class="stat-label">Potentiële omzet</div><div class="stat-value" id="lopend-stat-omzet">€0</div></div>
+        <div class="stat-card"><div class="stat-label">Potentiële laadpunten</div><div class="stat-value" id="lopend-stat-lp">0 LP</div></div>
+      </div>
+    </div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div class="filter-bar" style="margin:0;padding:6px 12px">
         <span class="filter-label"><i class="ti ti-user-circle" style="margin-right:4px"></i>Filter:</span>
@@ -951,11 +958,6 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
       </div>
       <button class="btn primary" onclick="openModal(null)"><i class="ti ti-plus"></i> Nieuw project</button>
     </div>
-  </div>
-  <div class="stats-bar" id="lopend-stats-bar" style="max-width:1600px;margin:0 auto 1rem auto">
-    <div class="stat-card"><div class="stat-label">Aantal projecten</div><div class="stat-value" id="lopend-stat-aantal">0</div></div>
-    <div class="stat-card"><div class="stat-label">Potentiële omzet</div><div class="stat-value" id="lopend-stat-omzet">€0</div></div>
-    <div class="stat-card"><div class="stat-label">Potentiële laadpunten</div><div class="stat-value" id="lopend-stat-lp">0 LP</div></div>
   </div>
   <div class="kanban-layout" >
     <div class="kanban-wrap"><div class="kanban" id="kanban-board"></div></div>
@@ -3304,8 +3306,11 @@ function renderDashboard(){
   // toont het scherm nog een tijdje "0" net nadat iets gewonnen is.
   const gewonnenActief=lopend.filter(p=>p.pct===100);
   const verkochtSamen=[...gewonnenActief,...recentVerkocht];
-  const omzet=lopend.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0);
-  const lp=lopend.reduce((a,p)=>a+(parseInt(p.lp)||0),0);
+  // Pipeline omzet/laadpunten = enkel wat nog NIET verkocht is, anders telt een gewonnen
+  // project (dat nog even in de lijst blijft hangen) dubbel mee: zowel bij Pipeline als bij Verkocht.
+  const nogNietVerkocht=lopend.filter(p=>p.pct!==100);
+  const omzet=nogNietVerkocht.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0);
+  const lp=nogNietVerkocht.reduce((a,p)=>a+(parseInt(p.lp)||0),0);
   document.getElementById('st-totaal').textContent=lopend.length;
   document.getElementById('st-verkocht').textContent=verkochtSamen.length;
   document.getElementById('st-verkocht-omzet').textContent='€'+verkochtSamen.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
@@ -3341,9 +3346,10 @@ function renderKanban(){
   const statOmzet=document.getElementById('lopend-stat-omzet');
   const statLp=document.getElementById('lopend-stat-lp');
   if(statAantal){
+    const nogNietVerkocht=list.filter(p=>p.pct!==100);
     statAantal.textContent=list.length;
-    statOmzet.textContent='€'+list.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
-    statLp.textContent=list.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
+    statOmzet.textContent='€'+nogNietVerkocht.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
+    statLp.textContent=nogNietVerkocht.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
   }
 
   board.innerHTML=VISIBLE_STATUSES.map(si=>{
@@ -4008,14 +4014,17 @@ function render(){
   // toont het scherm nog een tijdje "0" net nadat iets gewonnen is.
   const gewonnenActief=projects.filter(p=>p.pct===100);
   const verkochtSamen=[...gewonnenActief,...recentVk];
+  // Pipeline omzet/laadpunten = enkel wat nog NIET verkocht is, anders telt een gewonnen
+  // project (dat nog even in de lijst blijft hangen) dubbel mee: zowel bij Pipeline als bij Verkocht.
+  const nogNietVerkocht=projects.filter(p=>p.pct!==100);
   // Sorteer aflopend op pct
   const all=[...projects,...recentVk].sort((a,b)=>(b.pct!=null?b.pct:SPCT[parseInt(b.status||0)]||5)-(a.pct!=null?a.pct:SPCT[parseInt(a.status||0)]||5));
   document.getElementById('dt').textContent=projects.length;
   document.getElementById('dv').textContent=verkochtSamen.length;
   document.getElementById('dvo').textContent='€'+verkochtSamen.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
   document.getElementById('dvl').textContent=verkochtSamen.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
-  document.getElementById('do').textContent='€'+projects.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
-  document.getElementById('dl').textContent=projects.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
+  document.getElementById('do').textContent='€'+nogNietVerkocht.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
+  document.getElementById('dl').textContent=nogNietVerkocht.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
 
   const totalPages=Math.max(1,Math.ceil(all.length/PAGE_SIZE));
   if(tvPage>=totalPages)tvPage=0;
