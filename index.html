@@ -926,7 +926,9 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
     </div>
     <div class="stats-bar" style="margin:0">
       <div class="stat-card"><div class="stat-label">Lopend</div><div class="stat-value" id="st-totaal">0</div></div>
-      <div class="stat-card"><div class="stat-label">Verkocht</div><div class="stat-value" id="st-verkocht">0</div></div>
+      <div class="stat-card"><div class="stat-label">Verkocht (7d)</div><div class="stat-value" id="st-verkocht">0</div></div>
+      <div class="stat-card"><div class="stat-label">Verkochte omzet (7d)</div><div class="stat-value" id="st-verkocht-omzet">€0</div></div>
+      <div class="stat-card"><div class="stat-label">Verkochte LP (7d)</div><div class="stat-value" id="st-verkocht-lp">0 LP</div></div>
       <div class="stat-card"><div class="stat-label">Pipeline omzet</div><div class="stat-value" id="st-omzet">€0</div></div>
       <div class="stat-card"><div class="stat-label">Laadpunten</div><div class="stat-value" id="st-lp">0 LP</div></div>
     </div>
@@ -949,6 +951,11 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
       </div>
       <button class="btn primary" onclick="openModal(null)"><i class="ti ti-plus"></i> Nieuw project</button>
     </div>
+  </div>
+  <div class="stats-bar" id="lopend-stats-bar" style="max-width:1600px;margin:0 auto 1rem auto">
+    <div class="stat-card"><div class="stat-label">Aantal projecten</div><div class="stat-value" id="lopend-stat-aantal">0</div></div>
+    <div class="stat-card"><div class="stat-label">Potentiële omzet</div><div class="stat-value" id="lopend-stat-omzet">€0</div></div>
+    <div class="stat-card"><div class="stat-label">Potentiële laadpunten</div><div class="stat-value" id="lopend-stat-lp">0 LP</div></div>
   </div>
   <div class="kanban-layout" >
     <div class="kanban-wrap"><div class="kanban" id="kanban-board"></div></div>
@@ -3292,10 +3299,17 @@ function renderDashboard(){
     .sort((a,b)=>(b.pct!=null?b.pct:DEFAULT_PCT[parseInt(b.status)]||5)-(a.pct!=null?a.pct:DEFAULT_PCT[parseInt(a.status)]||5));
 
   const sold=recentVerkocht.length;
+  // "Gewonnen" projecten staan nog tot 7 dagen in de lopende lijst (wachttijd) vóór ze
+  // automatisch verplaatst worden naar Verkocht — die tellen we hier meteen mee, anders
+  // toont het scherm nog een tijdje "0" net nadat iets gewonnen is.
+  const gewonnenActief=lopend.filter(p=>p.pct===100);
+  const verkochtSamen=[...gewonnenActief,...recentVerkocht];
   const omzet=lopend.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0);
   const lp=lopend.reduce((a,p)=>a+(parseInt(p.lp)||0),0);
   document.getElementById('st-totaal').textContent=lopend.length;
-  document.getElementById('st-verkocht').textContent=sold;
+  document.getElementById('st-verkocht').textContent=verkochtSamen.length;
+  document.getElementById('st-verkocht-omzet').textContent='€'+verkochtSamen.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
+  document.getElementById('st-verkocht-lp').textContent=verkochtSamen.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
   document.getElementById('st-omzet').textContent='€'+omzet.toLocaleString('nl-BE');
   document.getElementById('st-lp').textContent=lp+' LP';
 
@@ -3320,6 +3334,18 @@ function renderDashboard(){
 function renderKanban(){
   const board=document.getElementById('kanban-board');if(!board)return;
   const list=filteredLopend();
+
+  // Samenvatting bovenaan (aantal / potentiële omzet / potentiële laadpunten) — past zich
+  // automatisch aan de geselecteerde verantwoordelijke aan, via dezelfde filteredLopend().
+  const statAantal=document.getElementById('lopend-stat-aantal');
+  const statOmzet=document.getElementById('lopend-stat-omzet');
+  const statLp=document.getElementById('lopend-stat-lp');
+  if(statAantal){
+    statAantal.textContent=list.length;
+    statOmzet.textContent='€'+list.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
+    statLp.textContent=list.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
+  }
+
   board.innerHTML=VISIBLE_STATUSES.map(si=>{
     const statusName=STATUSES[si];
     const cols=list.filter(p=>parseInt(p.status)===si);
@@ -3942,8 +3968,8 @@ function openTV(){
 .lm svg{width:18px;height:18px;fill:#1D252D}h1{font-family:'Poppins',sans-serif;font-size:20px;font-weight:700}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#00DFA3;margin-right:8px;animation:bl 2s infinite}
 @keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}.clk{font-size:13px;color:#8a9ba3;font-variant-numeric:tabular-nums}
-.sts{display:flex;gap:12px;margin-bottom:14px;flex-shrink:0}.st{background:#f2f4f3;border-radius:10px;padding:10px 22px;border:1px solid #D9D9D6}
-.stl{font-size:11px;color:#8a9ba3;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}.stv{font-family:'Poppins',sans-serif;font-size:22px;font-weight:700}.stv.g{color:#00b882}
+.sts{display:flex;gap:10px;margin-bottom:14px;flex-shrink:0;flex-wrap:wrap}.st{background:#f2f4f3;border-radius:10px;padding:9px 16px;border:1px solid #D9D9D6}
+.stl{font-size:10px;color:#8a9ba3;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}.stv{font-family:'Poppins',sans-serif;font-size:19px;font-weight:700;white-space:nowrap}.stv.g{color:#00b882}
 .rows{flex:1;overflow:hidden;display:flex;flex-direction:column}.row{display:flex;align-items:center;gap:14px;flex:1;min-height:0;padding:5px 0;border-bottom:1px solid #e8eceb}.row:last-child{border-bottom:none}
 .rn{width:220px;min-width:140px;font-family:'Poppins',sans-serif;font-weight:600}.rs{font-size:11px;color:#8a9ba3;margin-top:2px;font-weight:400;font-family:'Inter',sans-serif}
 .rst{width:170px;min-width:120px}.rb{display:inline-block;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:600}
@@ -3954,7 +3980,7 @@ function openTV(){
 @keyframes popIn{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}70%{transform:translate(-50%,-50%) scale(1.08)}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
 </style></head><body>
 <div class="hdr"><div class="logo"><div class="lm"><svg viewBox="0 0 18 18"><path d="M9 1L2 10h6l-1 7 9-10h-6z"/></svg></div><h1><span class="dot"></span>Blitz Power — Dashboard</h1></div><div class="clk" id="clk"></div></div>
-<div class="sts"><div class="st"><div class="stl">Lopend</div><div class="stv" id="dt">0</div></div><div class="st"><div class="stl">Verkocht (7d)</div><div class="stv g" id="dv">0</div></div><div class="st"><div class="stl">Pipeline omzet</div><div class="stv" id="do">€0</div></div><div class="st"><div class="stl">Laadpunten</div><div class="stv g" id="dl">0 LP</div></div></div>
+<div class="sts"><div class="st"><div class="stl">Lopend</div><div class="stv" id="dt">0</div></div><div class="st"><div class="stl">Verkocht (7d)</div><div class="stv g" id="dv">0</div></div><div class="st"><div class="stl">Verkochte omzet (7d)</div><div class="stv g" id="dvo">€0</div></div><div class="st"><div class="stl">Verkochte LP (7d)</div><div class="stv g" id="dvl">0 LP</div></div><div class="st"><div class="stl">Pipeline omzet</div><div class="stv" id="do">€0</div></div><div class="st"><div class="stl">Laadpunten</div><div class="stv g" id="dl">0 LP</div></div></div>
 <div class="rows" id="rows"></div>
 <div id="pg-ind" style="text-align:center;padding:8px 0;flex-shrink:0;display:none"></div>
 <script>
@@ -3977,10 +4003,17 @@ let tvPageTimer=null;
 function render(){
   const now=new Date();now.setHours(0,0,0,0);
   const recentVk=closed.filter(p=>{if(p.type!=='verkocht'||!p.closed_at)return false;const d=new Date(p.closed_at);d.setHours(0,0,0,0);return(now-d)/86400000<=7;});
+  // "Gewonnen" projecten staan nog tot 7 dagen in de lopende lijst (wachttijd) vóór ze
+  // automatisch verplaatst worden naar Verkocht — die tellen we hier meteen mee, anders
+  // toont het scherm nog een tijdje "0" net nadat iets gewonnen is.
+  const gewonnenActief=projects.filter(p=>p.pct===100);
+  const verkochtSamen=[...gewonnenActief,...recentVk];
   // Sorteer aflopend op pct
   const all=[...projects,...recentVk].sort((a,b)=>(b.pct!=null?b.pct:SPCT[parseInt(b.status||0)]||5)-(a.pct!=null?a.pct:SPCT[parseInt(a.status||0)]||5));
   document.getElementById('dt').textContent=projects.length;
-  document.getElementById('dv').textContent=recentVk.length;
+  document.getElementById('dv').textContent=verkochtSamen.length;
+  document.getElementById('dvo').textContent='€'+verkochtSamen.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
+  document.getElementById('dvl').textContent=verkochtSamen.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
   document.getElementById('do').textContent='€'+projects.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
   document.getElementById('dl').textContent=projects.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
 
