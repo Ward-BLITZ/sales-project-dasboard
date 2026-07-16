@@ -40,14 +40,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg2);color:var(--tx);min-he
 .doc-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--r);margin-bottom:8px;text-decoration:none;color:var(--tx)}
 .doc-item:hover{background:var(--bg3)}
 .msg{display:flex;flex-direction:column;margin-bottom:10px}
-.msg-bubble{max-width:80%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5}
+.msg-bubble{max-width:80%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
 .msg-klant .msg-bubble{background:var(--bg2);border-radius:4px 14px 14px 14px;align-self:flex-start}
 .msg-intern .msg-bubble{background:var(--green);color:#fff;border-radius:14px 4px 14px 14px;align-self:flex-end}
 .msg-meta{font-size:10px;color:var(--tx3);margin-top:3px;padding:0 4px}
 .msg-klant .msg-meta{text-align:left}
 .msg-intern .msg-meta{text-align:right}
 .chat-input-row{display:flex;gap:8px;border-top:1px solid var(--bd);padding-top:12px;margin-top:8px}
-.chat-input{flex:1;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:'Inter',sans-serif}
+.chat-input{flex:1;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:'Inter',sans-serif;resize:none;max-height:140px;overflow-y:auto;line-height:1.4}
 .btn{padding:9px 16px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:'Inter',sans-serif;display:inline-flex;align-items:center;gap:6px}
 .btn-primary{background:var(--green);color:#fff}
 .btn-primary:hover{opacity:.9}
@@ -273,14 +273,16 @@ function renderAll(){
             ? `<div style="color:var(--tx3);font-size:13px;font-style:italic;text-align:center;padding:20px">Stuur ons een vraag — we antwoorden zo snel mogelijk.</div>`
             : berichten.map(b=>`
               <div class="msg ${b.van==='klant'?'msg-klant':'msg-intern'}">
-                <div class="msg-bubble">${b.tekst}</div>
+              <div class="msg-bubble">${trackEscapeHtml(b.tekst)}</div>
                 <div class="msg-meta">${b.van==='klant'?'U':'Blitz Power'} · ${(b.ts||'').slice(0,16).replace('T',' ')}</div>
               </div>
             `).join('')
           }
         </div>
         <div class="chat-input-row">
-          <input class="chat-input" id="chat-input" type="text" placeholder="Schrijf een bericht..." onkeydown="if(event.key==='Enter')stuurBericht()">
+          <textarea class="chat-input" id="chat-input" placeholder="Schrijf een bericht... (Shift+Enter voor een nieuwe regel)" rows="1"
+            oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();stuurBericht();}"></textarea>
           <button class="btn btn-primary" onclick="stuurBericht()"><i class="ti ti-send"></i></button>
         </div>
       </div>
@@ -342,11 +344,19 @@ function setSter(n){
   }
 }
 
+// Voorkomt kapotte opmaak/HTML-injectie; echte regeleindes blijven behouden dankzij
+// white-space:pre-wrap op de berichtbubbel.
+function trackEscapeHtml(tekst){
+  return String(tekst||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 async function stuurBericht(){
   const input = document.getElementById('chat-input');
   const tekst = input?.value?.trim();
   if(!tekst) return;
   input.value = '';
+  input.style.height = 'auto';
 
   if(!trackData.trackTrace) trackData.trackTrace = {};
   if(!trackData.trackTrace.chat) trackData.trackTrace.chat = [];
@@ -363,7 +373,7 @@ async function stuurBericht(){
   const chatMsgs = document.getElementById('chat-msgs');
   if(chatMsgs){
     const b = trackData.trackTrace.chat[trackData.trackTrace.chat.length-1];
-    chatMsgs.innerHTML += `<div class="msg msg-klant"><div class="msg-bubble">${b.tekst}</div><div class="msg-meta">U · ${b.ts.slice(0,16).replace('T',' ')}</div></div>`;
+    chatMsgs.innerHTML += `<div class="msg msg-klant"><div class="msg-bubble">${trackEscapeHtml(b.tekst)}</div><div class="msg-meta">U · ${b.ts.slice(0,16).replace('T',' ')}</div></div>`;
     chatMsgs.scrollTop = chatMsgs.scrollHeight;
   }
 }
