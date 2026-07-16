@@ -1637,7 +1637,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <option value="alle">Iedereen</option>
     </select>
     <div class="pills" id="ag-pills-type"></div>
-    <button class="btn" onclick="agExporteerJSON()" title="Exporteert exact wat nu gefilterd/getoond wordt (kies eerst een verantwoordelijke en/of type hierboven om te beperken)"><i class="ti ti-file-export"></i> Exporteer JSON</button>
+    <button class="btn" onclick="agExporteerJSON()" title="Exporteert wat nu gefilterd/getoond wordt, van vandaag t.e.m. 4 weken vooruit (incl. telefoon/e-mail)"><i class="ti ti-file-export"></i> Exporteer JSON</button>
     <button class="btn primary" onclick="agOpenNieuw()" style="margin-left:auto"><i class="ti ti-plus"></i> Afspraak toevoegen</button>
   </div>
 
@@ -6565,18 +6565,46 @@ function agGetInstAfspraken(){
 }
 
 // ── JSON-EXPORT (agenda / service / per gebruiker) ───
+// Zoekt telefoon/e-mail op bij de klant/lead/project waaraan een afspraak gekoppeld is
+// (afspraken zelf hebben dat niet rechtstreeks — enkel installatie-/keuringstickets wel).
+function agAfspraakContactInfo(a){
+  if(a.type==='Installatie'||a.type==='Keuring'){
+    const inst=installaties.find(i=>a.id===('inst-'+i.id)||a.id===('keur-'+i.id));
+    if(inst)return{telefoon:inst.tel||'',email:inst.email||''};
+  }
+  const linkId=String(a.linkId||'');
+  if(a.linkType==='b2c'||linkId.startsWith('b2c-')){
+    const l=b2cLeads.find(x=>String(x.id)===linkId.replace('b2c-',''));
+    if(l)return{telefoon:l.tel||'',email:l.email||''};
+  }
+  if(a.linkType==='b2b'||linkId.startsWith('b2b-')){
+    const p=projects.find(x=>String(x.id)===linkId.replace('b2b-',''));
+    if(p)return{telefoon:p.contactgsm||'',email:p.contactemail||''};
+  }
+  return{telefoon:'',email:''};
+}
+
 // Exporteert exact wat op dat moment gefilterd staat in de agenda (het type-filter bovenaan
-// en de "Verantwoordelijke"-dropdown) — zo kan je makkelijk enkel service-afspraken, enkel
-// afspraken van 1 collega, of alles exporteren, om in een ander tool te importeren.
+// en de "Verantwoordelijke"-dropdown), afgebakend van vandaag t.e.m. 4 weken vooruit — zo
+// kan je makkelijk enkel service-afspraken, enkel afspraken van 1 collega, of alles
+// exporteren voor de komende maand, om in een ander tool te importeren.
 function agExporteerJSON(){
+  const vandaag=ymdLocal(new Date());
+  const limietDatum=new Date();
+  limietDatum.setDate(limietDatum.getDate()+28);
+  const limiet=ymdLocal(limietDatum);
+
   const items=agAfspraken.filter(a=>{
     if(agTypeFilter!=='alle'&&a.type!==agTypeFilter)return false;
     if(agRespFilter!=='alle'&&a.resp!==agRespFilter)return false;
+    if(!a.datum||a.datum<vandaag||a.datum>limiet)return false;
     return true;
-  });
-  if(!items.length){showToast('Geen afspraken gevonden voor de huidige filter(s).');return;}
+  }).map(a=>({...a,...agAfspraakContactInfo(a)}));
+
+  if(!items.length){showToast('Geen afspraken gevonden voor de huidige filter(s) in de komende 4 weken.');return;}
   const exportData={
     geexporteerdOp:new Date().toISOString(),
+    periode:{van:vandaag,tot:limiet},
     filter:{type:agTypeFilter,verantwoordelijke:agRespFilter},
     aantal:items.length,
     afspraken:items,
@@ -6587,7 +6615,7 @@ function agExporteerJSON(){
   a.href=url;
   const scopeDelen=[agTypeFilter!=='alle'?agTypeFilter:null,agRespFilter!=='alle'?agRespFilter.replace(/\s+/g,'_'):null].filter(Boolean);
   const scopeLabel=scopeDelen.length?scopeDelen.join('_'):'alle';
-  a.download=`agenda_export_${scopeLabel}_${today()}.json`;
+  a.download=`agenda_export_${scopeLabel}_${vandaag}.json`;
   document.body.appendChild(a);a.click();
   setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
   showToast(`${items.length} afspraken geëxporteerd als JSON.`);
