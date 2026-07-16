@@ -13237,8 +13237,8 @@ function renderKlantChat(obj, type){
           ? `<div style="text-align:center;color:var(--tx3);font-size:12px;font-style:italic;padding:20px">Nog geen berichten. De klant kan berichten sturen via de trackpagina.</div>`
           : berichten.map(b=>`
             <div style="display:flex;flex-direction:column;align-items:${b.van==='klant'?'flex-start':'flex-end'}">
-              <div style="max-width:75%;background:${b.van==='klant'?'var(--bg2)':'var(--green)'};color:${b.van==='klant'?'var(--tx)':'#fff'};border-radius:${b.van==='klant'?'4px 14px 14px 14px':'14px 4px 14px 14px'};padding:9px 13px;font-size:13px;line-height:1.4">
-                ${b.tekst}
+              <div style="max-width:75%;background:${b.van==='klant'?'var(--bg2)':'var(--green)'};color:${b.van==='klant'?'var(--tx)':'#fff'};border-radius:${b.van==='klant'?'4px 14px 14px 14px':'14px 4px 14px 14px'};padding:9px 13px;font-size:13px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word">
+                ${ttEscapeHtml(b.tekst)}
               </div>
               <div style="font-size:10px;color:var(--tx3);margin-top:2px;padding:0 4px">
                 ${b.van==='klant'?'Klant':'Jij'} · ${b.ts?.slice(0,16).replace('T',' ')}
@@ -13250,10 +13250,11 @@ function renderKlantChat(obj, type){
       </div>
 
       <!-- Stuur bericht -->
-      <div style="display:flex;gap:8px;border-top:1px solid var(--bd);padding-top:12px">
-        <input id="tt-chat-input-${type}" type="text" placeholder="Typ een bericht naar de klant..." 
-          style="flex:1;padding:9px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px"
-          onkeydown="if(event.key==='Enter')ttStuurBericht('${obj.id||''}','${type}')">
+      <div style="display:flex;gap:8px;border-top:1px solid var(--bd);padding-top:12px;align-items:flex-end">
+        <textarea id="tt-chat-input-${type}" placeholder="Typ een bericht naar de klant... (Shift+Enter voor een nieuwe regel)" rows="1"
+          style="flex:1;padding:9px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;resize:none;max-height:140px;overflow-y:auto;font-family:inherit;line-height:1.4"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ttStuurBericht('${obj.id||''}','${type}');}"></textarea>
         <button class="btn primary" onclick="ttStuurBericht('${obj.id||''}','${type}')"><i class="ti ti-send"></i></button>
       </div>
     </div>
@@ -13337,6 +13338,13 @@ function ttSlaBerichtOp(id, type){
   showToast('Bericht opgeslagen ✓');
 }
 
+// Voorkomt kapotte opmaak/HTML-injectie als een klant of collega tekens als < of > typt;
+// echte regeleindes (\n) blijven behouden dankzij white-space:pre-wrap op de berichtbubbel.
+function ttEscapeHtml(tekst){
+  return String(tekst||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function ttStuurBericht(id, type){
   const obj = ttGetObj(id, type);
   if(!obj) return;
@@ -13353,6 +13361,7 @@ function ttStuurBericht(id, type){
     gebruiker: currentUserNaam || userNaam || '',
   });
   inputEl.value = '';
+  inputEl.style.height = 'auto';
   if(type==='b2c') sbSaveB2cLead(obj);
   else sbSaveProject(obj);
   renderKlantChat(obj, type);
