@@ -949,6 +949,9 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
         <div class="stat-card"><div class="stat-label">Aantal projecten</div><div class="stat-value" id="lopend-stat-aantal">0</div></div>
         <div class="stat-card"><div class="stat-label">Potentiële omzet</div><div class="stat-value" id="lopend-stat-omzet">€0</div></div>
         <div class="stat-card"><div class="stat-label">Potentiële laadpunten</div><div class="stat-value" id="lopend-stat-lp">0 LP</div></div>
+        <div class="stat-card"><div class="stat-label">Verkocht (7d)</div><div class="stat-value" id="lopend-stat-verkocht-aantal">0</div></div>
+        <div class="stat-card"><div class="stat-label">Verkochte omzet (7d)</div><div class="stat-value" id="lopend-stat-verkocht-omzet">€0</div></div>
+        <div class="stat-card"><div class="stat-label">Verkochte laadpunten (7d)</div><div class="stat-value" id="lopend-stat-verkocht-lp">0 LP</div></div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -3340,16 +3343,35 @@ function renderKanban(){
   const board=document.getElementById('kanban-board');if(!board)return;
   const list=filteredLopend();
 
-  // Samenvatting bovenaan (aantal / potentiële omzet / potentiële laadpunten) — past zich
-  // automatisch aan de geselecteerde verantwoordelijke aan, via dezelfde filteredLopend().
+  // Samenvatting bovenaan (aantal / potentiële omzet / potentiële laadpunten / verkocht) —
+  // past zich automatisch aan de geselecteerde verantwoordelijke aan, via dezelfde
+  // filteredLopend() / activeFilter die het kanban-bord zelf ook al gebruikt.
   const statAantal=document.getElementById('lopend-stat-aantal');
   const statOmzet=document.getElementById('lopend-stat-omzet');
   const statLp=document.getElementById('lopend-stat-lp');
+  const statVkAantal=document.getElementById('lopend-stat-verkocht-aantal');
+  const statVkOmzet=document.getElementById('lopend-stat-verkocht-omzet');
+  const statVkLp=document.getElementById('lopend-stat-verkocht-lp');
   if(statAantal){
     const nogNietVerkocht=list.filter(p=>p.pct!==100);
     statAantal.textContent=list.length;
     statOmzet.textContent='€'+nogNietVerkocht.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
     statLp.textContent=nogNietVerkocht.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
+
+    // Verkocht (7d): zelfde principe als tv-scherm/dashboard — "Gewonnen" projecten die nog
+    // in de lopende lijst hangen (wachttijd) + al formeel verplaatste, recent verkochte projecten.
+    const gewonnenActief=list.filter(p=>p.pct===100);
+    const now=new Date();now.setHours(0,0,0,0);
+    const recentVk=(closedProjects||[]).filter(p=>{
+      if(p.type!=='verkocht'||!p.closed_at)return false;
+      if(activeFilter!=='all'&&p.resp!==activeFilter)return false;
+      const d=new Date(p.closed_at);d.setHours(0,0,0,0);
+      return(now-d)/86400000<=7;
+    });
+    const verkochtSamen=[...gewonnenActief,...recentVk];
+    statVkAantal.textContent=verkochtSamen.length;
+    statVkOmzet.textContent='€'+verkochtSamen.reduce((a,p)=>a+(parseFloat(p.omzet)||0),0).toLocaleString('nl-BE');
+    statVkLp.textContent=verkochtSamen.reduce((a,p)=>a+(parseInt(p.lp)||0),0)+' LP';
   }
 
   board.innerHTML=VISIBLE_STATUSES.map(si=>{
