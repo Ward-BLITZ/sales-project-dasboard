@@ -1743,7 +1743,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <div class="grid2">
       <div class="field"><label>Datum (optioneel)</label><input type="date" id="todo-datum"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="field"><label>Van</label><input type="time" id="todo-uur"></div>
+        <div class="field"><label>Van</label><input type="time" id="todo-uur" onchange="document.getElementById('todo-einduur').value=agBerekenEinduur(this.value,30)"></div>
         <div class="field"><label>Tot</label><input type="time" id="todo-einduur"></div>
       </div>
     </div>
@@ -1843,7 +1843,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div id="ag-ticket-info" style="display:none;background:var(--bg2);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--tx2);margin-bottom:10px;line-height:1.7"></div>
       <div class="grid2">
         <div class="field"><label>Datum *</label><input type="date" id="ag-datum"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur" value="09:00"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur" value="10:00"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur" value="09:00" onchange="document.getElementById('ag-einduur').value=agBerekenEinduur(this.value,30)"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur" value="09:30"></div></div>
       </div>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp"><option value="">— kies —</option></select>
@@ -1867,7 +1867,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Titel van de afspraak *</label><input id="ag-titel" placeholder="bv. Visit Jan Vermeersch"></div>
       <div class="grid2">
         <div class="field"><label>Datum *</label><input type="date" id="ag-datum2"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur2" value="09:00"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur2" value="10:00"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur2" value="09:00" onchange="document.getElementById('ag-einduur2').value=agBerekenEinduur(this.value,30)"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur2" value="09:30"></div></div>
       </div>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp2"><option value="">— kies —</option></select>
@@ -1888,7 +1888,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Titel van de afspraak *</label><input id="ag-titel3" placeholder="bv. Offertegesprek Parking Delhaize"></div>
       <div class="grid2">
         <div class="field"><label>Datum *</label><input type="date" id="ag-datum3"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur3" value="09:00"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur3" value="10:00"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur3" value="09:00" onchange="document.getElementById('ag-einduur3').value=agBerekenEinduur(this.value,30)"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur3" value="09:30"></div></div>
       </div>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp3"><option value="">— kies —</option></select>
@@ -1902,7 +1902,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Titel van de afspraak *</label><input id="ag-titel4" placeholder="bv. Teamvergadering"></div>
       <div class="grid2">
         <div class="field"><label>Datum *</label><input type="date" id="ag-datum4"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur4" value="09:00"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur4" value="10:00"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="field" style="margin:0"><label>Van</label><input type="time" id="ag-uur4" value="09:00" onchange="document.getElementById('ag-einduur4').value=agBerekenEinduur(this.value,30)"></div><div class="field" style="margin:0"><label>Tot</label><input type="time" id="ag-einduur4" value="09:30"></div></div>
       </div>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp4"><option value="">— kies —</option></select>
@@ -2198,7 +2198,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
         <div id="b2b-opvolging-form" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:10px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
             <div class="field" style="margin:0"><label style="font-size:11px">Datum</label><input type="date" id="b2bop-datum" style="font-size:12px"></div>
-            <div class="field" style="margin:0"><label style="font-size:11px">Van</label><input type="time" id="b2bop-uur" style="font-size:12px"></div><div class="field" style="margin:0"><label style="font-size:11px">Tot</label><input type="time" id="b2bop-einduur" style="font-size:12px"></div>
+            <div class="field" style="margin:0"><label style="font-size:11px">Van</label><input type="time" id="b2bop-uur" style="font-size:12px" onchange="document.getElementById('b2bop-einduur').value=agBerekenEinduur(this.value,15)"></div><div class="field" style="margin:0"><label style="font-size:11px">Tot</label><input type="time" id="b2bop-einduur" style="font-size:12px"></div>
           </div>
           <div class="field" style="margin-bottom:8px"><label style="font-size:11px">Wat moet er gedaan worden?</label><input id="b2bop-tekst" placeholder="bv. Offerte opvolgen, terugbellen..." style="font-size:12px"></div>
           <div style="display:flex;gap:6px;justify-content:flex-end">
@@ -2357,8 +2357,8 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <div class="grid2">
       <div class="field"><label>Datum</label><input type="date" id="bv-datum"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="field"><label>Van</label><input type="time" id="bv-uur" value="10:00"></div>
-        <div class="field"><label>Tot</label><input type="time" id="bv-einduur" value="11:00"></div>
+        <div class="field"><label>Van</label><input type="time" id="bv-uur" value="10:00" onchange="document.getElementById('bv-einduur').value=agBerekenEinduur(this.value,30)"></div>
+        <div class="field"><label>Tot</label><input type="time" id="bv-einduur" value="10:30"></div>
       </div>
     </div>
     <div class="field"><label>Adres (bevestig)</label><input type="text" id="bv-adres"></div>
@@ -5200,6 +5200,7 @@ function agKiesService(sub){
     document.getElementById('ag-titel4').value='';
     document.getElementById('ag-datum4').value=agCalSelDag||today();
     document.getElementById('ag-uur4').value='09:00';
+    document.getElementById('ag-einduur4').value='09:30';
     document.getElementById('ag-notitie4').value='';
     const rsel=document.getElementById('ag-resp4');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('service').map(r=>`<option>${r}</option>`).join('');
@@ -5217,6 +5218,7 @@ function agKiesSales(sub){
     document.getElementById('ag-titel').value='';
     document.getElementById('ag-datum2').value=agCalSelDag||today();
     document.getElementById('ag-uur2').value='09:00';
+    document.getElementById('ag-einduur2').value='09:30';
     document.getElementById('ag-notitie2').value='';
     const rsel=document.getElementById('ag-resp2');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('sales').map(r=>`<option>${r}</option>`).join('');
@@ -5229,6 +5231,7 @@ function agKiesSales(sub){
     document.getElementById('ag-titel3').value='';
     document.getElementById('ag-datum3').value=agCalSelDag||today();
     document.getElementById('ag-uur3').value='09:00';
+    document.getElementById('ag-einduur3').value='09:30';
     document.getElementById('ag-notitie3').value='';
     const rsel=document.getElementById('ag-resp3');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('sales').map(r=>`<option>${r}</option>`).join('');
@@ -5237,6 +5240,7 @@ function agKiesSales(sub){
     document.getElementById('ag-titel4').value='';
     document.getElementById('ag-datum4').value=agCalSelDag||today();
     document.getElementById('ag-uur4').value='09:00';
+    document.getElementById('ag-einduur4').value='09:30';
     document.getElementById('ag-notitie4').value='';
     const rsel=document.getElementById('ag-resp4');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('sales').map(r=>`<option>${r}</option>`).join('');
@@ -7688,7 +7692,7 @@ function b2cRenderInfo(l){
         <div id="b2c-opvolging-form" style="display:none;background:var(--bg2);border-radius:var(--r);padding:12px;margin-bottom:12px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
             <div class="field" style="margin:0"><label style="font-size:11px">Datum</label><input type="date" id="bop-datum" value="${today()}" style="font-size:12px"></div>
-            <div class="field" style="margin:0"><label style="font-size:11px">Van</label><input type="time" id="bop-uur" style="font-size:12px"></div><div class="field" style="margin:0"><label style="font-size:11px">Tot</label><input type="time" id="bop-einduur" style="font-size:12px"></div>
+            <div class="field" style="margin:0"><label style="font-size:11px">Van</label><input type="time" id="bop-uur" style="font-size:12px" onchange="document.getElementById('bop-einduur').value=agBerekenEinduur(this.value,15)"></div><div class="field" style="margin:0"><label style="font-size:11px">Tot</label><input type="time" id="bop-einduur" style="font-size:12px"></div>
           </div>
           <div class="field" style="margin-bottom:8px"><label style="font-size:11px">Wat moet er gedaan worden?</label><input id="bop-tekst" placeholder="bv. Offerte opvolgen, terugbellen..." style="font-size:12px"></div>
           <div style="display:flex;gap:6px;justify-content:flex-end">
@@ -9379,7 +9383,7 @@ function b2cOpenVisitModal(id){
   document.getElementById('b2c-visit-titel').textContent='Visit inplannen — '+b2cNaam(l);
   document.getElementById('bv-datum').value=l.visitDatum||'';
   document.getElementById('bv-uur').value=l.visitUur||'10:00';
-  document.getElementById('bv-einduur').value=l.visitEinduur||'';
+  document.getElementById('bv-einduur').value=l.visitEinduur||agBerekenEinduur(l.visitUur||'10:00',30);
   document.getElementById('bv-adres').value=l.adres||'';
   document.getElementById('bv-nota').value=l.notities||'';
   document.getElementById('bv-annuleer-btn').style.display=l.visitDatum?'inline-flex':'none';
@@ -13995,6 +13999,41 @@ function todoDelete(){
 }
 
 
+// Telt N minuten bij een "HH:MM"-starttijd op, voor het automatisch instellen van een
+// standaard-einduur (blijft binnen dezelfde dag; loopt niet door voorbij 23:59).
+function agBerekenEinduur(startUur,minuten){
+  if(!startUur)return '';
+  const delen=String(startUur).split(':');
+  const h=parseInt(delen[0],10),m=parseInt(delen[1],10)||0;
+  if(isNaN(h))return '';
+  let totaal=Math.min(h*60+m+minuten,23*60+59);
+  const eh=Math.floor(totaal/60),em=totaal%60;
+  return String(eh).padStart(2,'0')+':'+String(em).padStart(2,'0');
+}
+
+// Verdeelt overlappende agenda-items (in tijd) over kolommen naast elkaar, zodat ze niet
+// over elkaar heen getekend worden in de weekweergave. Simpele "lane"-toewijzing: elk item
+// komt in de eerste kolom terecht die op dat moment vrij is.
+function agVerdeelKolommen(items,naarMinuten){
+  const genormaliseerd=items.map(it=>{
+    const start=naarMinuten(it.uur);
+    let eind=naarMinuten(it.einduur);
+    if(eind==null||eind<=start)eind=start+30;
+    return{item:it,start,eind};
+  }).sort((a,b)=>a.start-b.start);
+
+  const laneEindTijden=[];
+  const resultaat=[];
+  genormaliseerd.forEach(g=>{
+    let laneIdx=laneEindTijden.findIndex(eind=>eind<=g.start);
+    if(laneIdx===-1){laneIdx=laneEindTijden.length;laneEindTijden.push(g.eind);}
+    else laneEindTijden[laneIdx]=g.eind;
+    resultaat.push({item:g.item,kol:laneIdx});
+  });
+  const totaalKol=Math.max(laneEindTijden.length,1);
+  return resultaat.map(r=>({...r,totaalKol}));
+}
+
 function agRenderWeek(){
   if(!agWeekStart)agWeekStart=agGetWeekStart(new Date());
   const grid=document.getElementById('ag-week-grid');
@@ -14003,7 +14042,7 @@ function agRenderWeek(){
 
   const DAGN=['Ma','Di','Wo','Do','Vr','Za','Zo'];
   const MAANDEN=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-  const uren=Array.from({length:24},(_,i)=>i); // 0-23
+  const HOOGTE=48; // px per uur — een afspraak van 30 min wordt dus 24px hoog, enz.
   const t=today();
 
   // Bereken de 7 dagen
@@ -14016,8 +14055,18 @@ function agRenderWeek(){
   // Haal alle afspraken + opvolgingen + todos op voor deze week
   const afspraken=agGetFiltered();
   const dagenStr=dagen.map(d=>ymdLocal(d));
+  const respF=agRespFilter;
 
   grid.style.gridTemplateColumns='48px repeat(7,minmax(0,1fr))';
+
+  // "HH:MM" -> minuten sinds middernacht (of null als leeg/ongeldig)
+  const naarMinuten=(str)=>{
+    if(!str)return null;
+    const delen=String(str).split(':');
+    const h=parseInt(delen[0],10),m=parseInt(delen[1],10)||0;
+    if(isNaN(h))return null;
+    return h*60+m;
+  };
 
   // Sticky dag-headers
   let html='<div style="position:sticky;top:0;z-index:10;background:var(--bg2);border-right:1px solid var(--bd);border-bottom:2px solid var(--bd2)"></div>';
@@ -14029,40 +14078,69 @@ function agRenderWeek(){
     </div>`;
   });
 
-  // Uurblokken 07:00 - 19:00 (buiten werkuren 07 en na 18)
+  // Uur-labelkolom: 1 kolom, 24 gestapelde labels (geen aparte grid-rij per uur meer nodig)
+  let labelHtml='';
   for(let u=0;u<=23;u++){
     const uurStr=String(u).padStart(2,'0')+':00';
     const buiten=u<8||u>=18;
-    const urBg=buiten?'rgba(0,0,0,0.03)':'var(--bg)';
-    html+=`<div style="text-align:right;padding:3px 6px 0 2px;font-size:10px;color:var(--tx3);border-right:1px solid var(--bd);border-bottom:1px solid var(--bd2);background:${buiten?'rgba(0,0,0,0.04)':urBg};height:48px;box-sizing:border-box;font-weight:${buiten?'400':'500'}">${uurStr}</div>`;
-    dagen.forEach(d=>{
-      const ds=ymdLocal(d);
-      const isToday=ds===t;
-      const bg=buiten?(isToday?'rgba(0,223,163,.03)':'rgba(0,0,0,0.03)'):(isToday?'rgba(0,223,163,.05)':'var(--bg)');
-      const evs=afspraken.filter(a=>a.datum===ds&&a.uur&&parseInt(a.uur)===u);
-      const opvs=[];
-      const respF=agRespFilter;
-      b2cLeads.filter(l=>respF==='alle'||l.resp===respF).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur&&parseInt(op.uur)===u).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id,uur:op.uur,einduur:op.einduur||''})));
-      projects.filter(p=>respF==='alle'||p.resp===respF).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur&&parseInt(op.uur)===u).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projectId:p.id||p._rowid,uur:op.uur,einduur:op.einduur||''})));
-      const todosUur=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&td.uur&&parseInt(td.uur)===u&&(respF==='alle'||!td.resp||td.resp===respF));
-      const alles=[
-        ...evs.map(a=>({tekst:a.titel,kleur:AG_KLEUREN[a.type]||'var(--green)',agId:String(a.id),uur:a.uur,einduur:a.einduur||''})),
-        ...opvs,
-        ...todosUur.map(td=>({tekst:td.tekst,kleur:'#f59e0b',type:'todo',todoId:String(td.id),uur:td.uur,einduur:td.einduur||''}))
-      ];
-      html+=`<div style="border-right:1px solid var(--bd);border-bottom:1px solid var(--bd2);background:${bg};height:48px;box-sizing:border-box;padding:2px 2px;overflow:hidden" data-agds="${ds}" data-agdu="${u}">
-        ${alles.map(ev=>{
-          const tijdLabel=ev.einduur?ev.uur+'-'+ev.einduur:'';
-          let attr='';
-          if(ev.agId)attr=`data-agid="${ev.agId}"`;
-          else if(ev.type==='b2c')attr=`data-leadid="${ev.leadId}"`;
-          else if(ev.type==='b2b')attr=`data-projid="${ev.projectId}"`;
-          else if(ev.type==='todo')attr=`data-todoid="${ev.todoId}"`;
-          return`<div ${attr} style="font-size:10px;font-weight:600;background:${ev.kleur}22;border-left:2px solid ${ev.kleur};padding:1px 4px;border-radius:2px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer" title="${ev.tekst}${tijdLabel?' ('+tijdLabel+')':''}">${ev.tekst}${tijdLabel?` <span style="opacity:.7;font-weight:400">${tijdLabel}</span>`:''}</div>`;
-        }).join('')}
-      </div>`;
-    });
+    labelHtml+=`<div style="text-align:right;padding:3px 6px 0 2px;font-size:10px;color:var(--tx3);border-bottom:1px solid var(--bd2);background:${buiten?'rgba(0,0,0,0.04)':'var(--bg)'};height:${HOOGTE}px;box-sizing:border-box;font-weight:${buiten?'400':'500'}">${uurStr}</div>`;
   }
+  html+=`<div style="border-right:1px solid var(--bd)">${labelHtml}</div>`;
+
+  // Dagkolommen: elk 1 relatief gepositioneerde container (24×HOOGTE px hoog) met de
+  // uur-achtergrond als gestapelde vakken, en de afspraken als absoluut gepositioneerde
+  // blokken erbovenop — zo krijgt elke afspraak een hoogte die overeenkomt met de duur.
+  dagen.forEach(d=>{
+    const ds=ymdLocal(d);
+    const isToday=ds===t;
+
+    let achtergrond='';
+    for(let u=0;u<=23;u++){
+      const buiten=u<8||u>=18;
+      const bg=buiten?(isToday?'rgba(0,223,163,.03)':'rgba(0,0,0,0.03)'):(isToday?'rgba(0,223,163,.05)':'var(--bg)');
+      achtergrond+=`<div style="height:${HOOGTE}px;box-sizing:border-box;border-bottom:1px solid var(--bd2);background:${bg};pointer-events:none"></div>`;
+    }
+
+    const items=[];
+    afspraken.filter(a=>a.datum===ds&&a.uur).forEach(a=>{
+      items.push({tekst:a.titel,kleur:AG_KLEUREN[a.type]||'var(--green)',agId:String(a.id),uur:a.uur,einduur:a.einduur||''});
+    });
+    b2cLeads.filter(l=>respF==='alle'||l.resp===respF).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur).forEach(op=>{
+      items.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id,uur:op.uur,einduur:op.einduur||''});
+    }));
+    projects.filter(p=>respF==='alle'||p.resp===respF).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&op.uur).forEach(op=>{
+      items.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projectId:p.id||p._rowid,uur:op.uur,einduur:op.einduur||''});
+    }));
+    (todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&td.uur&&(respF==='alle'||!td.resp||td.resp===respF)).forEach(td=>{
+      items.push({tekst:td.tekst,kleur:'#f59e0b',type:'todo',todoId:String(td.id),uur:td.uur,einduur:td.einduur||''});
+    });
+
+    const geplaatst=agVerdeelKolommen(items,naarMinuten);
+    const blokkenHtml=geplaatst.map(({item,kol,totaalKol})=>{
+      const startMin=naarMinuten(item.uur);
+      let eindMin=naarMinuten(item.einduur);
+      if(eindMin==null||eindMin<=startMin)eindMin=startMin+30; // altijd minstens een zichtbaar blok van 30 min
+      const topPx=(startMin/60)*HOOGTE;
+      const hoogtePx=Math.max(((eindMin-startMin)/60)*HOOGTE,16);
+      const breedtePct=100/totaalKol;
+      const leftPct=kol*breedtePct;
+      let attr='';
+      if(item.agId)attr=`data-agid="${item.agId}"`;
+      else if(item.type==='b2c')attr=`data-leadid="${item.leadId}"`;
+      else if(item.type==='b2b')attr=`data-projid="${item.projectId}"`;
+      else if(item.type==='todo')attr=`data-todoid="${item.todoId}"`;
+      const tijdLabel=item.einduur?item.uur+'-'+item.einduur:item.uur;
+      return `<div ${attr} style="position:absolute;top:${topPx}px;height:${hoogtePx}px;left:calc(${leftPct}% + 1px);width:calc(${breedtePct}% - 2px);background:${item.kleur}22;border-left:2px solid ${item.kleur};border-radius:3px;padding:2px 4px;font-size:10px;font-weight:600;overflow:hidden;cursor:pointer;box-sizing:border-box;z-index:2" title="${item.tekst} (${tijdLabel})">
+        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.tekst}</div>
+        ${hoogtePx>=28?`<div style="opacity:.7;font-weight:400">${tijdLabel}</div>`:''}
+      </div>`;
+    }).join('');
+
+    html+=`<div style="position:relative;border-right:1px solid var(--bd)" data-agds="${ds}">
+      ${achtergrond}
+      ${blokkenHtml}
+    </div>`;
+  });
 
   // Hele-dag rij onderaan
   html+=`<div style="text-align:right;padding:4px 6px;font-size:10px;color:var(--tx3);border-right:1px solid var(--bd);border-top:2px solid var(--bd2);background:var(--bg2);font-style:italic">dag</div>`;
@@ -14071,10 +14149,9 @@ function agRenderWeek(){
     const isToday=ds===t;
     const evs=afspraken.filter(a=>a.datum===ds&&!a.uur);
     const opvs=[];
-    const respFDag=agRespFilter;
-    b2cLeads.filter(l=>respFDag==='alle'||l.resp===respFDag).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id})));
-    projects.filter(p=>respFDag==='alle'||p.resp===respFDag).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projId:p.id||p._rowid})));
-    const todosGeen=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&!td.uur&&(respFDag==='alle'||!td.resp||td.resp===respFDag));
+    b2cLeads.filter(l=>respF==='alle'||l.resp===respF).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',type:'b2c',leadId:l.id})));
+    projects.filter(p=>respF==='alle'||p.resp===respF).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===ds&&!op.uur).forEach(op=>opvs.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',type:'b2b',projId:p.id||p._rowid})));
+    const todosGeen=(todos||[]).filter(td=>!td.gedaan&&td.datum===ds&&!td.uur&&(respF==='alle'||!td.resp||td.resp===respF));
     const alles=[
       ...evs.map(a=>({tekst:a.titel,kleur:AG_KLEUREN[a.type]||'var(--green)',agId:String(a.id)})),
       ...opvs,
@@ -14121,19 +14198,24 @@ function agRenderWeek(){
     });
   });
 
-  // Lege cel klikken → nieuwe afspraak (enkel als de cel zelf geklikt werd)
+  // Lege plek in een dagkolom klikken → nieuwe afspraak, gestart op het aangeklikte kwartier
   grid.querySelectorAll('[data-agds]').forEach(cel=>{
     cel.addEventListener('click',e=>{
       if(e.target!==cel)return;
+      const rect=cel.getBoundingClientRect();
+      const yInCel=e.clientY-rect.top;
+      let minutenTotaal=Math.round((yInCel/HOOGTE)*60/15)*15; // afronden op kwartier
+      minutenTotaal=Math.max(0,Math.min(minutenTotaal,23*60+45));
+      const u=Math.floor(minutenTotaal/60), m=minutenTotaal%60;
+      const uurStr=String(u).padStart(2,'0')+':'+String(m).padStart(2,'0');
       const ds=cel.dataset.agds;
-      const u=parseInt(cel.dataset.agdu);
       agOpenNieuw(ds);
       setTimeout(()=>{
         ['ag-datum','ag-datum2','ag-datum3','ag-datum4'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=ds;});
-        const uurStr=String(u).padStart(2,'0')+':00';
-        const eindStr=String(Math.min(u+1,23)).padStart(2,'0')+':00';
-        ['ag-uur','ag-uur2','ag-uur3','ag-uur4'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=uurStr;});
-        ['ag-einduur','ag-einduur2','ag-einduur3','ag-einduur4'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=eindStr;});
+        ['ag-uur','ag-uur2','ag-uur3','ag-uur4'].forEach(id=>{
+          const el=document.getElementById(id);
+          if(el){el.value=uurStr;el.dispatchEvent(new Event('change'));}
+        });
       },50);
     });
   });
