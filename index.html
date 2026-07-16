@@ -1637,6 +1637,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <option value="alle">Iedereen</option>
     </select>
     <div class="pills" id="ag-pills-type"></div>
+    <button class="btn" onclick="agExporteerJSON()" title="Exporteert exact wat nu gefilterd/getoond wordt (kies eerst een verantwoordelijke en/of type hierboven om te beperken)"><i class="ti ti-file-export"></i> Exporteer JSON</button>
     <button class="btn primary" onclick="agOpenNieuw()" style="margin-left:auto"><i class="ti ti-plus"></i> Afspraak toevoegen</button>
   </div>
 
@@ -6561,6 +6562,35 @@ function siOpvSetResp(r){siOpvRespFilter=r;siOpvRender();}
 // ── INSTALLATIES IN AGENDA ──
 function agGetInstAfspraken(){
   return agAfspraken.filter(a=>a.type==='Installatie'||a.type==='Keuring');
+}
+
+// ── JSON-EXPORT (agenda / service / per gebruiker) ───
+// Exporteert exact wat op dat moment gefilterd staat in de agenda (het type-filter bovenaan
+// en de "Verantwoordelijke"-dropdown) — zo kan je makkelijk enkel service-afspraken, enkel
+// afspraken van 1 collega, of alles exporteren, om in een ander tool te importeren.
+function agExporteerJSON(){
+  const items=agAfspraken.filter(a=>{
+    if(agTypeFilter!=='alle'&&a.type!==agTypeFilter)return false;
+    if(agRespFilter!=='alle'&&a.resp!==agRespFilter)return false;
+    return true;
+  });
+  if(!items.length){showToast('Geen afspraken gevonden voor de huidige filter(s).');return;}
+  const exportData={
+    geexporteerdOp:new Date().toISOString(),
+    filter:{type:agTypeFilter,verantwoordelijke:agRespFilter},
+    aantal:items.length,
+    afspraken:items,
+  };
+  const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  const scopeDelen=[agTypeFilter!=='alle'?agTypeFilter:null,agRespFilter!=='alle'?agRespFilter.replace(/\s+/g,'_'):null].filter(Boolean);
+  const scopeLabel=scopeDelen.length?scopeDelen.join('_'):'alle';
+  a.download=`agenda_export_${scopeLabel}_${today()}.json`;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  showToast(`${items.length} afspraken geëxporteerd als JSON.`);
 }
 
 
