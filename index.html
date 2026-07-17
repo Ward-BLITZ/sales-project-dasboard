@@ -322,6 +322,24 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .tile-date.late{background:#fcebeb;color:#a32d2d}.tile-date.soon{background:#faf0d7;color:#854f0b}.tile-date.ok{background:#e1f5ee;color:#085041}
 .kol-empty{text-align:center;padding:24px 8px;color:var(--tx3);font-size:12px}
 .tile-avatar{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0}
+/* OPVOLGINGEN */
+.opv-daylabel{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;margin:14px 2px 7px;display:flex;align-items:center;gap:5px}
+.opv-daylabel:first-child{margin-top:0}
+.opv-row{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:11px;background:var(--bg2);margin-bottom:7px;border-left:3px solid var(--bd2);transition:background .13s,transform .12s,box-shadow .13s}
+.opv-row:hover{background:var(--bg3);transform:translateX(2px);box-shadow:0 2px 8px rgba(29,37,45,.06)}
+.opv-row.late{border-left-color:#a32d2d;background:rgba(163,45,45,.05)}
+.opv-row.today{border-left-color:var(--green);background:rgba(0,223,163,.07)}
+.opv-check{width:21px;height:21px;border-radius:7px;border:2px solid rgba(99,153,34,.45);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .13s;padding:0}
+.opv-check:hover{background:rgba(99,153,34,.18)}
+.opv-datechip{width:34px;text-align:center;flex-shrink:0}
+.opv-datechip .d{font-family:'Poppins',sans-serif;font-size:15px;font-weight:800;line-height:1.05;color:var(--tx)}
+.opv-datechip .m{font-size:8.5px;color:var(--tx3);text-transform:uppercase;letter-spacing:.3px;font-weight:700}
+.opv-datechip .u{font-size:9.5px;color:var(--tx3);font-weight:700;margin-top:1px}
+.opv-body{flex:1;min-width:0;cursor:pointer}
+.opv-naam{font-size:12px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.opv-tekst{font-size:11.5px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.opv-uur{font-size:10px;color:var(--tx3);font-weight:600;margin-top:1px}
+.opv-actions{display:flex;gap:4px;flex-shrink:0}
 .kanban::-webkit-scrollbar{height:6px}.kanban::-webkit-scrollbar-thumb{background:var(--gray);border-radius:3px}
 /* TRASH DROP ZONE */
 .trash-zone{position:fixed;bottom:24px;right:24px;width:64px;height:64px;border-radius:50%;background:var(--bg);border:2px dashed #a32d2d;display:flex;align-items:center;justify-content:center;font-size:26px;color:#a32d2d;z-index:40;transition:all .2s;cursor:default}
@@ -2687,6 +2705,28 @@ function avatarHtml(naam,size){
   size=size||22;
   if(!naam)return '';
   return `<span class="tile-avatar" style="background:${avatarKleur(naam)};width:${size}px;height:${size}px;font-size:${Math.round(size*0.42)}px" title="${naam}">${avatarInitialen(naam)}</span>`;
+}
+
+// Eén consistente temperatuurschaal voor "warmte" van een lead — koud (rustig blauw) tot
+// hot (fel, opvallend rood met een lichte gloed), zodat de intensiteit meteen aanvoelt.
+const WARMTE_KLEUREN={
+  Koud:{dot:'#5B93C7', bg:'#E6F1FB', tekst:'#185FA5'},
+  Lauw:{dot:'#EAB308', bg:'#FEF6DC', tekst:'#92720C'},
+  Warm:{dot:'#F97316', bg:'#FDEEE0', tekst:'#B45309'},
+  Hot: {dot:'#E11D2E', bg:'#FCE4E4', tekst:'#A32D2D'},
+};
+function warmteDotStyle(warmte){
+  const k=WARMTE_KLEUREN[warmte];
+  if(!k)return `background:var(--bd2)`;
+  const gloed=warmte==='Hot'?`;box-shadow:0 0 0 3px rgba(225,29,46,.18)`:'';
+  return `background:${k.dot}${gloed}`;
+}
+// Badge (bv. in de warmte-select, rapportagetabel, ...) — Hot krijgt extra gewicht + vlammetje.
+function warmteBadge(warmte){
+  const k=WARMTE_KLEUREN[warmte];
+  if(!k)return '';
+  const isHot=warmte==='Hot';
+  return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:${isHot?800:700};color:${k.tekst};background:${k.bg};padding:3px 10px;border-radius:20px;${isHot?'box-shadow:0 0 0 1px rgba(225,29,46,.2)':''}">${isHot?'<i class="ti ti-flame" style="font-size:11px"></i>':''}${warmte}</span>`;
 }
 function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function nowTijdstip(){return new Date().toLocaleTimeString('nl-BE',{hour:'2-digit',minute:'2-digit'});}
@@ -7051,7 +7091,10 @@ function b2cRenderPills(){
   const warmEl=document.getElementById('b2c-pills-warmte');
   if(warmEl){
     const wp=['alle',...B2C_WARMTES];
-    warmEl.innerHTML=wp.map(w=>`<button class="pill${w==='alle'?' all':''}${b2cWarmteFilter===w?' active':''}" onclick="b2cSetWarmteFilter('${w}')">${w==='alle'?'Alles':w}</button>`).join('');
+    warmEl.innerHTML=wp.map(w=>{
+      const dot=w!=='alle'?`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;${warmteDotStyle(w)}"></span>`:'';
+      return `<button class="pill${w==='alle'?' all':''}${b2cWarmteFilter===w?' active':''}" onclick="b2cSetWarmteFilter('${w}')">${dot}${w==='alle'?'Alles':w}</button>`;
+    }).join('');
   }
 }
 
@@ -7229,7 +7272,8 @@ function b2cRenderLeads(){
     const leadsInKol = sorteerLeads(list.filter(l=>l.status===status));
 
     const tilesHtml = leadsInKol.map(l=>{
-      const wKleur={Koud:'#8a9ba3',Lauw:'#f59e0b',Warm:'#f97316',Hot:'#ef4444'}[l.warmte]||'var(--bd2)';
+      const wKleur=WARMTE_KLEUREN[l.warmte]?.dot||'var(--bd2)';
+      const wGloed=l.warmte==='Hot'?'box-shadow:0 0 0 3px rgba(225,29,46,.15),0 6px 18px rgba(29,37,45,.06);':'';
       const visitBadge=l.visitDatum?`<span class="tile-lp"><i class="ti ti-map-pin" style="font-size:8px"></i> ${l.visitDatum}</span>`:'';
       const dagBadge=isGewonnen&&l.gewonnenOp?`<span style="font-size:9px;font-weight:700;color:${Math.round((new Date()-new Date(l.gewonnenOp))/86400000)>=3?'#a32d2d':'#639922'}">${Math.round((new Date()-new Date(l.gewonnenOp))/86400000)}d</span>`:'';
       const nextOp=eerstvolgendeOpvolging(l);
@@ -7241,7 +7285,7 @@ function b2cRenderLeads(){
         opBadge=`<div class="tile-date ${cls}"><i class="ti ti-phone" style="font-size:9px"></i>${lbl}${nextOp.uur?' '+nextOp.uur:''}</div>`;
       }
       const sub = l.resp?(l.tel||l.adres||'—'):(l.adres||l.tel||'—');
-      return `<div class="tile" data-lid="${l.id}" draggable="true" style="border-left-color:${wKleur}">
+      return `<div class="tile" data-lid="${l.id}" draggable="true" style="border-left-color:${wKleur};${wGloed}">
         <div class="tile-body">
           <div class="tile-name">${b2cNaam(l)}</div>
           <div class="tile-klant">${sub}</div>
@@ -7712,8 +7756,8 @@ function b2cGekoppeldeAfspraken(l){
     .sort((a,b)=>(a.datum||'').localeCompare(b.datum||'')||(a.uur||'').localeCompare(b.uur||''));
 }
 function b2cRenderInfo(l){
-  const wBg={Koud:'#E6F1FB',Lauw:'#FAEEDA',Warm:'#E1F5EE',Hot:'#FCEBEB'};
-  const wCol={Koud:'#185FA5',Lauw:'#854F0B',Warm:'#0F6E56',Hot:'#A32D2D'};
+  const wBg=Object.fromEntries(Object.entries(WARMTE_KLEUREN).map(([k,v])=>[k,v.bg]));
+  const wCol=Object.fromEntries(Object.entries(WARMTE_KLEUREN).map(([k,v])=>[k,v.tekst]));
   document.getElementById('b2c-detail-info').innerHTML=`
   <div style="padding:20px 24px">
 
@@ -7911,22 +7955,22 @@ function b2cRenderOpvolgingen(l){
   const ops=(l.opvolgingen||[]).filter(op=>!op.gedaan).slice().sort((a,b)=>a.datum.localeCompare(b.datum));
   if(!ops.length)return'<div style="font-size:12px;color:var(--tx3);padding:4px 0">Geen openstaande opvolgingen.</div>';
   const t=today();
+  const MK=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
   return ops.map((op)=>{
     const origIdx=(l.opvolgingen||[]).indexOf(op);
     const verleden=op.datum<t;
     const isVandaag=op.datum===t;
-    const kleur=verleden?'#a32d2d':isVandaag?'#854f0b':'var(--tx2)';
-    const bg=verleden?'rgba(163,45,45,.06)':isVandaag?'rgba(133,79,11,.06)':'var(--bg2)';
-    return`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:var(--r);background:${bg};margin-bottom:6px">
-      <div style="width:36px;text-align:center;flex-shrink:0">
-        <div style="font-size:10px;font-weight:700;color:${kleur}">${op.datum.slice(8)}</div>
-        <div style="font-size:9px;color:var(--tx3)">${['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'][parseInt(op.datum.slice(5,7))-1]}</div>
-        ${op.uur?`<div style="font-size:10px;color:var(--tx3)">${op.uur}</div>`:''}
+    const cls=verleden?'late':isVandaag?'today':'';
+    return`<div class="opv-row ${cls}">
+      <div class="opv-datechip">
+        <div class="d">${op.datum.slice(8)}</div>
+        <div class="m">${MK[parseInt(op.datum.slice(5,7))-1]}</div>
+        ${op.uur?`<div class="u">${op.uur}</div>`:''}
       </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600;color:var(--tx)">${op.tekst}</div>
+      <div class="opv-body">
+        <div class="opv-tekst" style="font-size:12.5px;font-weight:600;color:var(--tx)">${op.tekst}</div>
       </div>
-      <div style="display:flex;gap:4px;flex-shrink:0">
+      <div class="opv-actions">
         <button class="btn sm" style="color:#639922;border-color:rgba(99,153,34,.3)" title="Afvinken" data-lead="${l.id}" data-idx="${origIdx}" onclick="b2cToggleOpvolgingGedaan('${l.id}',${origIdx})"><i class="ti ti-check"></i></button>
         <button class="btn sm danger" onclick="b2cDeleteOpvolging('${l.id}',${origIdx})"><i class="ti ti-trash"></i></button>
       </div>
@@ -7978,25 +8022,23 @@ function b2cRenderDashOpvolgingen(){
     const verleden=datum<t, isVandaag=datum===t;
     const d=new Date(datum);
     const dagNamen=['Zo','Ma','Di','Wo','Do','Vr','Za'];
-    const dagLbl=isVandaag?'Vandaag':verleden?`<span style="color:#a32d2d">${dagNamen[d.getDay()]} ${d.getDate()} ${MK[d.getMonth()]}</span>`:`${dagNamen[d.getDay()]} ${d.getDate()} ${MK[d.getMonth()]}`;
+    const dagLbl=isVandaag?'Vandaag':verleden?`${dagNamen[d.getDay()]} ${d.getDate()} ${MK[d.getMonth()]}`:`${dagNamen[d.getDay()]} ${d.getDate()} ${MK[d.getMonth()]}`;
     const items_dag=byDay[datum];
-    return`<div style="margin-bottom:10px">
-      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:${isVandaag?'var(--green)':verleden?'#a32d2d':'var(--tx3)'};margin-bottom:5px;padding:0 2px">${isVandaag?'📅 Vandaag':verleden?'⚠ '+datum.slice(8)+' '+MK[parseInt(datum.slice(5,7))-1]:dagNamen[d.getDay()]+' '+d.getDate()+' '+MK[d.getMonth()]}</div>
+    const kleurLbl=isVandaag?'var(--green)':verleden?'#a32d2d':'var(--tx3)';
+    return`<div class="opv-daylabel" style="color:${kleurLbl}"><i class="ti ${isVandaag?'ti-calendar-event':verleden?'ti-alert-triangle':'ti-calendar'}" style="font-size:11px"></i>${isVandaag?'Vandaag':dagLbl}</div>
       ${items_dag.map(({op,l,idx})=>`
-        <div style="display:flex;align-items:flex-start;gap:6px;padding:7px 9px;background:var(--bg2);border-radius:9px;margin-bottom:4px;border-left:3px solid ${isVandaag?'var(--green)':verleden?'#a32d2d':'var(--bd2)'};transition:background .13s"
-          onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='var(--bg2)'">
-          <button onclick="b2cToggleOpvolgingGedaan('${l.id}',${idx})"
-            style="width:18px;height:18px;border-radius:5px;border:2px solid rgba(99,153,34,.5);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;transition:background .13s"
-            onmouseover="this.style.background='rgba(99,153,34,.15)'" onmouseout="this.style.background='none'">
+        <div class="opv-row ${isVandaag?'today':verleden?'late':''}">
+          <button class="opv-check" onclick="b2cToggleOpvolgingGedaan('${l.id}',${idx})">
             <i class="ti ti-check" style="font-size:10px;color:#639922"></i>
           </button>
-          <div style="flex:1;min-width:0;cursor:pointer" onclick="b2cOpenDetail('${l.id}')">
-            <div style="font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b2cNaam(l)}</div>
-            <div style="font-size:11px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${op.tekst}</div>
-            ${op.uur?`<div style="font-size:10px;color:var(--tx3)">${op.uur}</div>`:''}
+          ${avatarHtml(b2cNaam(l),22)}
+          <div class="opv-body" onclick="b2cOpenDetail('${l.id}')">
+            <div class="opv-naam">${b2cNaam(l)}</div>
+            <div class="opv-tekst">${op.tekst}</div>
+            ${op.uur?`<div class="opv-uur">${op.uur}</div>`:''}
           </div>
         </div>`).join('')}
-    </div>`;
+    `;
   }).join('');
   el.innerHTML=html;
 }
@@ -8133,8 +8175,8 @@ function b2cQuickWarmte(w){
   // Kleur van de top-select bijwerken
   const topSel=document.getElementById('bi-warmte-top');
   if(topSel){
-    const bgs={Koud:'#E6F1FB',Lauw:'#FAEEDA',Warm:'#E1F5EE',Hot:'#FCEBEB'};
-    const cols={Koud:'#185FA5',Lauw:'#854F0B',Warm:'#0F6E56',Hot:'#A32D2D'};
+    const bgs=Object.fromEntries(Object.entries(WARMTE_KLEUREN).map(([k,v])=>[k,v.bg]));
+    const cols=Object.fromEntries(Object.entries(WARMTE_KLEUREN).map(([k,v])=>[k,v.tekst]));
     topSel.style.background=bgs[w]||'var(--bg2)';
     topSel.style.color=cols[w]||'var(--tx)';
   }
@@ -9743,24 +9785,24 @@ function renderB2bDashOpvolgingen(){
   el.innerHTML=Object.keys(byDay).sort().map(datum=>{
     const verleden=datum<t,isVandaag=datum===t;
     const d=new Date(datum);
-    const dagLbl=isVandaag?'📅 Vandaag':verleden?`⚠ ${d.getDate()} ${MK[d.getMonth()]}`:`${dagNamen[d.getDay()]} ${d.getDate()} ${MK[d.getMonth()]}`;
     const kleurLbl=isVandaag?'var(--green)':verleden?'#a32d2d':'var(--tx3)';
-    return`<div style="margin-bottom:10px">
-      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:${kleurLbl};margin-bottom:5px;padding:0 2px">${dagLbl}</div>
-      ${byDay[datum].map(({op,p,idx})=>`
-        <div style="display:flex;align-items:flex-start;gap:6px;padding:6px 8px;background:var(--bg2);border-radius:8px;margin-bottom:4px;border-left:3px solid ${isVandaag?'var(--green)':verleden?'#a32d2d':'var(--bd2)'}">
-          <button data-b2bpid="${p.id||''}" data-b2boidx="${idx}"
-            style="width:18px;height:18px;border-radius:4px;border:2px solid rgba(99,153,34,.5);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px"
-            onmouseover="this.style.background='rgba(99,153,34,.15)'" onmouseout="this.style.background='none'">
+    const dagLbl=isVandaag?'Vandaag':`${dagNamen[d.getDay()]} ${d.getDate()} ${MK[d.getMonth()]}`;
+    return`<div class="opv-daylabel" style="color:${kleurLbl}"><i class="ti ${isVandaag?'ti-calendar-event':verleden?'ti-alert-triangle':'ti-calendar'}" style="font-size:11px"></i>${dagLbl}</div>
+      ${byDay[datum].map(({op,p,idx})=>{
+        const naam=p.naam||p.klant||'—';
+        return`
+        <div class="opv-row ${isVandaag?'today':verleden?'late':''}">
+          <button class="opv-check" data-b2bpid="${p.id||''}" data-b2boidx="${idx}">
             <i class="ti ti-check" style="font-size:10px;color:#639922"></i>
           </button>
-          <div style="flex:1;min-width:0;cursor:pointer" data-b2bopen="${p.id||''}">
-            <div style="font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.naam||p.klant||'—'}</div>
-            <div style="font-size:11px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${op.tekst}</div>
-            ${op.uur?`<div style="font-size:10px;color:var(--tx3)">${op.uur}</div>`:''}
+          ${avatarHtml(naam,22)}
+          <div class="opv-body" data-b2bopen="${p.id||''}">
+            <div class="opv-naam">${naam}</div>
+            <div class="opv-tekst">${op.tekst}</div>
+            ${op.uur?`<div class="opv-uur">${op.uur}</div>`:''}
           </div>
-        </div>`).join('')}
-    </div>`;
+        </div>`;}).join('')}
+    `;
   }).join('');
 
   // Event listeners via delegation
@@ -9811,18 +9853,17 @@ function b2bRenderOpvolgingen(){
   el.innerHTML=open.map(op=>{
     const origIdx=currentB2bOpvolgingen.indexOf(op);
     const verleden=op.datum<t,isVandaag=op.datum===t;
-    const kleur=verleden?'#a32d2d':isVandaag?'#854f0b':'var(--tx2)';
-    const bg=verleden?'rgba(163,45,45,.06)':isVandaag?'rgba(133,79,11,.06)':'var(--bg2)';
-    return`<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border-radius:var(--r);background:${bg};margin-bottom:5px">
-      <div style="width:36px;text-align:center;flex-shrink:0">
-        <div style="font-size:10px;font-weight:700;color:${kleur}">${op.datum.slice(8)}</div>
-        <div style="font-size:9px;color:var(--tx3)">${MK[parseInt(op.datum.slice(5,7))-1]}</div>
-        ${op.uur?`<div style="font-size:10px;color:var(--tx3)">${op.uur}</div>`:''}
+    const cls=verleden?'late':isVandaag?'today':'';
+    return`<div class="opv-row ${cls}">
+      <div class="opv-datechip">
+        <div class="d">${op.datum.slice(8)}</div>
+        <div class="m">${MK[parseInt(op.datum.slice(5,7))-1]}</div>
+        ${op.uur?`<div class="u">${op.uur}</div>`:''}
       </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600">${op.tekst}</div>
+      <div class="opv-body">
+        <div class="opv-tekst" style="font-size:12.5px;font-weight:600;color:var(--tx)">${op.tekst}</div>
       </div>
-      <div style="display:flex;gap:4px;flex-shrink:0">
+      <div class="opv-actions">
         <button class="btn sm" style="color:#639922;border-color:rgba(99,153,34,.3)" title="Afvinken" onclick="b2bAfvinkOpvolging(${origIdx})"><i class="ti ti-check"></i></button>
         <button class="btn sm danger" onclick="b2bDeleteOpvolging(${origIdx})"><i class="ti ti-trash"></i></button>
       </div>
@@ -10141,7 +10182,7 @@ function renderRapB2c(){
   }).join('');
 
   const warmteHtml = warmteRows.map(({label,counts})=>{
-    const wCol={Koud:'#185FA5',Lauw:'#854F0B',Warm:'#0F6E56',Hot:'#A32D2D'};
+    const wCol=Object.fromEntries(Object.entries(WARMTE_KLEUREN).map(([k,v])=>[k,v.tekst]));
     return `<tr style="border-bottom:1px solid var(--bd)">
       <td style="padding:7px 12px;font-size:13px;color:${wCol[label]||'var(--tx)'}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${wCol[label]};margin-right:6px"></span>${label}</td>
       ${counts.map((c,i)=>{
