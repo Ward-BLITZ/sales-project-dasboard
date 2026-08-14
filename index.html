@@ -3285,8 +3285,11 @@ async function sbSaveProject(p){
   if(!sbUrl){lsSave();return null;}
   const data={...p};const id=data.id;delete data.id;
   data.updatedAt=new Date().toISOString();
-  if(id){await sbFetch('projects?id=eq.'+id,{method:'PATCH',body:JSON.stringify({data})});return id;}
-  else{const r=await sbFetch('projects',{method:'POST',body:JSON.stringify({data})});return r&&r[0]?r[0].id:null;}
+  let resultId=null;
+  if(id){await sbFetch('projects?id=eq.'+id,{method:'PATCH',body:JSON.stringify({data})});resultId=id;}
+  else{const r=await sbFetch('projects',{method:'POST',body:JSON.stringify({data})});resultId=r&&r[0]?r[0].id:null;}
+  if(typeof afasAutoSync==='function'){ afasAutoSync(p,'project').catch(()=>{}); }
+  return resultId;
 }
 
 async function sbDeleteProject(id){if(sbUrl)await sbFetch('projects?id=eq.'+id,{method:'DELETE'});}
@@ -3326,6 +3329,7 @@ async function sbSaveB2cLead(l){
     }
   }catch(e){console.warn('sbSaveB2cLead:',e.message);}
   try{localStorage.setItem('blitz_b2c',JSON.stringify(b2cLeads));}catch{}
+  if(typeof afasAutoSync==='function'){ afasAutoSync(l,'lead').catch(()=>{}); }
 }
 async function sbDeleteB2cLead(id){
   // Zoek de lead om de Supabase row id (_sbid) te vinden
@@ -11350,7 +11354,7 @@ async function b2bVolgendOffertenummer() {
 
 async function b2bNieuweOfferteState() {
   return {
-    offertenummer: await b2bVolgendOffertenummer(),
+    offertenummer: '',
     datum: today ? today() : ymdLocal(new Date()),
     referentie: '',
     btwPercentage: 21,
@@ -11478,7 +11482,7 @@ async function b2bRenderOfferteTab(){
       <div style="font-size:13px;color:#8a5a00"><strong>Vergrendeld:</strong> het contract voor deze lead is al ondertekend via DocuSign. De offerte kan niet meer gewijzigd of opnieuw gegenereerd worden.</div>
     </div>`:''}
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px">
-      <div class="field" style="margin:0"><label>Offertenummer <span style="color:var(--tx3);font-weight:400">(automatisch, aanpasbaar)</span></label><input id="${ns}-nummer" value="${(s.offertenummer||'').replace(/"/g,'&quot;')}" oninput="b2bOfferteVeldUpdate('offertenummer',this.value)" ${b2bOfferteIsVergrendeld()?'disabled':''}></div>
+      <div class="field" style="margin:0"><label>Offertenummer <span style="color:var(--tx3);font-weight:400">(automatisch toegekend door AFAS)</span></label><input id="${ns}-nummer" value="${(s.offertenummer||'— wordt toegekend bij eerste opslag —').replace(/"/g,'&quot;')}" disabled></div>
       <div class="field" style="margin:0"><label>Offertedatum</label><input type="date" id="${ns}-datum" value="${s.datum||''}" oninput="b2bOfferteVeldUpdate('datum',this.value)" ${b2bOfferteIsVergrendeld()?'disabled':''}></div>
       <div class="field" style="margin:0"><label>Referentie</label><input id="${ns}-referentie" value="${(s.referentie||'').replace(/"/g,'&quot;')}" placeholder="bv. contactpersoon" oninput="b2bOfferteVeldUpdate('referentie',this.value)" ${b2bOfferteIsVergrendeld()?'disabled':''}></div>
     </div>
@@ -14723,31 +14727,40 @@ function verlofRenderKalender(){
 }
 
 
-// ── AFAS: offerte versturen (insert of update van FbSalesQuotation) ──────
-async function afasVerstuurOfferte(){
-  const host = typeof b2bOfferteGetHost==='function' ? b2bOfferteGetHost() : null;
-  if(!host){ showToast('Geen offerte gevonden.'); return; }
-  const s = host.offerte || (typeof b2bOfferteState!=='undefined'?b2bOfferteState:null);
-  if(!s || !s.groeperingen || !s.groeperingen.length){ showToast('Geen offerteregels om te versturen.'); return; }
+// ── AFAS: offerte versturen — offertenummer (5000xxxx) is de enige matching-
+// sleutel; nooit klantnaam. B2C komt altijd binnen op Blitz Power BV zelf
+// (debiteur 10061) omdat de eindklant pas een echte AFAS-debiteur wordt bij
+// een effectieve verkoop. B2B gebruikt de bestaande klant-matching (_afasId).
+const AFAS_BLITZ_DEBITEUR_ID = '10061';
 
+function afasBepaalDebiteurId(host, tipo){
+  if(tipo==='lead') return AFAS_BLITZ_DEBITEUR_ID;
   const klantNaam = (host.klant||host.bedrijf||'').toLowerCase();
   const klantBtw = (host.btw||'').replace(/\s/g,'');
   const klantMatch = (typeof klanten!=='undefined'?klanten:[]).find(k=>k._afasId && (k.naam||'').toLowerCase()===klantNaam)
                    || (typeof klanten!=='undefined'?klanten:[]).find(k=>k._afasId && klantBtw && k.btw && k.btw.replace(/\s/g,'')===klantBtw);
-  const debiteurId = klantMatch?._afasId;
-  if(!debiteurId){
-    showToast('⚠ Geen gekend AFAS-debiteurnummer voor deze klant. Sync klanten via CRM > AFAS sync, of controleer naam/BTW.');
-    return;
-  }
+  return klantMatch?._afasId || null;
+}
 
-  showToast('Offerte wordt naar AFAS gestuurd...');
+// Automatische sync — wordt aangeroepen vanuit sbSaveB2cLead/sbSaveProject bij
+// elke opslag. Fire-and-forget: fouten breken de normale opslag niet.
+async function afasAutoSync(host, tipo){
   try{
+    const s = host.offerte;
+    if(!s || !s.groeperingen || !s.groeperingen.some(g=>(g.items||[]).length)) return;
+
+    const debiteurId = afasBepaalDebiteurId(host, tipo);
+    if(!debiteurId){
+      console.warn('AFAS auto-sync: geen debiteurnummer gevonden voor', host.klant||host.bedrijf||host.naam);
+      return;
+    }
+
     const resp = await fetch('https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/afas-offerte-sync', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY,'apikey':SUPABASE_ANON_KEY},
       body: JSON.stringify({
-        actie: host._afasOfferteid ? 'update' : 'insert',
-        afasOfferteNr: host._afasOfferteid || null,
+        actie: s.offertenummer ? 'update' : 'insert',
+        afasOfferteNr: s.offertenummer || null,
         debiteurId,
         datum: s.datum || today(),
         status: 0,
@@ -14755,17 +14768,36 @@ async function afasVerstuurOfferte(){
       }),
     });
     const data = await resp.json();
-    if(!resp.ok || data.error) throw new Error(data.detail || data.error || 'Onbekende fout.');
-    if(data.afasOfferteNr){
-      host._afasOfferteid = data.afasOfferteNr;
-      if(typeof b2bOfferteHostType!=='undefined' && b2bOfferteHostType==='lead') await sbSaveB2cLead(host);
-      else await sbSaveProject(host);
+    if(!resp.ok || data.error){ console.warn('AFAS auto-sync fout:', data.detail||data.error); return; }
+
+    // Enkel bij een INSERT komt er een nieuw nummer terug — dat schrijven we
+    // rechtstreeks weg (niet via sbSaveB2cLead/sbSaveProject, anders lopen we
+    // in een oneindige lus).
+    if(data.afasOfferteNr && !s.offertenummer){
+      s.offertenummer = data.afasOfferteNr;
+      const tabel = tipo==='lead' ? 'b2c_leads' : 'projects';
+      const sbid = tipo==='lead' ? host._sbid : host.id;
+      if(sbUrl && sbid){
+        const dataKopie = {...host}; delete dataKopie._sbid;
+        await sbFetch(tabel+'?id=eq.'+sbid, {method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({data:dataKopie})}).catch(()=>{});
+      }
+      showToast('✓ AFAS-offertenummer toegekend: '+data.afasOfferteNr);
     }
-    showToast('✓ Offerte verstuurd naar AFAS'+(data.afasOfferteNr?' (nr. '+data.afasOfferteNr+')':''));
   }catch(e){
-    showToast('⚠ AFAS-fout: '+e.message);
-    console.error('AFAS offerte-sync fout:', e);
+    console.warn('AFAS auto-sync fout:', e.message);
   }
+}
+
+// Knop "Naar AFAS versturen" — forceert een manuele sync van de open offerte.
+async function afasVerstuurOfferte(){
+  const host = typeof b2bOfferteGetHost==='function' ? b2bOfferteGetHost() : null;
+  if(!host){ showToast('Geen offerte gevonden.'); return; }
+  const s = host.offerte || (typeof b2bOfferteState!=='undefined'?b2bOfferteState:null);
+  if(!s || !s.groeperingen || !s.groeperingen.length){ showToast('Geen offerteregels om te versturen.'); return; }
+  const tipo = (typeof b2bOfferteHostType!=='undefined' && b2bOfferteHostType==='lead') ? 'lead' : 'project';
+  showToast('Offerte wordt naar AFAS gestuurd...');
+  await afasAutoSync(host, tipo);
+  if(typeof b2bOfferteRender==='function') b2bOfferteRender();
 }
 
 </script>
