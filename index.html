@@ -7023,14 +7023,20 @@ function startAppAfterLogin(userNaam='', userEmail=''){
   loadGebruikers().catch(()=>{}).finally(()=>{
     showTab('agenda');
   });
-  // AFAS offertes sync — eerste keer bij opstarten, daarna op vaste tijdstippen
-  setTimeout(()=>afasSyncWebOffertes(), 5000);
+  // AFAS offertes sync — eerste keer bij opstarten, daarna op vaste tijdstippen.
+  // Wacht eerst loadAll() af, zodat b2cLeads zeker up-to-date is voor de
+  // dedup-check op _afasOfferteid draait (voorkomt dubbele imports bij trage verbindingen).
+  setTimeout(async ()=>{
+    try{ await loadAll(); }catch(e){ console.warn('loadAll voor AFAS-sync mislukt:', e.message); }
+    afasSyncWebOffertes();
+  }, 5000);
   // Controleer elke minuut of het een synctijdstip is (06:00, 12:00, 15:30)
-  setInterval(()=>{
+  setInterval(async ()=>{
     const nu = new Date();
     const hh = nu.getHours();
     const mm = nu.getMinutes();
     if((hh===6&&mm===0)||(hh===12&&mm===0)||(hh===15&&mm===30)){
+      try{ await loadAll(); }catch(e){}
       afasSyncWebOffertes();
     }
   }, 60000);
