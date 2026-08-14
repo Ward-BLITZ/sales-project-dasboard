@@ -11532,6 +11532,7 @@ async function b2bRenderOfferteTab(){
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
       <button class="btn" onclick="b2bOfferteOpslaan(false)" ${b2bOfferteIsVergrendeld()?'disabled':''}><i class="ti ti-device-floppy"></i> Offerte opslaan</button>
       <button class="btn primary" onclick="b2bOfferteGenereren()" ${b2bOfferteIsVergrendeld()?'disabled':''}><i class="ti ti-file-download"></i> Offerte genereren (PDF)</button>
+      <button class="btn" onclick="afasVerstuurOfferte()" ${b2bOfferteIsVergrendeld()?'disabled':''}><i class="ti ti-building-factory"></i> Naar AFAS versturen</button>
     </div>
   `;
   b2bRenderGroeperingen();
@@ -14719,6 +14720,52 @@ function verlofRenderKalender(){
     </div>`;
   }
   grid.innerHTML=html;
+}
+
+
+// ── AFAS: offerte versturen (insert of update van FbSalesQuotation) ──────
+async function afasVerstuurOfferte(){
+  const host = typeof b2bOfferteGetHost==='function' ? b2bOfferteGetHost() : null;
+  if(!host){ showToast('Geen offerte gevonden.'); return; }
+  const s = host.offerte || (typeof b2bOfferteState!=='undefined'?b2bOfferteState:null);
+  if(!s || !s.groeperingen || !s.groeperingen.length){ showToast('Geen offerteregels om te versturen.'); return; }
+
+  const klantNaam = (host.klant||host.bedrijf||'').toLowerCase();
+  const klantBtw = (host.btw||'').replace(/\s/g,'');
+  const klantMatch = (typeof klanten!=='undefined'?klanten:[]).find(k=>k._afasId && (k.naam||'').toLowerCase()===klantNaam)
+                   || (typeof klanten!=='undefined'?klanten:[]).find(k=>k._afasId && klantBtw && k.btw && k.btw.replace(/\s/g,'')===klantBtw);
+  const debiteurId = klantMatch?._afasId;
+  if(!debiteurId){
+    showToast('⚠ Geen gekend AFAS-debiteurnummer voor deze klant. Sync klanten via CRM > AFAS sync, of controleer naam/BTW.');
+    return;
+  }
+
+  showToast('Offerte wordt naar AFAS gestuurd...');
+  try{
+    const resp = await fetch('https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/afas-offerte-sync', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY,'apikey':SUPABASE_ANON_KEY},
+      body: JSON.stringify({
+        actie: host._afasOfferteid ? 'update' : 'insert',
+        afasOfferteNr: host._afasOfferteid || null,
+        debiteurId,
+        datum: s.datum || today(),
+        status: 0,
+        groeperingen: s.groeperingen,
+      }),
+    });
+    const data = await resp.json();
+    if(!resp.ok || data.error) throw new Error(data.detail || data.error || 'Onbekende fout.');
+    if(data.afasOfferteNr){
+      host._afasOfferteid = data.afasOfferteNr;
+      if(typeof b2bOfferteHostType!=='undefined' && b2bOfferteHostType==='lead') await sbSaveB2cLead(host);
+      else await sbSaveProject(host);
+    }
+    showToast('✓ Offerte verstuurd naar AFAS'+(data.afasOfferteNr?' (nr. '+data.afasOfferteNr+')':''));
+  }catch(e){
+    showToast('⚠ AFAS-fout: '+e.message);
+    console.error('AFAS offerte-sync fout:', e);
+  }
 }
 
 </script>
