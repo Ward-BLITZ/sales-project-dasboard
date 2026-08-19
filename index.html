@@ -11937,7 +11937,8 @@ function salesMaakThuisinstallatieOfferte(){
     kortingPct=Math.max(0,Math.min(100,kortingPct||0));
     const basis=1*prijs;
     const kortingEuro=basis>0?parseFloat((basis*(kortingPct/100)).toFixed(2)):0;
-    return {sku:sku||'',omschrijving:omschrijving||'',aantal:1,eenheid:'Stuks',prijs:prijs||0,kortingPct,kortingEuro,btwPercentage:null};
+    const catalogusArtikel=salesArtikelOpSku(sku);
+    return {sku:sku||'',omschrijving:omschrijving||'',aantal:1,eenheid:'Stuks',prijs:prijs||0,kortingPct,kortingEuro,btwPercentage:null,_bron:catalogusArtikel?._bron||'artikel'};
   };
 
   // 1. Laadstation: gekozen laadstation + faceplate-kleur
