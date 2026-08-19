@@ -11851,6 +11851,7 @@ function b2bOfferteArtikelKiezen(gIdx,mIdx){
     kortingPct:0,
     kortingEuro:0,
     btwPercentage:null,
+    _bron:a._bron||'artikel',
   });
   const dd=document.getElementById(`${b2bOfferteNS}-zoek-dd-`+gIdx);
   if(dd){dd.style.display='none';dd.innerHTML='';}
