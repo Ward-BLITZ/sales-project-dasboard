@@ -14750,6 +14750,20 @@ function afasBepaalDebiteurId(host, tipo){
   return klantMatch?._afasId || null;
 }
 
+// Bouwt de AFAS-referentie op: voornaam verantwoordelijke + voornaam + achternaam klant.
+function afasBouwReferentie(host, tipo){
+  const respVoornaam=(host.resp||'').trim().split(/\s+/)[0]||'';
+  let klantVoornaam='', klantAchternaam='';
+  if(tipo==='lead'){
+    klantVoornaam=(host.voornaam||'').trim();
+    klantAchternaam=(host.achternaam||'').trim();
+  } else {
+    klantVoornaam=(host.contactVoornaam||'').trim();
+    klantAchternaam=(host.contactAchternaam||host.klant||host.bedrijf||'').trim();
+  }
+  return [respVoornaam, klantVoornaam, klantAchternaam].filter(Boolean).join(' ');
+}
+
 // Automatische sync — wordt aangeroepen vanuit sbSaveB2cLead/sbSaveProject bij
 // elke opslag. Fire-and-forget: fouten breken de normale opslag niet.
 async function afasAutoSync(host, tipo){
@@ -14773,6 +14787,7 @@ async function afasAutoSync(host, tipo){
         datum: s.datum || today(),
         status: 0,
         groeperingen: s.groeperingen,
+        referentie: s.offertenummer ? undefined : afasBouwReferentie(host, tipo),
       }),
     });
     const data = await resp.json();
@@ -14783,6 +14798,13 @@ async function afasAutoSync(host, tipo){
     // in een oneindige lus).
     if(data.afasOfferteNr && !s.offertenummer){
       s.offertenummer = data.afasOfferteNr;
+      // Belangrijk: ook de lokale bewerk-state bijwerken. Anders overschrijft de
+      // volgende b2bOfferteOpslaan() (die host.offerte = kopie van b2bOfferteState
+      // maakt) het net toegekende nummer weer met een lege waarde, waardoor telkens
+      // een NIEUWE offerte in AFAS ontstaat in plaats van de bestaande te updaten.
+      if(typeof b2bOfferteState!=='undefined' && b2bOfferteState && !b2bOfferteState.offertenummer){
+        b2bOfferteState.offertenummer = data.afasOfferteNr;
+      }
       const tabel = tipo==='lead' ? 'b2c_leads' : 'projects';
       const sbid = tipo==='lead' ? host._sbid : host.id;
       if(sbUrl && sbid){
