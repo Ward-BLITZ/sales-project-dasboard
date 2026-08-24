@@ -11864,7 +11864,8 @@ function b2bOfferteArtikelKiezen(gIdx,mIdx){
 function salesArtikelOpSku(sku){
   if(!sku)return null;
   const all=b2bAlleArtikelenVoorZoeken();
-  return all.find(a=>(a.sku||'').toLowerCase()===String(sku).toLowerCase())||null;
+  const zoek=String(sku).trim().toLowerCase();
+  return all.find(a=>(a.sku||'').trim().toLowerCase()===zoek)||null;
 }
 function salesPrijsVanArtikel(a){
   if(!a||a.verkoopprijs==null||a.verkoopprijs==='')return 0;
