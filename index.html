@@ -11864,8 +11864,7 @@ function b2bOfferteArtikelKiezen(gIdx,mIdx){
 function salesArtikelOpSku(sku){
   if(!sku)return null;
   const all=b2bAlleArtikelenVoorZoeken();
-  const zoek=String(sku).trim().toLowerCase();
-  return all.find(a=>(a.sku||'').trim().toLowerCase()===zoek)||null;
+  return all.find(a=>(a.sku||'').toLowerCase()===String(sku).toLowerCase())||null;
 }
 function salesPrijsVanArtikel(a){
   if(!a||a.verkoopprijs==null||a.verkoopprijs==='')return 0;
@@ -14778,6 +14777,24 @@ async function afasAutoSync(host, tipo){
       return;
     }
 
+    // Elke regel krijgt eenmalig een vaste GUID (blijft hetzelfde bij
+    // volgende opslagen) -- AFAS gebruikt dit (GuLi) om bij een update te
+    // herkennen welke regel het is, in plaats van op itemcode te matchen
+    // (dat brak op "Geen regel gevonden met itemcode...").
+    s.groeperingen.forEach(g=>{
+      (g.items||[]).forEach(it=>{
+        if(!it.guli) it.guli = '{'+crypto.randomUUID()+'}';
+      });
+    });
+
+    // Eindklantgegevens: bij een lead (B2C) is host zelf de lead; bij een
+    // B2B-project zitten naam/contact elders op het project.
+    const eindklantNaam = tipo==='lead'
+      ? ((host.voornaam||'')+' '+(host.achternaam||'')).trim()
+      : (host.contact||host.klant||host.naam||'');
+    const eindklantEmail = host.email || host.contactemail || '';
+    const eindklantTel = host.tel || host.contactgsm || host.gsm || '';
+
     const resp = await fetch('https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/afas-offerte-sync', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY,'apikey':SUPABASE_ANON_KEY},
@@ -14788,6 +14805,13 @@ async function afasAutoSync(host, tipo){
         datum: s.datum || today(),
         status: 0,
         groeperingen: s.groeperingen,
+        eindklant: {
+          naam: eindklantNaam || undefined,
+          email: eindklantEmail || undefined,
+          tel: eindklantTel || undefined,
+          adres: host.adres || undefined,
+          bedrijf: host.bedrijf || undefined,
+        },
         referentie: s.offertenummer ? undefined : afasBouwReferentie(host, tipo),
       }),
     });
