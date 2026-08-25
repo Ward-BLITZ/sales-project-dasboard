@@ -1558,6 +1558,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="btn" onclick="b2cOpenNieuw(false)"><i class="ti ti-plus"></i> Snelle lead</button>
       <button class="btn primary" onclick="b2cOpenNieuw(true)"><i class="ti ti-map-pin"></i> Lead via visit</button>
       <button class="btn sm" onclick="afasSyncWebOffertes()" title="AFAS weboffertes nu syncen" style="opacity:.7"><i class="ti ti-refresh"></i> AFAS sync</button>
+      <button class="btn sm" onclick="afasZoekOfferte()" title="Offerte opzoeken op nummer in AFAS" style="opacity:.7"><i class="ti ti-search"></i> Offerte zoeken</button>
     </div>
   </div>
   <div style="display:flex;gap:16px;align-items:flex-start">
@@ -13890,6 +13891,119 @@ async function afasSyncWebOffertes() {
   } finally {
     _afasSyncBusy = false;
   }
+}
+
+// ── AFAS: offerte opzoeken op nummer + importeren/linken in dashboard ──────
+async function afasZoekOfferte(){
+  const nummer = prompt('AFAS-offertenummer opzoeken:');
+  if(!nummer || !nummer.trim()) return;
+  showToast('Offerte opzoeken in AFAS...');
+  try{
+    const resp = await fetch('https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/afas-offerte-pull', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY,'apikey':SUPABASE_ANON_KEY},
+      body: JSON.stringify({actie:'haal-offerte', offertenummer: nummer.trim()}),
+    });
+    const data = await resp.json();
+    if(!resp.ok || data.error){ showToast('Fout bij opzoeken: '+(data.error||'onbekende fout')); return; }
+    if(!data.gevonden){ showToast('Geen offerte gevonden met nummer '+nummer); return; }
+
+    const offertenr = data.offerte.offertenummer;
+    const bestaandeLead = (typeof b2cLeads!=='undefined'?b2cLeads:[]).find(l=>String(l._afasOfferteid)===String(offertenr));
+    const bestaandProject = (typeof projects!=='undefined'?projects:[]).find(p=>String(p._afasOfferteid)===String(offertenr));
+    if(bestaandeLead){
+      showToast('Al gekoppeld aan lead "'+(typeof b2cNaam==='function'?b2cNaam(bestaandeLead):bestaandeLead.voornaam)+'" — wordt geopend.');
+      if(typeof b2cOpenDetail==='function') b2cOpenDetail(bestaandeLead.id);
+      return;
+    }
+    if(bestaandProject){
+      showToast('Al gekoppeld aan project "'+(bestaandProject.naam||'')+'" — wordt geopend.');
+      if(typeof b2bOpenDetail==='function') b2bOpenDetail(bestaandProject.id||bestaandProject._rowid);
+      return;
+    }
+    afasOffertImportKeuze(data.offerte);
+  }catch(e){
+    showToast('Fout bij opzoeken: '+e.message);
+  }
+}
+
+function afasOffertImportKeuze(offerte){
+  const naam = (offerte.eindklant && (offerte.eindklant.naam || offerte.eindklant.bedrijf)) || 'onbekende klant';
+  const nieuw = confirm(
+    'Offerte '+offerte.offertenummer+' gevonden voor "'+naam+'".\n\n'+
+    'OK = nieuwe lead aanmaken met deze offerte als basis.\n'+
+    'Annuleren = linken aan een bestaande lead/project.'
+  );
+  if(nieuw) afasImporteerAlsNieuweLead(offerte);
+  else afasLinkAanBestaand(offerte);
+}
+
+function afasImporteerAlsNieuweLead(offerte){
+  const ek = offerte.eindklant || {};
+  const naamDelen = (ek.naam||'').trim().split(/\s+/).filter(Boolean);
+  const voornaam = naamDelen[0] || '';
+  const achternaam = naamDelen.slice(1).join(' ') || '';
+  const lokaalId = 'afas-' + offerte.offertenummer;
+  if((typeof b2cLeads!=='undefined'?b2cLeads:[]).some(l=>l.id===lokaalId)){ showToast('Deze lead bestaat al lokaal.'); return; }
+  const nieuweLead = {
+    id: lokaalId,
+    voornaam, achternaam,
+    bedrijf: ek.bedrijf || '',
+    tel: ek.tel || '',
+    email: ek.email || '',
+    adres: ek.adres || '',
+    status: 'Nieuw',
+    warmte: 'Lauw',
+    bron: 'AFAS',
+    resp: '',
+    notities: 'Geïmporteerd uit AFAS offerte #'+offerte.offertenummer,
+    _afasOfferteid: offerte.offertenummer,
+    _afasBron: 'AFAS-import',
+    aangemaakt: offerte.datum || today(),
+    offerte: {
+      offertenummer: offerte.offertenummer,
+      datum: offerte.datum,
+      status: offerte.status,
+      groeperingen: offerte.groeperingen,
+    },
+    acties: [{datum: today(), tekst: 'Lead aangemaakt via handmatige AFAS-import (offerte #'+offerte.offertenummer+')'}],
+  };
+  b2cLeads.push(nieuweLead);
+  if(typeof b2cRenderLeads==='function') b2cRenderLeads();
+  sbSaveB2cLead(nieuweLead).catch(e=>console.warn('AFAS-import save fout:', e.message));
+  showToast('✓ Nieuwe lead aangemaakt: '+(voornaam+' '+achternaam).trim());
+}
+
+function afasLinkAanBestaand(offerte){
+  const zoek = prompt('Typ (een deel van) de naam/bedrijf van de bestaande lead of het project om te linken:');
+  if(!zoek || !zoek.trim()) return;
+  const zoekLower = zoek.trim().toLowerCase();
+  const kandLead = (typeof b2cLeads!=='undefined'?b2cLeads:[]).find(l=>
+    ((l.voornaam||'')+' '+(l.achternaam||'')).toLowerCase().includes(zoekLower) ||
+    (l.bedrijf||'').toLowerCase().includes(zoekLower)
+  );
+  const kandProject = (typeof projects!=='undefined'?projects:[]).find(p=>
+    (p.naam||'').toLowerCase().includes(zoekLower) || (p.klant||'').toLowerCase().includes(zoekLower)
+  );
+  const offerteData = { offertenummer: offerte.offertenummer, datum: offerte.datum, status: offerte.status, groeperingen: offerte.groeperingen };
+
+  if(kandLead && (!kandProject || confirm('Lead gevonden: "'+((typeof b2cNaam==='function'?b2cNaam(kandLead):kandLead.voornaam))+'".\nOK = deze gebruiken, Annuleren = het gevonden project proberen.'))){
+    kandLead._afasOfferteid = offerte.offertenummer;
+    kandLead.offerte = offerteData;
+    sbSaveB2cLead(kandLead).catch(e=>console.warn('AFAS-link save fout:', e.message));
+    if(typeof b2cRenderLeads==='function') b2cRenderLeads();
+    showToast('✓ Gelinkt aan lead "'+((typeof b2cNaam==='function'?b2cNaam(kandLead):kandLead.voornaam))+'"');
+    return;
+  }
+  if(kandProject){
+    kandProject._afasOfferteid = offerte.offertenummer;
+    kandProject.offerte = offerteData;
+    sbSaveProject(kandProject).catch(e=>console.warn('AFAS-link save fout:', e.message));
+    if(typeof b2bRenderProjects==='function') b2bRenderProjects();
+    showToast('✓ Gelinkt aan project "'+(kandProject.naam||'')+'"');
+    return;
+  }
+  showToast('Geen lead of project gevonden voor "'+zoek+'".');
 }
 
 // === WEEK VIEW + TODO FEATURES ===
