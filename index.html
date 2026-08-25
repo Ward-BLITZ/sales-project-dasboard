@@ -54,7 +54,7 @@ body.app-active{padding-left:0}
 }
 .tab-btn i{font-size:15px;width:auto;text-align:center;flex-shrink:0;color:var(--tx3);transition:color .13s}
 .tab-btn:hover{color:var(--tx);background:var(--bg2)}
-.tab-btn.active{color:var(--dark);background:rgba(0,223,163,.13);font-weight:600;border-bottom-color:transparent}
+.tab-btn.active{color:var(--tx);background:rgba(0,223,163,.13);font-weight:600;border-bottom-color:transparent}
 .tab-btn.active i{color:var(--green)}
 #tab-zoek{background:none;border:none;margin:0 2px 0 0;color:var(--tx3);font-size:13px;justify-content:flex-start;padding:9px 10px;gap:0}
 #tab-zoek i{font-size:15px}
@@ -391,7 +391,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .slider-wrap{display:flex;align-items:center;gap:10px;margin-top:8px}
 .slider-wrap input[type=range]{flex:1;accent-color:var(--green)}
 .slider-val{font-size:13px;font-weight:600;min-width:36px;text-align:right}
-.ai-badge{font-size:10px;background:rgba(0,223,163,.15);color:var(--dark);padding:2px 7px;border-radius:var(--r);margin-left:6px;font-weight:600}
+.ai-badge{font-size:10px;background:rgba(0,223,163,.15);color:var(--tx);padding:2px 7px;border-radius:var(--r);margin-left:6px;font-weight:600}
 /* INSTELLINGEN */
 .setup-card{background:rgba(0,223,163,.08);border:1px solid rgba(0,223,163,.35);border-radius:var(--rl);padding:1.25rem;margin-bottom:1.5rem;font-size:13px;line-height:1.7}
 .setup-card h3{font-family:'Poppins',sans-serif;font-size:14px;font-weight:600;margin-bottom:8px}
@@ -605,7 +605,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .nav-dd-menu.open{display:flex;flex-direction:column;gap:1px}
 .nav-dd-item{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--tx2);background:none;border:none;width:100%;text-align:left;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .1s;border-radius:8px}
 .nav-dd-item:hover{background:var(--bg2);color:var(--tx)}
-.nav-dd-item.active{color:var(--dark);font-weight:600;background:rgba(0,223,163,.13)}
+.nav-dd-item.active{color:var(--tx);font-weight:600;background:rgba(0,223,163,.13)}
 @keyframes ddFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── WMS STYLES ── */
@@ -615,7 +615,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .wms-sidebar-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tx3);padding:10px 8px 4px;margin-top:6px;}
 .wms-nav{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:var(--r);cursor:pointer;font-size:13px;font-weight:500;color:var(--tx2);transition:all .14s;border:1px solid transparent;}
 .wms-nav:hover{background:var(--bg2);color:var(--tx);}
-.wms-nav.active{background:rgba(0,223,163,.12);color:var(--dark);border-color:rgba(0,223,163,.3);font-weight:600;}
+.wms-nav.active{background:rgba(0,223,163,.12);color:var(--tx);border-color:rgba(0,223,163,.3);font-weight:600;}
 .wms-nav i{font-size:15px;width:18px;text-align:center;}
 .wms-content{flex:1;overflow-y:auto;padding:24px;}
 .wms-page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
@@ -1888,7 +1888,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     </select>
   </div>
   <div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr 120px;gap:10px;padding:6px 16px;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">
-    <span>Klant</span><span>Adres</span><span>Verantwoordelijke</span><span>Datum</span><span></span>
+    <span style="cursor:pointer;user-select:none" onclick="b2cGewSetSort('klant')" title="Sorteren op klant">Klant<span id="b2c-gew-sort-klant"></span></span><span>Adres</span><span style="cursor:pointer;user-select:none" onclick="b2cGewSetSort('resp')" title="Sorteren op verantwoordelijke">Verantwoordelijke<span id="b2c-gew-sort-resp"></span></span><span style="cursor:pointer;user-select:none" onclick="b2cGewSetSort('datum')" title="Sorteren op datum">Datum<span id="b2c-gew-sort-datum"></span></span><span></span>
   </div>
   <div id="b2c-gew-list"></div>
 </div>
@@ -1909,7 +1909,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     </select>
   </div>
   <div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr 120px;gap:10px;padding:6px 16px;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">
-    <span>Klant</span><span>Adres</span><span>Verantwoordelijke</span><span>Datum</span><span></span>
+    <span style="cursor:pointer;user-select:none" onclick="b2cVlSetSort('klant')" title="Sorteren op klant">Klant<span id="b2c-vl-sort-klant"></span></span><span>Adres</span><span style="cursor:pointer;user-select:none" onclick="b2cVlSetSort('resp')" title="Sorteren op verantwoordelijke">Verantwoordelijke<span id="b2c-vl-sort-resp"></span></span><span style="cursor:pointer;user-select:none" onclick="b2cVlSetSort('datum')" title="Sorteren op datum">Datum<span id="b2c-vl-sort-datum"></span></span><span></span>
   </div>
   <div id="b2c-vl-list"></div>
 </div>
@@ -2905,6 +2905,10 @@ let b2cGewRespFilter     = 'alle';
 let b2cGewMaandFilter    = '';
 let b2cVlRespFilter      = 'alle';
 let b2cVlMaandFilter     = '';
+let b2cGewSortVeld       = 'datum';
+let b2cGewSortRichting   = 'desc';
+let b2cVlSortVeld        = 'datum';
+let b2cVlSortRichting    = 'desc';
 let b2cAfvinkLeadId      = null;
 let b2cAfvinkOpIdx       = null;
 
@@ -7337,10 +7341,13 @@ function b2cBadgeW(w){return{Koud:'b-koud',Lauw:'b-lauw',Warm:'b-warm',Hot:'b-ho
 // ─── RENDER LEADS ───────────────────────────────────
 function b2cRenderStats(){
   try{
-    const t=b2cLeads.length;
-    const v=b2cLeads.filter(l=>l.visitDatum&&l.visitDatum>=today()).length;
-    const w=b2cLeads.filter(l=>l.warmte==='Warm'||l.warmte==='Hot').length;
-    const g=b2cLeads.filter(l=>l.status==='Gewonnen').length;
+    // Cijfers volgen de geselecteerde verantwoordelijke (b2cRespFilter);
+    // enkel bij "Iedereen" tonen ze het totaal van alle leads.
+    const basis = b2cRespFilter!=='alle' ? b2cLeads.filter(l=>l.resp===b2cRespFilter) : b2cLeads;
+    const t=basis.length;
+    const v=basis.filter(l=>l.visitDatum&&l.visitDatum>=today()).length;
+    const w=basis.filter(l=>l.warmte==='Warm'||l.warmte==='Hot').length;
+    const g=basis.filter(l=>l.status==='Gewonnen').length;
     const stEl=id=>{const e=document.getElementById(id);if(e)return e;};
     if(stEl('b2c-st-totaal'))stEl('b2c-st-totaal').textContent=t;
     if(stEl('b2c-st-visits'))stEl('b2c-st-visits').textContent=v;
@@ -7398,7 +7405,15 @@ function b2cRenderVerloren(){
 
 function b2cRenderGesloten(prefix, allList, kleur, label){
   const respFilter=prefix==='gew'?b2cGewRespFilter:b2cVlRespFilter;
+  const sortVeld=prefix==='gew'?b2cGewSortVeld:b2cVlSortVeld;
+  const sortRichting=prefix==='gew'?b2cGewSortRichting:b2cVlSortRichting;
   const maandFilter=document.getElementById('b2c-'+prefix+'-maand')?.value||'';
+
+  // Datum per lead vooraf berekenen — nodig voor maandfilter, sortering én weergave
+  const metDatum=allList.map(l=>({
+    l,
+    datum:(l.acties||[]).filter(a=>a.tekst.toLowerCase().includes(label.toLowerCase())).pop()?.datum||''
+  }));
 
   // Stats
   const statsEl=document.getElementById('b2c-'+prefix+'-stats');
@@ -7416,7 +7431,7 @@ function b2cRenderGesloten(prefix, allList, kleur, label){
   // Maand dropdown
   const maandSel=document.getElementById('b2c-'+prefix+'-maand');
   if(maandSel){
-    const maanden=[...new Set(allList.map(l=>(l.acties||[]).filter(a=>a.tekst.includes(label)).map(a=>a.datum?.slice(0,7)||'').filter(Boolean)).flat())].sort().reverse();
+    const maanden=[...new Set(metDatum.map(x=>x.datum?.slice(0,7)||'').filter(Boolean))].sort().reverse();
     const cur=maandSel.value;
     maandSel.innerHTML='<option value="">Alle maanden</option>'+maanden.map(m=>{
       const [y,mo]=m.split('-');
@@ -7425,17 +7440,34 @@ function b2cRenderGesloten(prefix, allList, kleur, label){
     }).join('');
   }
 
-  // Filter
-  let list=allList.filter(l=>{
+  // Filter: verantwoordelijke + maand (maandfilter werkte voorheen niet mee)
+  let items=metDatum.filter(({l,datum})=>{
     if(respFilter!=='alle'&&l.resp!==respFilter)return false;
+    if(maandFilter&&(datum||'').slice(0,7)!==maandFilter)return false;
     return true;
   });
 
-  const el=document.getElementById('b2c-'+prefix+'-list');if(!el)return;
-  if(!list.length){el.innerHTML='<div class="empty-state"><i class="ti ti-users"></i>Geen '+label.toLowerCase()+' leads.</div>';return;}
+  // Sortering — klikbaar op Klant / Verantwoordelijke / Datum, oplopend of aflopend
+  items=items.slice().sort((a,b)=>{
+    let va,vb;
+    if(sortVeld==='klant'){ va=b2cNaam(a.l).toLowerCase(); vb=b2cNaam(b.l).toLowerCase(); }
+    else if(sortVeld==='resp'){ va=(a.l.resp||'').toLowerCase(); vb=(b.l.resp||'').toLowerCase(); }
+    else { va=a.datum||''; vb=b.datum||''; }
+    if(va<vb) return sortRichting==='asc'?-1:1;
+    if(va>vb) return sortRichting==='asc'?1:-1;
+    return 0;
+  });
 
-  el.innerHTML=list.map(l=>{
-    const datum=(l.acties||[]).filter(a=>a.tekst.toLowerCase().includes(label.toLowerCase())).pop()?.datum||'';
+  // Sorteerpijltjes in de kolomkoppen bijwerken
+  ['klant','resp','datum'].forEach(v=>{
+    const pijlEl=document.getElementById('b2c-'+prefix+'-sort-'+v);
+    if(pijlEl) pijlEl.textContent = sortVeld===v ? (sortRichting==='asc'?' ▲':' ▼') : '';
+  });
+
+  const el=document.getElementById('b2c-'+prefix+'-list');if(!el)return;
+  if(!items.length){el.innerHTML='<div class="empty-state"><i class="ti ti-users"></i>Geen '+label.toLowerCase()+' leads.</div>';return;}
+
+  el.innerHTML=items.map(({l,datum})=>{
     return`<div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr 120px;gap:10px;align-items:center;padding:12px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:8px;cursor:pointer" onclick="b2cOpenDetail('${l.id}')">
       <div>
         <div style="font-weight:600;font-size:13px">${b2cNaam(l)}</div>
@@ -7454,6 +7486,16 @@ function b2cRenderGesloten(prefix, allList, kleur, label){
 
 function b2cGewSetResp(r){b2cGewRespFilter=r;b2cRenderGewonnen();}
 function b2cVlSetResp(r){b2cVlRespFilter=r;b2cRenderVerloren();}
+function b2cGewSetSort(veld){
+  if(b2cGewSortVeld===veld) b2cGewSortRichting = b2cGewSortRichting==='asc'?'desc':'asc';
+  else { b2cGewSortVeld=veld; b2cGewSortRichting='asc'; }
+  b2cRenderGewonnen();
+}
+function b2cVlSetSort(veld){
+  if(b2cVlSortVeld===veld) b2cVlSortRichting = b2cVlSortRichting==='asc'?'desc':'asc';
+  else { b2cVlSortVeld=veld; b2cVlSortRichting='asc'; }
+  b2cRenderVerloren();
+}
 
 function b2cHeractiveer(id){
   // Vergelijk als string én als getal voor compatibiliteit met AFAS string ids
@@ -13287,7 +13329,7 @@ function wmsRenderGrondplan(){
   // Check of wms_rek_posities beschikbaar is
   if(wmsRekPosities===null){
     tabsEl.innerHTML='';
-    contentEl.innerHTML='<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:var(--r);padding:16px;font-size:13px"><strong>⚠️ Ontbrekende tabel.</strong> Voer dit SQL uit in Supabase → SQL Editor en herlaad daarna de pagina:<pre style="margin-top:10px;background:#fffbeb;padding:10px;border-radius:4px;font-size:11px;overflow-x:auto">CREATE TABLE IF NOT EXISTS wms_rek_posities (\n  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n  rek_id uuid REFERENCES wms_rekken(id) ON DELETE CASCADE,\n  gebouw_id uuid REFERENCES wms_gebouwen(id) ON DELETE CASCADE,\n  x numeric DEFAULT 1,\n  y numeric DEFAULT 1,\n  schaal numeric DEFAULT 1,\n  schaalX numeric DEFAULT 1,\n  schaalY numeric DEFAULT 1,\n  rotatie numeric DEFAULT 0\n);\nALTER TABLE wms_rek_posities ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "auth" ON wms_rek_posities FOR ALL USING (auth.role()=\'authenticated\');\n\nCREATE TABLE IF NOT EXISTS wms_gebouwen (\n  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n  naam text NOT NULL,\n  breedte numeric DEFAULT 30,\n  lengte numeric DEFAULT 50\n);\nALTER TABLE wms_gebouwen ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "auth" ON wms_gebouwen FOR ALL USING (auth.role()=\'authenticated\');</pre></div>';
+    contentEl.innerHTML='<div style="background:#fef3c7;color:#78350f;border:1px solid #fde68a;border-radius:var(--r);padding:16px;font-size:13px"><strong>⚠️ Ontbrekende tabel.</strong> Voer dit SQL uit in Supabase → SQL Editor en herlaad daarna de pagina:<pre style="margin-top:10px;background:#fffbeb;padding:10px;border-radius:4px;font-size:11px;overflow-x:auto">CREATE TABLE IF NOT EXISTS wms_rek_posities (\n  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n  rek_id uuid REFERENCES wms_rekken(id) ON DELETE CASCADE,\n  gebouw_id uuid REFERENCES wms_gebouwen(id) ON DELETE CASCADE,\n  x numeric DEFAULT 1,\n  y numeric DEFAULT 1,\n  schaal numeric DEFAULT 1,\n  schaalX numeric DEFAULT 1,\n  schaalY numeric DEFAULT 1,\n  rotatie numeric DEFAULT 0\n);\nALTER TABLE wms_rek_posities ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "auth" ON wms_rek_posities FOR ALL USING (auth.role()=\'authenticated\');\n\nCREATE TABLE IF NOT EXISTS wms_gebouwen (\n  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n  naam text NOT NULL,\n  breedte numeric DEFAULT 30,\n  lengte numeric DEFAULT 50\n);\nALTER TABLE wms_gebouwen ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "auth" ON wms_gebouwen FOR ALL USING (auth.role()=\'authenticated\');</pre></div>';
     emptyEl.style.display='none';
     return;
   }
@@ -13362,7 +13404,7 @@ function wmsAddGpRek(canvas,rek,pos,geb){
       '<button onclick="wmsGpRoteer(\''+rek.id+'\','+rot+',-45)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">↺ -45°</button>'+
       '<button onclick="wmsGpRoteer(\''+rek.id+'\','+rot+',45)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">↻ +45°</button>'+
       '<button onclick="wmsGpSchaal(\''+rek.id+'\','+schaal+',-0.1)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">－</button>'+
-      '<span style="font-size:10px;padding:2px 5px;background:#fff;border:1px solid #ccc;border-radius:3px">'+Math.round(schaal*100)+'%</span>'+
+      '<span style="font-size:10px;padding:2px 5px;background:#fff;color:#1D252D;border:1px solid #ccc;border-radius:3px">'+Math.round(schaal*100)+'%</span>'+
       '<button onclick="wmsGpSchaal(\''+rek.id+'\','+schaal+',0.1)" style="font-size:10px;padding:2px 6px;background:#1D252D;color:#fff;border:none;border-radius:3px;cursor:pointer">＋</button>'+
       '<button onclick="wmsGpRoteer(\''+rek.id+'\','+rot+',0,true)" style="font-size:10px;padding:2px 6px;background:#a32d2d;color:#fff;border:none;border-radius:3px;cursor:pointer">↺ 0°</button>';
     el.appendChild(toolbar);
@@ -13502,7 +13544,7 @@ async function wmsPlaatsRek(rekId){
     showToast('Fout bij plaatsen: '+error.message+'. Voer het SQL-script uit in Supabase.',true);
     // Toon SQL hint in grondplan content
     const hint=document.getElementById('wms-grondplan-content');
-    if(hint)hint.innerHTML+='<div style="margin-top:12px;background:#fef3c7;border:1px solid #fde68a;border-radius:var(--r);padding:14px;font-size:12px"><strong>⚠️ Tabel ontbreekt.</strong> Voer dit SQL uit in Supabase → SQL Editor:<br><code style="display:block;margin-top:8px;background:#fff3cd;padding:8px;border-radius:4px;font-size:11px;white-space:pre">CREATE TABLE IF NOT EXISTS wms_rek_posities (\n  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n  rek_id uuid REFERENCES wms_rekken(id) ON DELETE CASCADE,\n  gebouw_id uuid REFERENCES wms_gebouwen(id) ON DELETE CASCADE,\n  x numeric DEFAULT 1, y numeric DEFAULT 1,\n  schaal numeric DEFAULT 1, schaalX numeric DEFAULT 1, schaalY numeric DEFAULT 1,\n  rotatie numeric DEFAULT 0\n);\nALTER TABLE wms_rek_posities ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "auth" ON wms_rek_posities FOR ALL USING (auth.role()=\'authenticated\');</code></div>';
+    if(hint)hint.innerHTML+='<div style="margin-top:12px;background:#fef3c7;color:#78350f;border:1px solid #fde68a;border-radius:var(--r);padding:14px;font-size:12px"><strong>⚠️ Tabel ontbreekt.</strong> Voer dit SQL uit in Supabase → SQL Editor:<br><code style="display:block;margin-top:8px;background:#fff3cd;padding:8px;border-radius:4px;font-size:11px;white-space:pre">CREATE TABLE IF NOT EXISTS wms_rek_posities (\n  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n  rek_id uuid REFERENCES wms_rekken(id) ON DELETE CASCADE,\n  gebouw_id uuid REFERENCES wms_gebouwen(id) ON DELETE CASCADE,\n  x numeric DEFAULT 1, y numeric DEFAULT 1,\n  schaal numeric DEFAULT 1, schaalX numeric DEFAULT 1, schaalY numeric DEFAULT 1,\n  rotatie numeric DEFAULT 0\n);\nALTER TABLE wms_rek_posities ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "auth" ON wms_rek_posities FOR ALL USING (auth.role()=\'authenticated\');</code></div>';
     return;
   }
   const{data:p}=await supabaseClient.from('wms_rek_posities').select('*');
