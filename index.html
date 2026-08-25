@@ -811,6 +811,9 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
         <button class="nav-dd-item" id="tab-si-opvolging" onclick="showTab('si-opvolging');closeAllNavDd()"><i class="ti ti-list-check"></i> Opvolging</button>
         <button class="nav-dd-item" id="tab-si-afgerond" onclick="showTab('si-afgerond');closeAllNavDd()"><i class="ti ti-circle-check"></i> Afgerond</button>
         <button class="nav-dd-item" id="tab-si-agenda" onclick="showTab('si-agenda');closeAllNavDd()"><i class="ti ti-calendar-event"></i> Agenda service</button>
+        <div style="height:1px;background:var(--bd);margin:4px 8px"></div>
+        <button class="nav-dd-item" id="tab-service-stock" onclick="showTab('service-stock');closeAllNavDd()"><i class="ti ti-package"></i> Registraties</button>
+        <button class="nav-dd-item" id="tab-service-materiaalaanvraag" onclick="wmsNieuweAanvraagOpen();closeAllNavDd()"><i class="ti ti-shopping-cart-plus"></i> Materiaalaanvraag</button>
       </div>
     </div>
 
@@ -827,6 +830,16 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
         <button class="nav-dd-item" id="tab-wms-grondplan-dd" onclick="wmsSetPage('grondplan');showTab('wms');closeAllNavDd()" style="display:none"><i class="ti ti-map"></i> Grondplan</button>
         <button class="nav-dd-item" id="tab-wms-leveranciers-dd" onclick="wmsSetPage('leveranciers');showTab('wms');closeAllNavDd()" style="display:none"><i class="ti ti-truck"></i> Leveranciers</button>
         <button class="nav-dd-item" id="tab-wms-dashboard-dd" onclick="wmsSetPage('dashboard');showTab('wms');closeAllNavDd()" style="display:none"><i class="ti ti-layout-dashboard"></i> WMS Dashboard</button>
+      </div>
+    </div>
+
+    <!-- Procurement dropdown -->
+    <div class="nav-dropdown" id="dd-procurement" style="display:none">
+      <button class="tab-btn nav-dd-trigger" onclick="toggleNavDd('procurement')">
+        <i class="ti ti-shopping-cart"></i> Procurement <i class="ti ti-chevron-down" style="font-size:10px;margin-left:2px"></i>
+      </button>
+      <div class="nav-dd-menu" id="dd-procurement-menu">
+        <button class="nav-dd-item" id="tab-procurement" onclick="showTab('procurement');closeAllNavDd()"><i class="ti ti-clipboard-list"></i> Bestelaanvragen</button>
       </div>
     </div>
 
@@ -1268,6 +1281,141 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
     <div style="flex:0 0 220px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:16px;max-height:calc(100vh - 180px);overflow-y:auto">
       <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Aankomend</div>
       <div id="si-ag-aankomende"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SERVICE STOCK (Service & Installatie) -->
+<div id="pane-service-stock" class="page" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
+    <div>
+      <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700"><i class="ti ti-package" style="color:#0ea5a5;margin-right:6px"></i>Registraties (Service Stock)</div>
+      <div style="font-size:12px;color:var(--tx2)">Registreer onderdelen die je uit het magazijn meeneemt — en bekijk wat het hele team heeft genomen.</div>
+    </div>
+    <button class="btn sm" onclick="ssRefreshAlles()"><i class="ti ti-refresh"></i> Vernieuwen</button>
+  </div>
+
+  <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:24px">
+    <div style="flex:1;min-width:320px">
+      <div class="wms-card">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px">Nieuwe registratie</div>
+        <input class="wms-search" id="ss-search" placeholder="Zoek op artikelcode of omschrijving..." oninput="ssRenderResultaten()" autocomplete="off">
+        <div id="ss-resultaten" style="margin-top:10px"></div>
+        <div id="ss-detail" style="display:none;margin-top:10px"></div>
+      </div>
+    </div>
+    <div style="width:280px;flex-shrink:0">
+      <div class="wms-card" style="margin-bottom:14px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px">Kort overzicht</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:12.5px">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">Vandaag (team)</span><strong id="ss-stat-vandaag">–</strong></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">Deze week (team)</span><strong id="ss-stat-week">–</strong></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--tx2)">Mijn totaal</span><strong id="ss-stat-mijn">–</strong></div>
+        </div>
+      </div>
+      <div class="wms-card">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px">Mijn registraties</div>
+        <div id="ss-mijn-compact" style="font-size:12.5px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wms-page-title" style="font-size:15px;margin-bottom:10px">Alle registraties <span style="font-weight:400;color:var(--tx3);font-size:12px">— van heel het serviceteam</span></div>
+  <div class="wms-card">
+    <div class="wms-table-wrap"><table class="wms-table">
+      <thead><tr><th>Artikel</th><th>Aantal</th><th>Reden</th><th>Medewerker</th><th>Datum</th><th id="ss-acties-th" style="display:none">Acties</th></tr></thead>
+      <tbody id="ss-alle-tbody"></tbody>
+    </table></div>
+    <div id="ss-alle-empty" class="wms-empty" style="display:none"><i class="ti ti-tool"></i><p>Nog geen registraties.</p></div>
+  </div>
+</div>
+
+<!-- PROCUREMENT -->
+<div id="pane-procurement" class="page" style="display:none">
+  <div class="wms-page-header">
+    <div><div class="wms-page-title">Bestelaanvragen</div><div class="wms-page-sub">Alle bestel- en materiaalaanvragen — vanuit productie (externe Bestellijst &amp; Voorraad-tool) én vanuit Service &amp; Installatie.</div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn primary" onclick="wmsNieuweAanvraagOpen()"><i class="ti ti-plus"></i> Nieuwe aanvraag</button>
+      <button class="btn sm" onclick="wmsBeheerLaad()"><i class="ti ti-refresh"></i> Vernieuwen</button>
+    </div>
+  </div>
+  <div class="pills" style="margin-bottom:14px" id="wms-bestel-filter-pills">
+    <button class="pill active" data-f="open" onclick="wmsBeheerSetFilter('open')">Open</button>
+    <button class="pill" data-f="besteld" onclick="wmsBeheerSetFilter('besteld')">Besteld</button>
+    <button class="pill" data-f="alle" onclick="wmsBeheerSetFilter('alle')">Alles</button>
+  </div>
+  <div class="wms-card">
+    <div class="wms-table-wrap"><table class="wms-table">
+      <thead><tr><th>Artikel</th><th>Voorraadstatus</th><th>Urgentie</th><th>Aangevraagd door</th><th>Datum</th><th>Opmerking</th><th>Verwachte levering</th><th>Besteld</th><th>Acties</th></tr></thead>
+      <tbody id="wms-bestel-tbody"></tbody>
+    </table></div>
+    <div id="wms-bestel-empty" class="wms-empty" style="display:none"><i class="ti ti-clipboard-check"></i><p>Geen aanvragen.</p></div>
+  </div>
+</div>
+
+<!-- Bestelaanvraag bewerken -->
+<div class="modal-overlay" id="wms-edit-aanvraag-modal">
+  <div class="modal-box">
+    <div class="modal-header"><span class="modal-title">Aanvraag bewerken</span><button class="modal-close" onclick="wmsEditAanvraagSluiten()"><i class="ti ti-x"></i></button></div>
+    <div class="auth-field"><label>Artikelcode</label><input id="wms-edit-aanvraag-sku"></div>
+    <div class="auth-field"><label>Artikelnaam</label><input id="wms-edit-aanvraag-naam"></div>
+    <div class="auth-field"><label>Voorraadstatus</label>
+      <select id="wms-edit-aanvraag-status">
+        <option value="op">Volledig op</option>
+        <option value="bijna_op">Nog beperkt op voorraad</option>
+      </select>
+    </div>
+    <div class="auth-field"><label>Geschat aantal</label><input type="number" min="0" id="wms-edit-aanvraag-aantal"></div>
+    <div class="auth-field"><label>Urgentie</label>
+      <select id="wms-edit-aanvraag-urgentie">
+        <option value="hoog">Hoog</option>
+        <option value="normaal">Normaal</option>
+        <option value="laag">Laag</option>
+      </select>
+    </div>
+    <div class="auth-field"><label>Opmerking</label><input id="wms-edit-aanvraag-opmerking"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="wmsEditAanvraagSluiten()">Annuleren</button>
+      <button class="btn primary" onclick="wmsEditAanvraagOpslaan()"><i class="ti ti-check"></i> Opslaan</button>
+    </div>
+  </div>
+</div>
+<!-- Verwachte levertermijn -->
+<div class="modal-overlay" id="wms-lever-modal">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-header"><span class="modal-title">Verwachte levertermijn</span><button class="modal-close" onclick="wmsLeverSluitModal()"><i class="ti ti-x"></i></button></div>
+    <div style="font-size:13px;color:var(--tx2);margin-bottom:14px">Over hoeveel weken wordt dit artikel verwacht?</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="wms-lever-weken-btns"></div>
+  </div>
+</div>
+<!-- Nieuwe bestel-/materiaalaanvraag (gedeeld tussen Procurement en Service & Installatie) -->
+<div class="modal-overlay" id="wms-nieuwe-aanvraag-modal">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header"><span class="modal-title">Nieuwe aanvraag</span><button class="modal-close" onclick="wmsNieuweAanvraagSluiten()"><i class="ti ti-x"></i></button></div>
+    <input class="wms-search" id="wms-na-search" placeholder="Zoek op artikelcode of omschrijving..." oninput="wmsNaRenderResultaten()" autocomplete="off">
+    <div style="margin-top:8px"><button class="btn sm" onclick="wmsNaHandmatig()"><i class="ti ti-edit"></i> Niet gevonden? Manueel product invoeren</button></div>
+    <div id="wms-na-resultaten" style="margin-top:10px"></div>
+    <div id="wms-na-detail" style="display:none;margin-top:10px"></div>
+  </div>
+</div>
+<!-- Service Stock: registratie bewerken -->
+<div class="modal-overlay" id="ss-edit-registratie-modal">
+  <div class="modal-box">
+    <div class="modal-header"><span class="modal-title">Registratie bewerken</span><button class="modal-close" onclick="ssEditRegistratieSluiten()"><i class="ti ti-x"></i></button></div>
+    <div class="auth-field"><label>Artikelcode</label><input id="ss-edit-reg-sku"></div>
+    <div class="auth-field"><label>Artikelnaam</label><input id="ss-edit-reg-naam"></div>
+    <div class="auth-field"><label>Aantal</label><input type="number" min="1" id="ss-edit-reg-aantal"></div>
+    <div class="auth-field"><label>Reden</label>
+      <select id="ss-edit-reg-reden">
+        <option value="interventie">Interventie</option>
+        <option value="aanvulling">Aanvulling voorraad</option>
+        <option value="andere">Andere</option>
+      </select>
+    </div>
+    <div class="auth-field"><label>Toelichting</label><input id="ss-edit-reg-detail"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="ssEditRegistratieSluiten()">Annuleren</button>
+      <button class="btn primary" onclick="ssEditRegistratieOpslaan()"><i class="ti ti-check"></i> Opslaan</button>
     </div>
   </div>
 </div>
@@ -2896,7 +3044,7 @@ function respNames(afdeling){
 
 
 function showTab(name){
-  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda','rapportage','wms','sales','todo','verlof'].forEach(id=>{
+  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda','service-stock','procurement','rapportage','wms','sales','todo','verlof'].forEach(id=>{
     const pane=document.getElementById('pane-'+id);
     if(pane)pane.style.display=(id===name)?'block':'none';
     const tb=document.getElementById('tab-'+id);
@@ -2919,6 +3067,8 @@ function showTab(name){
   if(name==='si-opvolging'){siOpvRender();}
   if(name==='si-afgerond'){siAfgerondRender();}
   if(name==='si-agenda'){siAgRender();}
+  if(name==='service-stock'){ssRefreshAlles();}
+  if(name==='procurement'){wmsBeheerLaad();}
   if(name==='rapportage'){renderRapportage();}
   if(name==='wms'){document.getElementById('pane-wms').style.display='block';}
   if(name==='sales'){
@@ -4815,6 +4965,10 @@ async function onLoggedIn(user){
   const kanOperations=currentRole==='admin'||afdeling==='hoofdadmin'||afdeling==='operations';
   const ddOps=document.getElementById('dd-operations');
   if(ddOps)ddOps.style.display=kanOperations?'':'none';
+
+  // Procurement dropdown: zelfde doelgroep als Operations
+  const ddProcurement=document.getElementById('dd-procurement');
+  if(ddProcurement)ddProcurement.style.display=kanOperations?'':'none';
 
   // WMS initialiseren als operations-gebruiker
   if(kanOperations)wmsInit();
@@ -15109,6 +15263,621 @@ async function afasVerstuurOfferte(){
   if(typeof b2bOfferteRender==='function') b2bOfferteRender();
 }
 
+// ══════════════════════════════════════════════════════════════
+// PROCUREMENT — unified bestel-/materiaalaanvragen (magazijn_bestelaanvragen).
+// Zelfde tabel als de externe "Bestellijst & Voorraad"-tool (productie) EN
+// als de "Materiaalaanvraag"-knop onder Service & Installatie: alles komt
+// hier samen in één overzicht.
+// ══════════════════════════════════════════════════════════════
+function wmsEsc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function wmsFormatDatum(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('nl-BE',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' + d.toLocaleTimeString('nl-BE',{hour:'2-digit',minute:'2-digit'});
+}
+function wmsStatusLabel(s){
+  return s==='op'
+    ? '<span class="badge" style="background:#a32d2d;color:#fff"><i class="ti ti-alert-triangle" style="margin-right:3px"></i>Volledig op</span>'
+    : '<span class="badge" style="background:#c77d00;color:#fff">Nog op voorraad</span>';
+}
+function wmsUrgentieBadge(u){
+  const map = {hoog:['#a32d2d','Hoog'], normaal:['#c77d00','Normaal'], laag:['#00805e','Laag']};
+  const gekozen = map[u] || map.normaal;
+  const kleur = gekozen[0], label = gekozen[1];
+  return '<span class="badge" style="background:'+kleur+';color:#fff">'+label+'</span>';
+}
+
+let wmsBestelFilter = 'open';
+let wmsBestelRows = [];
+let wmsEditAanvraagId = null;
+let wmsLeverAanvraagId = null;
+const WMS_LEVER_MAX_WEKEN = 15;
+
+function wmsBeheerSetFilter(f){
+  wmsBestelFilter = f;
+  document.querySelectorAll('#wms-bestel-filter-pills .pill').forEach(p=>p.classList.toggle('active', p.dataset.f===f));
+  wmsBeheerLaad();
+}
+
+async function wmsBeheerAutoMarkGeleverd(){
+  try{
+    const nu = new Date().toISOString();
+    const {data, error} = await supabaseClient.from('magazijn_bestelaanvragen')
+      .select('id').eq('besteld', true).eq('geleverd', false).lte('verwachte_levering_op', nu);
+    if(error || !data || !data.length) return;
+    const geleverdOp = new Date().toISOString();
+    for(const r of data){
+      await supabaseClient.from('magazijn_bestelaanvragen').update({geleverd:true, geleverd_op:geleverdOp}).eq('id', r.id);
+    }
+  }catch(e){ console.warn('Procurement auto-geleverd fout:', e.message); }
+}
+
+async function wmsBeheerLaad(){
+  const tbody = document.getElementById('wms-bestel-tbody');
+  const empty = document.getElementById('wms-bestel-empty');
+  if(!tbody) return;
+  await wmsBeheerAutoMarkGeleverd();
+  try{
+    let q = supabaseClient.from('magazijn_bestelaanvragen').select('*').eq('geleverd', false);
+    if(wmsBestelFilter==='open') q = q.eq('besteld', false);
+    if(wmsBestelFilter==='besteld') q = q.eq('besteld', true);
+    const {data,error} = await q.order('aangemaakt_op', {ascending:false}).limit(200);
+    if(error) throw error;
+    let rows = data || [];
+    const rang = {hoog:0, normaal:1, laag:2};
+    rows.sort((a,b)=>{
+      if(a.besteld !== b.besteld) return a.besteld ? 1 : -1;
+      const ra = rang[a.urgentie] ?? 1, rb = rang[b.urgentie] ?? 1;
+      if(ra !== rb) return ra - rb;
+      return new Date(a.aangemaakt_op) - new Date(b.aangemaakt_op);
+    });
+    wmsBestelRows = rows;
+    if(!rows.length){ tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    tbody.innerHTML = rows.map(r=>`
+      <tr>
+        <td><strong>${wmsEsc(r.artikel_sku||'')}</strong> ${wmsEsc(r.artikel_naam)}</td>
+        <td>${wmsStatusLabel(r.status_voorraad)}${r.geschat_aantal!=null ? ' ('+r.geschat_aantal+' st.)' : ''}</td>
+        <td>${wmsUrgentieBadge(r.urgentie)}</td>
+        <td>${wmsEsc(r.aangevraagd_door_naam||r.aangevraagd_door_email)}</td>
+        <td>${wmsFormatDatum(r.aangemaakt_op)}</td>
+        <td>${wmsEsc(r.opmerking||'')}</td>
+        <td>${r.besteld && r.verwachte_levering_op ? (wmsFormatDatum(r.verwachte_levering_op)+'<div style="font-size:11px;color:var(--tx3)">('+r.levertermijn_weken+' wk)</div>') : ''}</td>
+        <td><button class="btn sm ${r.besteld?'primary':''}" onclick="${r.besteld ? `wmsBeheerToggleBesteld('${r.id}', false)` : `wmsBeheerOpenLeverModal('${r.id}')`}">
+          <i class="ti ti-${r.besteld?'check':'circle'}"></i> ${r.besteld?'Besteld':'Markeer besteld'}
+        </button></td>
+        <td style="white-space:nowrap">
+          <button class="btn sm" title="Bewerken" onclick="wmsEditAanvraagOpenen('${r.id}')"><i class="ti ti-pencil"></i></button>
+          <button class="btn sm danger" title="Verwijderen" onclick="wmsBeheerVerwijderAanvraag('${r.id}')"><i class="ti ti-trash"></i></button>
+        </td>
+      </tr>`).join('');
+  }catch(e){
+    console.warn('Procurement bestelaanvragen fout:', e.message);
+    tbody.innerHTML = '';
+  }
+}
+
+async function wmsBeheerVerwijderAanvraag(id){
+  const r = wmsBestelRows.find(x=>x.id===id);
+  if(!confirm('Aanvraag "'+(r?.artikel_naam||'')+'" definitief verwijderen?')) return;
+  try{
+    const {error} = await supabaseClient.from('magazijn_bestelaanvragen').delete().eq('id', id);
+    if(error) throw error;
+    showToast('✓ Aanvraag verwijderd');
+    wmsBeheerLaad();
+  }catch(e){ showToast('Fout: ' + e.message); }
+}
+
+function wmsEditAanvraagOpenen(id){
+  const r = wmsBestelRows.find(x=>x.id===id);
+  if(!r) return;
+  wmsEditAanvraagId = id;
+  document.getElementById('wms-edit-aanvraag-sku').value = r.artikel_sku || '';
+  document.getElementById('wms-edit-aanvraag-naam').value = r.artikel_naam || '';
+  document.getElementById('wms-edit-aanvraag-status').value = r.status_voorraad || 'bijna_op';
+  document.getElementById('wms-edit-aanvraag-aantal').value = r.geschat_aantal ?? '';
+  document.getElementById('wms-edit-aanvraag-urgentie').value = r.urgentie || 'normaal';
+  document.getElementById('wms-edit-aanvraag-opmerking').value = r.opmerking || '';
+  document.getElementById('wms-edit-aanvraag-modal').classList.add('open');
+}
+function wmsEditAanvraagSluiten(){
+  document.getElementById('wms-edit-aanvraag-modal').classList.remove('open');
+  wmsEditAanvraagId = null;
+}
+async function wmsEditAanvraagOpslaan(){
+  if(!wmsEditAanvraagId) return;
+  const aantalRaw = document.getElementById('wms-edit-aanvraag-aantal').value;
+  try{
+    const {error} = await supabaseClient.from('magazijn_bestelaanvragen').update({
+      artikel_sku: document.getElementById('wms-edit-aanvraag-sku').value.trim() || null,
+      artikel_naam: document.getElementById('wms-edit-aanvraag-naam').value.trim(),
+      status_voorraad: document.getElementById('wms-edit-aanvraag-status').value,
+      geschat_aantal: aantalRaw !== '' ? parseInt(aantalRaw,10) : null,
+      urgentie: document.getElementById('wms-edit-aanvraag-urgentie').value,
+      opmerking: document.getElementById('wms-edit-aanvraag-opmerking').value.trim() || null,
+    }).eq('id', wmsEditAanvraagId);
+    if(error) throw error;
+    showToast('✓ Aanvraag bijgewerkt');
+    wmsEditAanvraagSluiten();
+    wmsBeheerLaad();
+  }catch(e){ showToast('Fout: ' + e.message); }
+}
+
+async function wmsBeheerToggleBesteld(id, nieuw){
+  try{
+    const patch = nieuw
+      ? {besteld:true, besteld_door_email:currentUser.email, besteld_op:new Date().toISOString()}
+      : {besteld:false, besteld_door_email:null, besteld_op:null, levertermijn_weken:null, verwachte_levering_op:null};
+    const {error} = await supabaseClient.from('magazijn_bestelaanvragen').update(patch).eq('id', id);
+    if(error) throw error;
+    showToast(nieuw ? '✓ Gemarkeerd als besteld' : 'Markering ongedaan gemaakt');
+    wmsBeheerLaad();
+  }catch(e){ showToast('Fout: ' + e.message); }
+}
+
+function wmsBeheerOpenLeverModal(id){
+  wmsLeverAanvraagId = id;
+  const el = document.getElementById('wms-lever-weken-btns');
+  if(el && !el.dataset.gevuld){
+    let html = '';
+    for(let w=1; w<=WMS_LEVER_MAX_WEKEN; w++){
+      html += '<button class="btn primary" style="min-width:64px" onclick="wmsLeverKiesWeken('+w+')">'+w+' week'+(w>1?'en':'')+'</button>';
+    }
+    el.innerHTML = html;
+    el.dataset.gevuld = '1';
+  }
+  document.getElementById('wms-lever-modal').classList.add('open');
+}
+function wmsLeverSluitModal(){
+  document.getElementById('wms-lever-modal').classList.remove('open');
+  wmsLeverAanvraagId = null;
+}
+async function wmsLeverKiesWeken(weken){
+  if(!wmsLeverAanvraagId) return;
+  const nu = new Date();
+  const verwacht = new Date(nu.getTime() + weken*7*24*3600*1000);
+  try{
+    const {error} = await supabaseClient.from('magazijn_bestelaanvragen').update({
+      besteld: true,
+      besteld_door_email: currentUser.email,
+      besteld_op: nu.toISOString(),
+      levertermijn_weken: weken,
+      verwachte_levering_op: verwacht.toISOString(),
+      geleverd: false,
+      geleverd_op: null
+    }).eq('id', wmsLeverAanvraagId);
+    if(error) throw error;
+    showToast('✓ Besteld — verwacht binnen ' + weken + ' week' + (weken>1?'en':''));
+    wmsLeverSluitModal();
+    wmsBeheerLaad();
+  }catch(e){ showToast('Fout: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SERVICE STOCK (Service & Installatie) — registreren + teamoverzicht
+// van onderdelen die uit het magazijn worden meegenomen. Zelfde tabel
+// (magazijn_service_registraties) als de externe Bestellijst & Voorraad-tool.
+// ══════════════════════════════════════════════════════════════
+let ssArtikelen = [];
+const SS_ARTIKEL_CACHE_KEY = 'bp_ss_artikelen_cache_v1';
+const SS_ARTIKEL_CACHE_MS = 30*60*1000;
+let ssResLijst = [];
+let ssGeselecteerd = null;
+let ssEditRegistratieId = null;
+let ssAlleRows = [];
+
+function ssKanBeheer(){
+  const afd = (currentUser?.user_metadata?.afdeling)||'';
+  return currentRole==='admin' || afd==='hoofdadmin';
+}
+function ssRedenLabel(r){ return {interventie:'Interventie', aanvulling:'Aanvulling voorraad', andere:'Andere'}[r] || r; }
+
+async function ssLaadArtikelen(force){
+  if(!force){
+    const raw = localStorage.getItem(SS_ARTIKEL_CACHE_KEY);
+    if(raw){
+      try{
+        const cache = JSON.parse(raw);
+        if(Date.now() - cache.tijd < SS_ARTIKEL_CACHE_MS){ ssArtikelen = cache.data; return ssArtikelen; }
+      }catch(e){}
+    }
+  }
+  try{
+    const rows = await afasFetchConnector('Profit_Article_Basic', 5000);
+    const perSku = new Map();
+    for(const r of rows){
+      const sku = r.ItemCode || r.Itemcode || r.Artikelcode || r.itemCode || r.Code || r.code || '';
+      const naam = r.Description || r.Omschrijving || r.omschrijving || r.description || r.naam || '(onbekend)';
+      const groep = r.ArtGroup || r.Artikelgroep || r.artikelgroep || r.ItemGroup || r.itemGroup || '';
+      const key = (sku || naam).trim().toLowerCase();
+      if(!key || perSku.has(key)) continue;
+      perSku.set(key, {sku, naam, groep});
+    }
+    ssArtikelen = Array.from(perSku.values()).sort((a,b)=>a.naam.localeCompare(b.naam));
+    localStorage.setItem(SS_ARTIKEL_CACHE_KEY, JSON.stringify({tijd: Date.now(), data: ssArtikelen}));
+  }catch(e){
+    console.warn('Service Stock artikelen fout:', e.message);
+    const raw = localStorage.getItem(SS_ARTIKEL_CACHE_KEY);
+    if(raw){ try{ ssArtikelen = JSON.parse(raw).data; }catch(e2){} }
+  }
+  return ssArtikelen;
+}
+
+function ssZoekArtikelen(query){
+  const q = (query||'').trim().toLowerCase();
+  if(!q) return [];
+  return ssArtikelen.filter(a =>
+    a.naam.toLowerCase().includes(q) ||
+    (a.sku||'').toLowerCase().includes(q) ||
+    (a.groep||'').toLowerCase().includes(q)
+  ).slice(0, 25);
+}
+
+function ssRenderResultaten(){
+  const inp = document.getElementById('ss-search');
+  if(!inp) return;
+  const q = inp.value;
+  ssGeselecteerd = null;
+  const detailEl = document.getElementById('ss-detail');
+  if(detailEl) detailEl.style.display = 'none';
+  if(!ssArtikelen.length) ssLaadArtikelen(false).then(()=>{ if(document.getElementById('ss-search') && document.getElementById('ss-search').value===q) ssRenderResultaten(); });
+  const res = ssZoekArtikelen(q);
+  ssResLijst = res;
+  const el = document.getElementById('ss-resultaten');
+  if(!q.trim()){ el.innerHTML = ''; return; }
+  if(!ssArtikelen.length){ el.innerHTML = '<div class="wms-empty" style="padding:16px"><i class="ti ti-loader-2"></i><p>Artikelen worden geladen…</p></div>'; return; }
+  if(!res.length){ el.innerHTML = '<div class="wms-empty" style="padding:16px"><i class="ti ti-search-off"></i><p>Geen artikel gevonden.</p></div>'; return; }
+  el.innerHTML = res.map((a,i)=>`
+    <div style="padding:10px 12px;border:1px solid var(--bd);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:border-color .12s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--bd)'" onclick="ssSelecteer(${i})">
+      <div><strong>${wmsEsc(a.sku||'—')}</strong> — ${wmsEsc(a.naam)}</div>
+      ${a.groep ? `<div style="font-size:11px;color:var(--tx3);margin-top:2px">${wmsEsc(a.groep)}</div>` : ''}
+    </div>`).join('');
+}
+
+function ssSelecteer(i){
+  ssGeselecteerd = ssResLijst[i];
+  if(!ssGeselecteerd) return;
+  document.getElementById('ss-resultaten').innerHTML = '';
+  document.getElementById('ss-search').value = ssGeselecteerd.naam;
+  ssRenderDetail();
+}
+
+function ssReset(){
+  ssGeselecteerd = null;
+  document.getElementById('ss-search').value = '';
+  document.getElementById('ss-resultaten').innerHTML = '';
+  document.getElementById('ss-detail').style.display = 'none';
+  document.getElementById('ss-search').focus();
+}
+
+function ssRenderDetail(){
+  const el = document.getElementById('ss-detail');
+  if(!ssGeselecteerd){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:10px">
+      <strong>${wmsEsc(ssGeselecteerd.sku||'')}</strong> — ${wmsEsc(ssGeselecteerd.naam)}
+      <button class="btn sm" style="float:right" onclick="ssReset()"><i class="ti ti-arrow-back"></i> Ander artikel</button>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div class="auth-field" style="max-width:140px"><label>Aantal meegenomen</label><input type="number" min="1" id="ss-aantal" placeholder="bv. 2"></div>
+      <div class="auth-field" style="flex:1;min-width:200px"><label>Reden</label>
+        <select id="ss-reden">
+          <option value="">Kies...</option>
+          <option value="interventie">Interventie</option>
+          <option value="aanvulling">Aanvulling voorraad (bv. wagen)</option>
+          <option value="andere">Andere</option>
+        </select>
+      </div>
+    </div>
+    <div class="auth-field"><label>Toelichting (optioneel)</label><input id="ss-detail-inp" placeholder="bv. klant Janssens, laadpaal defect"></div>
+    <button class="btn primary" onclick="ssVerstuur()"><i class="ti ti-send"></i> Registreren</button>
+  `;
+  const aantalEl = document.getElementById('ss-aantal');
+  if(aantalEl) aantalEl.focus();
+}
+
+async function ssVerstuur(){
+  const aantal = document.getElementById('ss-aantal')?.value;
+  const reden = document.getElementById('ss-reden')?.value;
+  const redenDetail = document.getElementById('ss-detail-inp')?.value.trim() || null;
+  if(!ssGeselecteerd || !aantal || parseInt(aantal,10) <= 0){ showToast('Vul een geldig aantal in.'); return; }
+  if(!reden){ showToast('Kies een reden.'); return; }
+  try{
+    const {error} = await supabaseClient.from('magazijn_service_registraties').insert({
+      artikel_sku: ssGeselecteerd.sku || null,
+      artikel_naam: ssGeselecteerd.naam,
+      artikel_groep: ssGeselecteerd.groep || null,
+      aantal: parseInt(aantal,10),
+      reden,
+      reden_detail: redenDetail,
+      medewerker_email: currentUser.email,
+      medewerker_naam: currentUserNaam || currentUser.email.split('@')[0],
+    });
+    if(error) throw error;
+    showToast('✓ Geregistreerd');
+    ssReset();
+    ssRefreshAlles();
+  }catch(e){ showToast('Fout: ' + e.message); }
+}
+
+async function ssRefreshAlles(){
+  if(!ssArtikelen.length) ssLaadArtikelen(false);
+  await Promise.all([ssLaadAlleRegistraties(), ssLaadMijnCompact(), ssLaadKortOverzicht()]);
+}
+
+async function ssLaadAlleRegistraties(){
+  const tbody = document.getElementById('ss-alle-tbody');
+  const empty = document.getElementById('ss-alle-empty');
+  const actiesTh = document.getElementById('ss-acties-th');
+  if(!tbody) return;
+  if(actiesTh) actiesTh.style.display = ssKanBeheer() ? '' : 'none';
+  try{
+    const {data,error} = await supabaseClient.from('magazijn_service_registraties').select('*')
+      .order('aangemaakt_op', {ascending:false}).limit(100);
+    if(error) throw error;
+    ssAlleRows = data || [];
+    if(!data || !data.length){ tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    const beheer = ssKanBeheer();
+    tbody.innerHTML = data.map(r=>`
+      <tr>
+        <td><strong>${wmsEsc(r.artikel_sku||'')}</strong> ${wmsEsc(r.artikel_naam)}</td>
+        <td>${r.aantal}</td>
+        <td>${wmsEsc(ssRedenLabel(r.reden))}${r.reden_detail?' — '+wmsEsc(r.reden_detail):''}</td>
+        <td>${wmsEsc(r.medewerker_naam||r.medewerker_email)}</td>
+        <td>${wmsFormatDatum(r.aangemaakt_op)}</td>
+        <td style="white-space:nowrap">${beheer ? `
+          <button class="btn sm" title="Bewerken" onclick="ssEditRegistratieOpenen('${r.id}')"><i class="ti ti-pencil"></i></button>
+          <button class="btn sm danger" title="Verwijderen" onclick="ssVerwijderRegistratie('${r.id}')"><i class="ti ti-trash"></i></button>
+        ` : ''}</td>
+      </tr>`).join('');
+  }catch(e){
+    console.warn('Service Stock registraties fout:', e.message);
+    tbody.innerHTML = '';
+  }
+}
+
+async function ssLaadMijnCompact(){
+  const el = document.getElementById('ss-mijn-compact');
+  if(!el) return;
+  try{
+    const {data,error} = await supabaseClient.from('magazijn_service_registraties').select('*')
+      .eq('medewerker_email', currentUser.email)
+      .order('aangemaakt_op', {ascending:false}).limit(5);
+    if(error) throw error;
+    if(!data || !data.length){ el.innerHTML = '<div style="color:var(--tx3)">Nog geen registraties.</div>'; return; }
+    el.innerHTML = data.map(r=>`
+      <div style="padding:7px 0;border-bottom:1px solid var(--bd)">
+        <div style="font-weight:600">${wmsEsc(r.artikel_sku||'')} ${wmsEsc(r.artikel_naam)}</div>
+        <div style="font-size:11px;color:var(--tx3)">${r.aantal} st. · ${wmsEsc(ssRedenLabel(r.reden))} · ${wmsFormatDatum(r.aangemaakt_op)}</div>
+      </div>`).join('');
+  }catch(e){ el.innerHTML = ''; }
+}
+
+async function ssLaadKortOverzicht(){
+  try{
+    const nu = new Date();
+    const startVandaag = new Date(nu.getFullYear(), nu.getMonth(), nu.getDate()).toISOString();
+    const startWeek = new Date(nu.getTime() - 7*24*3600*1000).toISOString();
+    const [vandaag, week, mijnTotaal] = await Promise.all([
+      supabaseClient.from('magazijn_service_registraties').select('id', {count:'exact', head:true}).gte('aangemaakt_op', startVandaag),
+      supabaseClient.from('magazijn_service_registraties').select('id', {count:'exact', head:true}).gte('aangemaakt_op', startWeek),
+      supabaseClient.from('magazijn_service_registraties').select('id', {count:'exact', head:true}).eq('medewerker_email', currentUser.email),
+    ]);
+    const vEl = document.getElementById('ss-stat-vandaag'), wEl = document.getElementById('ss-stat-week'), mEl = document.getElementById('ss-stat-mijn');
+    if(vEl) vEl.textContent = vandaag.count ?? '–';
+    if(wEl) wEl.textContent = week.count ?? '–';
+    if(mEl) mEl.textContent = mijnTotaal.count ?? '–';
+  }catch(e){ console.warn('Service Stock overzicht fout:', e.message); }
+}
+
+async function ssVerwijderRegistratie(id){
+  if(!ssKanBeheer()) return;
+  const r = ssAlleRows.find(x=>x.id===id);
+  if(!confirm('Registratie "'+(r?.artikel_naam||'')+'" definitief verwijderen?')) return;
+  try{
+    const {error} = await supabaseClient.from('magazijn_service_registraties').delete().eq('id', id);
+    if(error) throw error;
+    showToast('✓ Registratie verwijderd');
+    ssLaadAlleRegistraties();
+  }catch(e){ showToast('Fout: ' + e.message); }
+}
+
+function ssEditRegistratieOpenen(id){
+  if(!ssKanBeheer()) return;
+  const r = ssAlleRows.find(x=>x.id===id);
+  if(!r) return;
+  ssEditRegistratieId = id;
+  document.getElementById('ss-edit-reg-sku').value = r.artikel_sku || '';
+  document.getElementById('ss-edit-reg-naam').value = r.artikel_naam || '';
+  document.getElementById('ss-edit-reg-aantal').value = r.aantal ?? '';
+  document.getElementById('ss-edit-reg-reden').value = r.reden || 'interventie';
+  document.getElementById('ss-edit-reg-detail').value = r.reden_detail || '';
+  document.getElementById('ss-edit-registratie-modal').classList.add('open');
+}
+function ssEditRegistratieSluiten(){
+  document.getElementById('ss-edit-registratie-modal').classList.remove('open');
+  ssEditRegistratieId = null;
+}
+async function ssEditRegistratieOpslaan(){
+  if(!ssEditRegistratieId) return;
+  const aantalRaw = document.getElementById('ss-edit-reg-aantal').value;
+  try{
+    const {error} = await supabaseClient.from('magazijn_service_registraties').update({
+      artikel_sku: document.getElementById('ss-edit-reg-sku').value.trim() || null,
+      artikel_naam: document.getElementById('ss-edit-reg-naam').value.trim(),
+      aantal: aantalRaw !== '' ? parseInt(aantalRaw,10) : null,
+      reden: document.getElementById('ss-edit-reg-reden').value,
+      reden_detail: document.getElementById('ss-edit-reg-detail').value.trim() || null,
+    }).eq('id', ssEditRegistratieId);
+    if(error) throw error;
+    showToast('✓ Registratie bijgewerkt');
+    ssEditRegistratieSluiten();
+    ssLaadAlleRegistraties();
+  }catch(e){ showToast('Fout: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// NIEUWE AANVRAAG — gedeeld tussen Procurement ("Nieuwe aanvraag") en
+// Service & Installatie ("Materiaalaanvraag"). Zoekt in dezelfde
+// AFAS-artikelenlijst als Service Stock (ssArtikelen), met een manuele
+// invoer-optie voor producten die niet in AFAS staan.
+// ══════════════════════════════════════════════════════════════
+let wmsNaResLijst = [];
+let wmsNaGeselecteerd = null;
+let wmsNaStatus = null;
+let wmsNaDubbels = [];
+
+function wmsNieuweAanvraagOpen(){
+  wmsNaGeselecteerd = null; wmsNaStatus = null; wmsNaDubbels = [];
+  const zoekEl = document.getElementById('wms-na-search');
+  if(zoekEl) zoekEl.value = '';
+  const resEl = document.getElementById('wms-na-resultaten');
+  if(resEl) resEl.innerHTML = '';
+  const detailEl = document.getElementById('wms-na-detail');
+  if(detailEl) detailEl.style.display = 'none';
+  document.getElementById('wms-nieuwe-aanvraag-modal').classList.add('open');
+  if(!ssArtikelen.length) ssLaadArtikelen(false);
+  setTimeout(function(){ const el=document.getElementById('wms-na-search'); if(el) el.focus(); }, 50);
+}
+function wmsNieuweAanvraagSluiten(){
+  document.getElementById('wms-nieuwe-aanvraag-modal').classList.remove('open');
+}
+
+function wmsNaRenderResultaten(){
+  const inp = document.getElementById('wms-na-search');
+  if(!inp) return;
+  const q = inp.value;
+  wmsNaGeselecteerd = null; wmsNaStatus = null;
+  const detailEl = document.getElementById('wms-na-detail');
+  if(detailEl){ detailEl.style.display = 'none'; detailEl.innerHTML = ''; }
+  if(!ssArtikelen.length) ssLaadArtikelen(false).then(function(){
+    const el = document.getElementById('wms-na-search');
+    if(el && el.value===q) wmsNaRenderResultaten();
+  });
+  const res = ssZoekArtikelen(q);
+  wmsNaResLijst = res;
+  const el = document.getElementById('wms-na-resultaten');
+  if(!q.trim()){ el.innerHTML = ''; return; }
+  if(!ssArtikelen.length){ el.innerHTML = '<div class="wms-empty" style="padding:16px"><i class="ti ti-loader-2"></i><p>Artikelen worden geladen…</p></div>'; return; }
+  if(!res.length){ el.innerHTML = '<div class="wms-empty" style="padding:16px"><i class="ti ti-search-off"></i><p>Geen artikel gevonden. Gebruik "Manueel product invoeren" hierboven.</p></div>'; return; }
+  el.innerHTML = res.map((a,i)=>`
+    <div style="padding:10px 12px;border:1px solid var(--bd);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:border-color .12s" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--bd)'" onclick="wmsNaSelecteer(${i})">
+      <div><strong>${wmsEsc(a.sku||'—')}</strong> — ${wmsEsc(a.naam)}</div>
+      ${a.groep ? `<div style="font-size:11px;color:var(--tx3);margin-top:2px">${wmsEsc(a.groep)}</div>` : ''}
+    </div>`).join('');
+}
+
+async function wmsNaSelecteer(i){
+  const gekozen = wmsNaResLijst[i];
+  if(!gekozen) return;
+  let dubbels = [];
+  try{
+    const {data} = await supabaseClient.from('magazijn_bestelaanvragen')
+      .select('artikel_naam,aangevraagd_door_naam,aangemaakt_op')
+      .eq('artikel_sku', gekozen.sku||'').eq('besteld', false).limit(3);
+    dubbels = data || [];
+  }catch(e){}
+  if(dubbels.length){
+    const wie = dubbels[0].aangevraagd_door_naam || 'een collega';
+    if(!confirm('Let op: dit artikel is al aangevraagd door ' + wie + '.\n\nWenst u toch door te gaan?')) return;
+  }
+  wmsNaGeselecteerd = {sku: gekozen.sku||'', naam: gekozen.naam, groep: gekozen.groep||null, _manueel:false};
+  wmsNaDubbels = dubbels;
+  wmsNaStatus = null;
+  document.getElementById('wms-na-resultaten').innerHTML = '';
+  document.getElementById('wms-na-search').value = gekozen.naam;
+  wmsNaRenderDetail();
+}
+
+function wmsNaHandmatig(){
+  wmsNaGeselecteerd = {sku:'', naam:'', groep:null, _manueel:true};
+  wmsNaDubbels = [];
+  wmsNaStatus = null;
+  const resEl = document.getElementById('wms-na-resultaten');
+  if(resEl) resEl.innerHTML = '';
+  wmsNaRenderDetail();
+}
+
+function wmsNaKiesStatus(status){ wmsNaStatus = status; wmsNaRenderDetail(); }
+
+function wmsNaBerekenUrgentie(status, aantal){
+  if(status === 'op') return 'hoog';
+  const n = (aantal===''||aantal==null) ? null : parseInt(aantal, 10);
+  if(n==null || isNaN(n)) return 'normaal';
+  if(n <= 2) return 'hoog';
+  if(n <= 5) return 'normaal';
+  return 'laag';
+}
+
+function wmsNaRenderDetail(){
+  const el = document.getElementById('wms-na-detail');
+  if(!wmsNaGeselecteerd){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const topBox = wmsNaGeselecteerd._manueel
+    ? '<div style="background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:10px">'
+      + '<div class="auth-field" style="margin-bottom:8px"><label>Productnaam / omschrijving *</label><input id="wms-na-manueel-naam" value="'+wmsEsc(wmsNaGeselecteerd.naam||'')+'" oninput="wmsNaGeselecteerd.naam=this.value" placeholder="bv. Kabelklem 25mm (niet in AFAS)"></div>'
+      + '<div class="auth-field" style="margin-bottom:8px"><label>Artikelcode (optioneel)</label><input id="wms-na-manueel-sku" value="'+wmsEsc(wmsNaGeselecteerd.sku||'')+'" oninput="wmsNaGeselecteerd.sku=this.value" placeholder="indien gekend"></div>'
+      + '<button class="btn sm" onclick="wmsNaReset()"><i class="ti ti-arrow-back"></i> Annuleren</button>'
+      + '</div>'
+    : '<div style="background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:10px">'
+      + '<strong>'+wmsEsc(wmsNaGeselecteerd.sku||'')+'</strong> — '+wmsEsc(wmsNaGeselecteerd.naam)
+      + '<button class="btn sm" style="float:right" onclick="wmsNaReset()"><i class="ti ti-arrow-back"></i> Ander artikel</button>'
+      + '</div>';
+  const opKleur = wmsNaStatus==='op' ? 'var(--red)' : 'var(--bd)';
+  const opStijl = wmsNaStatus==='op' ? 'background:#fcebeb;color:var(--red)' : '';
+  const bijnaKleur = wmsNaStatus==='bijna_op' ? '#c77d00' : 'var(--bd)';
+  const bijnaStijl = wmsNaStatus==='bijna_op' ? 'background:#fdf3e2;color:#c77d00' : '';
+  el.innerHTML = topBox + `
+    ${wmsNaDubbels.length ? '<div style="background:#fdf3e2;border:1px solid rgba(199,125,0,.35);color:#8a5c00;padding:10px 13px;border-radius:8px;font-size:12.5px;margin-bottom:12px"><i class="ti ti-info-circle"></i> Er staat al een openstaande aanvraag voor dit artikel.</div>' : ''}
+    <div style="font-size:13px;color:var(--tx2);margin-bottom:10px">Is dit artikel/product volledig op, of nog beperkt op voorraad?</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="flex:1;min-width:180px;padding:16px;border:2px solid ${opKleur};border-radius:8px;cursor:pointer;text-align:center;font-weight:600;font-size:14px;${opStijl}" onclick="wmsNaKiesStatus('op')"><i class="ti ti-alert-triangle" style="display:block;font-size:22px;margin-bottom:6px"></i>Volledig op</div>
+      <div style="flex:1;min-width:180px;padding:16px;border:2px solid ${bijnaKleur};border-radius:8px;cursor:pointer;text-align:center;font-weight:600;font-size:14px;${bijnaStijl}" onclick="wmsNaKiesStatus('bijna_op')"><i class="ti ti-package" style="display:block;font-size:22px;margin-bottom:6px"></i>Nog beperkt op voorraad</div>
+    </div>
+    ${wmsNaStatus==='bijna_op' ? '<div class="auth-field" style="max-width:220px"><label>Geschatte resterende voorraad (aantal)</label><input type="number" min="0" id="wms-na-aantal" placeholder="bv. 3"></div>' : ''}
+    ${wmsNaStatus ? '<div class="auth-field"><label>Opmerking (optioneel)</label><input id="wms-na-opm" placeholder="bv. dringend voor lopend order"></div><button class="btn primary" onclick="wmsNaVerstuur()"><i class="ti ti-send"></i> Aanvraag versturen</button>' : ''}
+  `;
+  if(wmsNaStatus==='bijna_op'){ const a=document.getElementById('wms-na-aantal'); if(a) a.focus(); }
+}
+
+function wmsNaReset(){
+  wmsNaGeselecteerd = null; wmsNaStatus = null; wmsNaDubbels = [];
+  document.getElementById('wms-na-search').value = '';
+  document.getElementById('wms-na-resultaten').innerHTML = '';
+  document.getElementById('wms-na-detail').style.display = 'none';
+  document.getElementById('wms-na-search').focus();
+}
+
+async function wmsNaVerstuur(){
+  if(!wmsNaGeselecteerd || !wmsNaStatus){ showToast('Kies eerst een artikel/product en status.'); return; }
+  if(wmsNaGeselecteerd._manueel && !(wmsNaGeselecteerd.naam||'').trim()){ showToast('Vul een productnaam in.'); return; }
+  const aantalRaw = wmsNaStatus==='bijna_op' ? (document.getElementById('wms-na-aantal')?.value || '') : '';
+  const urgentie = wmsNaBerekenUrgentie(wmsNaStatus, aantalRaw);
+  const opmerking = document.getElementById('wms-na-opm')?.value.trim() || null;
+  try{
+    const {error} = await supabaseClient.from('magazijn_bestelaanvragen').insert({
+      artikel_sku: (wmsNaGeselecteerd.sku||'').trim() || null,
+      artikel_naam: wmsNaGeselecteerd.naam,
+      artikel_groep: wmsNaGeselecteerd.groep || null,
+      status_voorraad: wmsNaStatus,
+      geschat_aantal: aantalRaw!=='' ? parseInt(aantalRaw,10) : null,
+      urgentie,
+      opmerking: wmsNaGeselecteerd._manueel ? ('[Manueel ingevoerd product]' + (opmerking ? ' — ' + opmerking : '')) : opmerking,
+      aangevraagd_door_email: currentUser.email,
+      aangevraagd_door_naam: currentUserNaam || currentUser.email.split('@')[0],
+    });
+    if(error) throw error;
+    showToast('✓ Aanvraag verstuurd');
+    wmsNieuweAanvraagSluiten();
+    if(document.getElementById('pane-procurement') && document.getElementById('pane-procurement').style.display==='block') wmsBeheerLaad();
+  }catch(e){ showToast('Fout: ' + e.message); }
+}
 </script>
 
 <!-- CRM AANVUL POPUP -->
