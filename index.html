@@ -813,7 +813,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
         <button class="nav-dd-item" id="tab-si-agenda" onclick="showTab('si-agenda');closeAllNavDd()"><i class="ti ti-calendar-event"></i> Agenda service</button>
         <div style="height:1px;background:var(--bd);margin:4px 8px"></div>
         <button class="nav-dd-item" id="tab-service-stock" onclick="showTab('service-stock');closeAllNavDd()"><i class="ti ti-package"></i> Registraties</button>
-        <button class="nav-dd-item" id="tab-service-materiaalaanvraag" onclick="wmsNieuweAanvraagOpen();closeAllNavDd()"><i class="ti ti-shopping-cart-plus"></i> Materiaalaanvraag</button>
+        <button class="nav-dd-item" id="tab-service-materiaalaanvraag" onclick="wmsNieuweAanvraagOpen('service');closeAllNavDd()"><i class="ti ti-shopping-cart-plus"></i> Materiaalaanvraag</button>
       </div>
     </div>
 
@@ -1333,23 +1333,34 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 <!-- PROCUREMENT -->
 <div id="pane-procurement" class="page" style="display:none">
   <div class="wms-page-header">
-    <div><div class="wms-page-title">Bestelaanvragen</div><div class="wms-page-sub">Alle bestel- en materiaalaanvragen — vanuit productie (externe Bestellijst &amp; Voorraad-tool) én vanuit Service &amp; Installatie.</div></div>
+    <div><div class="wms-page-title">Bestelaanvragen</div><div class="wms-page-sub">Vanuit productie (externe Bestellijst &amp; Voorraad-tool) én vanuit Service &amp; Installatie — vink af zodra besteld.</div></div>
     <div style="display:flex;gap:8px">
-      <button class="btn primary" onclick="wmsNieuweAanvraagOpen()"><i class="ti ti-plus"></i> Nieuwe aanvraag</button>
+      <button class="btn primary" onclick="wmsNieuweAanvraagOpen('productie')"><i class="ti ti-plus"></i> Nieuwe aanvraag</button>
       <button class="btn sm" onclick="wmsBeheerLaad()"><i class="ti ti-refresh"></i> Vernieuwen</button>
     </div>
   </div>
-  <div class="pills" style="margin-bottom:14px" id="wms-bestel-filter-pills">
+  <div class="pills" style="margin-bottom:20px" id="wms-bestel-filter-pills">
     <button class="pill active" data-f="open" onclick="wmsBeheerSetFilter('open')">Open</button>
     <button class="pill" data-f="besteld" onclick="wmsBeheerSetFilter('besteld')">Besteld</button>
     <button class="pill" data-f="alle" onclick="wmsBeheerSetFilter('alle')">Alles</button>
   </div>
+
+  <div class="wms-page-title" style="font-size:15px;margin-bottom:10px"><i class="ti ti-building-factory" style="margin-right:6px;color:#4b5563"></i>Productie</div>
+  <div class="wms-card" style="margin-bottom:28px">
+    <div class="wms-table-wrap"><table class="wms-table">
+      <thead><tr><th>Artikel</th><th>Voorraadstatus</th><th>Urgentie</th><th>Aangevraagd door</th><th>Datum</th><th>Opmerking</th><th>Verwachte levering</th><th>Besteld</th><th>Acties</th></tr></thead>
+      <tbody id="wms-bestel-tbody-productie"></tbody>
+    </table></div>
+    <div id="wms-bestel-empty-productie" class="wms-empty" style="display:none"><i class="ti ti-clipboard-check"></i><p>Geen aanvragen vanuit productie.</p></div>
+  </div>
+
+  <div class="wms-page-title" style="font-size:15px;margin-bottom:10px"><i class="ti ti-tools" style="margin-right:6px;color:#0ea5a5"></i>Service &amp; Installatie</div>
   <div class="wms-card">
     <div class="wms-table-wrap"><table class="wms-table">
       <thead><tr><th>Artikel</th><th>Voorraadstatus</th><th>Urgentie</th><th>Aangevraagd door</th><th>Datum</th><th>Opmerking</th><th>Verwachte levering</th><th>Besteld</th><th>Acties</th></tr></thead>
-      <tbody id="wms-bestel-tbody"></tbody>
+      <tbody id="wms-bestel-tbody-service"></tbody>
     </table></div>
-    <div id="wms-bestel-empty" class="wms-empty" style="display:none"><i class="ti ti-clipboard-check"></i><p>Geen aanvragen.</p></div>
+    <div id="wms-bestel-empty-service" class="wms-empty" style="display:none"><i class="ti ti-clipboard-check"></i><p>Geen aanvragen vanuit Service &amp; Installatie.</p></div>
   </div>
 </div>
 
@@ -15266,8 +15277,10 @@ async function afasVerstuurOfferte(){
 // ══════════════════════════════════════════════════════════════
 // PROCUREMENT — unified bestel-/materiaalaanvragen (magazijn_bestelaanvragen).
 // Zelfde tabel als de externe "Bestellijst & Voorraad"-tool (productie) EN
-// als de "Materiaalaanvraag"-knop onder Service & Installatie: alles komt
-// hier samen in één overzicht.
+// als de "Materiaalaanvraag"-knop onder Service & Installatie. De pagina
+// toont de aanvragen opgesplitst in twee secties: Productie en Service &
+// Installatie, op basis van de kolom "bron" (default 'productie' — zie
+// sql-bron-kolom.sql, nodig zodat de externe tool ongewijzigd kan blijven).
 // ══════════════════════════════════════════════════════════════
 function wmsEsc(s){
   return String(s==null?'':s).replace(/[&<>"']/g, function(c){
@@ -15316,10 +15329,30 @@ async function wmsBeheerAutoMarkGeleverd(){
   }catch(e){ console.warn('Procurement auto-geleverd fout:', e.message); }
 }
 
+function wmsBestelRijHtml(r){
+  return `
+      <tr>
+        <td><strong>${wmsEsc(r.artikel_sku||'')}</strong> ${wmsEsc(r.artikel_naam)}</td>
+        <td>${wmsStatusLabel(r.status_voorraad)}${r.geschat_aantal!=null ? ' ('+r.geschat_aantal+' st.)' : ''}</td>
+        <td>${wmsUrgentieBadge(r.urgentie)}</td>
+        <td>${wmsEsc(r.aangevraagd_door_naam||r.aangevraagd_door_email)}</td>
+        <td>${wmsFormatDatum(r.aangemaakt_op)}</td>
+        <td>${wmsEsc(r.opmerking||'')}</td>
+        <td>${r.besteld && r.verwachte_levering_op ? (wmsFormatDatum(r.verwachte_levering_op)+'<div style="font-size:11px;color:var(--tx3)">('+r.levertermijn_weken+' wk)</div>') : ''}</td>
+        <td><button class="btn sm ${r.besteld?'primary':''}" onclick="${r.besteld ? `wmsBeheerToggleBesteld('${r.id}', false)` : `wmsBeheerOpenLeverModal('${r.id}')`}">
+          <i class="ti ti-${r.besteld?'check':'circle'}"></i> ${r.besteld?'Besteld':'Markeer besteld'}
+        </button></td>
+        <td style="white-space:nowrap">
+          <button class="btn sm" title="Bewerken" onclick="wmsEditAanvraagOpenen('${r.id}')"><i class="ti ti-pencil"></i></button>
+          <button class="btn sm danger" title="Verwijderen" onclick="wmsBeheerVerwijderAanvraag('${r.id}')"><i class="ti ti-trash"></i></button>
+        </td>
+      </tr>`;
+}
+
 async function wmsBeheerLaad(){
-  const tbody = document.getElementById('wms-bestel-tbody');
-  const empty = document.getElementById('wms-bestel-empty');
-  if(!tbody) return;
+  const tbodyP = document.getElementById('wms-bestel-tbody-productie');
+  const tbodyS = document.getElementById('wms-bestel-tbody-service');
+  if(!tbodyP && !tbodyS) return;
   await wmsBeheerAutoMarkGeleverd();
   try{
     let q = supabaseClient.from('magazijn_bestelaanvragen').select('*').eq('geleverd', false);
@@ -15336,28 +15369,20 @@ async function wmsBeheerLaad(){
       return new Date(a.aangemaakt_op) - new Date(b.aangemaakt_op);
     });
     wmsBestelRows = rows;
-    if(!rows.length){ tbody.innerHTML = ''; empty.style.display = 'block'; return; }
-    empty.style.display = 'none';
-    tbody.innerHTML = rows.map(r=>`
-      <tr>
-        <td><strong>${wmsEsc(r.artikel_sku||'')}</strong> ${wmsEsc(r.artikel_naam)}</td>
-        <td>${wmsStatusLabel(r.status_voorraad)}${r.geschat_aantal!=null ? ' ('+r.geschat_aantal+' st.)' : ''}</td>
-        <td>${wmsUrgentieBadge(r.urgentie)}</td>
-        <td>${wmsEsc(r.aangevraagd_door_naam||r.aangevraagd_door_email)}</td>
-        <td>${wmsFormatDatum(r.aangemaakt_op)}</td>
-        <td>${wmsEsc(r.opmerking||'')}</td>
-        <td>${r.besteld && r.verwachte_levering_op ? (wmsFormatDatum(r.verwachte_levering_op)+'<div style="font-size:11px;color:var(--tx3)">('+r.levertermijn_weken+' wk)</div>') : ''}</td>
-        <td><button class="btn sm ${r.besteld?'primary':''}" onclick="${r.besteld ? `wmsBeheerToggleBesteld('${r.id}', false)` : `wmsBeheerOpenLeverModal('${r.id}')`}">
-          <i class="ti ti-${r.besteld?'check':'circle'}"></i> ${r.besteld?'Besteld':'Markeer besteld'}
-        </button></td>
-        <td style="white-space:nowrap">
-          <button class="btn sm" title="Bewerken" onclick="wmsEditAanvraagOpenen('${r.id}')"><i class="ti ti-pencil"></i></button>
-          <button class="btn sm danger" title="Verwijderen" onclick="wmsBeheerVerwijderAanvraag('${r.id}')"><i class="ti ti-trash"></i></button>
-        </td>
-      </tr>`).join('');
+    const productieRows = rows.filter(r => (r.bron||'productie')!=='service');
+    const serviceRows = rows.filter(r => (r.bron||'productie')==='service');
+    if(tbodyP){
+      const emptyP = document.getElementById('wms-bestel-empty-productie');
+      if(!productieRows.length){ tbodyP.innerHTML=''; if(emptyP) emptyP.style.display='block'; }
+      else { if(emptyP) emptyP.style.display='none'; tbodyP.innerHTML = productieRows.map(wmsBestelRijHtml).join(''); }
+    }
+    if(tbodyS){
+      const emptyS = document.getElementById('wms-bestel-empty-service');
+      if(!serviceRows.length){ tbodyS.innerHTML=''; if(emptyS) emptyS.style.display='block'; }
+      else { if(emptyS) emptyS.style.display='none'; tbodyS.innerHTML = serviceRows.map(wmsBestelRijHtml).join(''); }
+    }
   }catch(e){
     console.warn('Procurement bestelaanvragen fout:', e.message);
-    tbody.innerHTML = '';
   }
 }
 
@@ -15732,8 +15757,10 @@ let wmsNaResLijst = [];
 let wmsNaGeselecteerd = null;
 let wmsNaStatus = null;
 let wmsNaDubbels = [];
+let wmsNaBron = 'productie';
 
-function wmsNieuweAanvraagOpen(){
+function wmsNieuweAanvraagOpen(bron){
+  wmsNaBron = bron || 'productie';
   wmsNaGeselecteerd = null; wmsNaStatus = null; wmsNaDubbels = [];
   const zoekEl = document.getElementById('wms-na-search');
   if(zoekEl) zoekEl.value = '';
@@ -15741,6 +15768,8 @@ function wmsNieuweAanvraagOpen(){
   if(resEl) resEl.innerHTML = '';
   const detailEl = document.getElementById('wms-na-detail');
   if(detailEl) detailEl.style.display = 'none';
+  const titelEl = document.querySelector('#wms-nieuwe-aanvraag-modal .modal-title');
+  if(titelEl) titelEl.textContent = wmsNaBron==='service' ? 'Nieuwe materiaalaanvraag' : 'Nieuwe bestelaanvraag';
   document.getElementById('wms-nieuwe-aanvraag-modal').classList.add('open');
   if(!ssArtikelen.length) ssLaadArtikelen(false);
   setTimeout(function(){ const el=document.getElementById('wms-na-search'); if(el) el.focus(); }, 50);
@@ -15869,6 +15898,7 @@ async function wmsNaVerstuur(){
       geschat_aantal: aantalRaw!=='' ? parseInt(aantalRaw,10) : null,
       urgentie,
       opmerking: wmsNaGeselecteerd._manueel ? ('[Manueel ingevoerd product]' + (opmerking ? ' — ' + opmerking : '')) : opmerking,
+      bron: wmsNaBron || 'productie',
       aangevraagd_door_email: currentUser.email,
       aangevraagd_door_naam: currentUserNaam || currentUser.email.split('@')[0],
     });
