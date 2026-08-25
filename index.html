@@ -14777,22 +14777,6 @@ async function afasAutoSync(host, tipo){
       return;
     }
 
-    // Regels die al eerder succesvol naar AFAS gingen, worden bij een update
-    // NOOIT opnieuw meegestuurd: itemcode-matching blijkt bij AFAS niet
-    // betrouwbaar voor een al-bestaande regel, ongeacht het type (zowel
-    // Samenstelling- als gewone Artikel-regels gaven "Geen regel gevonden
-    // met itemcode...", wat de HELE update deed mislukken). Enkel ECHT
-    // NIEUWE regels (nog nooit gesynct) gaan mee bij een update -- die
-    // worden dan gewoon als nieuwe regel toegevoegd.
-    // Let op: een wijziging (aantal/prijs) aan een reeds gesynchroniseerde
-    // regel gaat hierdoor voorlopig niet automatisch mee naar AFAS.
-    const groeperingenVoorAfas = s.offertenummer
-      ? s.groeperingen.map(g=>({
-          ...g,
-          items: (g.items||[]).filter(it=> !it._gesynct),
-        })).filter(g=>g.items.length)
-      : s.groeperingen;
-
     // Eindklantgegevens: bij een lead (B2C) is host zelf de lead; bij een
     // B2B-project zitten naam/contact elders op het project.
     const eindklantNaam = tipo==='lead'
@@ -14800,12 +14784,6 @@ async function afasAutoSync(host, tipo){
       : (host.contact||host.klant||host.naam||'');
     const eindklantEmail = host.email || host.contactemail || '';
     const eindklantTel = host.tel || host.contactgsm || host.gsm || '';
-
-    if(s.offertenummer && !groeperingenVoorAfas.length){
-      // Alles wat nog verstuurd moest worden was al eerder gesynct (enkel
-      // een ongewijzigde Samenstelling-regel over) -- niets te doen.
-      return;
-    }
 
     const resp = await fetch('https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/afas-offerte-sync', {
       method:'POST',
@@ -14816,7 +14794,7 @@ async function afasAutoSync(host, tipo){
         debiteurId,
         datum: s.datum || today(),
         status: 0,
-        groeperingen: groeperingenVoorAfas,
+        groeperingen: s.groeperingen,
         eindklant: {
           naam: eindklantNaam || undefined,
           email: eindklantEmail || undefined,
@@ -14830,10 +14808,22 @@ async function afasAutoSync(host, tipo){
     const data = await resp.json();
     if(!resp.ok || data.error){ console.warn('AFAS auto-sync fout:', data.detail||data.error); return; }
 
-    // Alles wat we net (opnieuw) naar AFAS gestuurd hebben, geldt vanaf nu
-    // als gesynchroniseerd -- nodig zodat een regel bij een volgende update
-    // niet opnieuw wordt meegestuurd (zie hierboven).
-    s.groeperingen.forEach(g=>(g.items||[]).forEach(it=>{ it._gesynct = true; }));
+    // AFAS geeft na elke sync de echte regel-GUID's (GuLi) terug via de
+    // "Blitz-verkoopofferteregels" GetConnector -- koppel die aan onze eigen
+    // regels (op itemcode + groepering) en bewaar ze op elk item. Bij de
+    // VOLGENDE sync sturen we die GUID mee, zodat AFAS een bestaande regel
+    // betrouwbaar herkent en bijwerkt i.p.v. "Geen regel gevonden met
+    // itemcode..." te geven.
+    if(Array.isArray(data.regels)){
+      s.groeperingen.forEach(g=>(g.items||[]).forEach(it=>{
+        const match = data.regels.find(r=>
+          !r._gebruikt &&
+          r.itemcode===String(it.sku||'').trim() &&
+          (r.groepering||'')===(g.naam||'')
+        );
+        if(match){ it.guli = match.guli; match._gebruikt = true; }
+      }));
+    }
     const nieuwNummerToegekend = !!(data.afasOfferteNr && !s.offertenummer);
     if(data.afasOfferteNr && !s.offertenummer) s.offertenummer = data.afasOfferteNr;
     // Belangrijk: ook de lokale bewerk-state bijwerken. Anders overschrijft de
