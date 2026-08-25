@@ -14785,6 +14785,32 @@ async function afasAutoSync(host, tipo){
     const eindklantEmail = host.email || host.contactemail || '';
     const eindklantTel = host.tel || host.contactgsm || host.gsm || '';
 
+    // Bij een update kan AFAS enkel regels bijwerken die al een GUID hebben
+    // (dus minstens 1x eerder gesynct zijn) -- een gloednieuwe regel zonder
+    // GUID laat AFAS de HELE update weigeren ("Geen regel gevonden met
+    // itemcode..."), ook voor de andere, wel geldige wijzigingen. Daarom
+    // worden nieuwe regels bij een update overgeslagen (blijven wel gewoon
+    // in het dashboard staan) en apart gemeld -- toevoegen kan voorlopig
+    // enkel manueel in AFAS zelf.
+    const nieuweRegelsZonderGuid = [];
+    const groeperingenVoorAfas = s.offertenummer
+      ? s.groeperingen.map(g=>({
+          ...g,
+          items: (g.items||[]).filter(it=>{
+            if(it.guli) return true;
+            nieuweRegelsZonderGuid.push((it.omschrijving||it.sku||'regel')+' ('+(g.naam||'')+')');
+            return false;
+          }),
+        })).filter(g=>g.items.length)
+      : s.groeperingen;
+
+    if(s.offertenummer && !groeperingenVoorAfas.length && !nieuweRegelsZonderGuid.length) return;
+
+    if(s.offertenummer && groeperingenVoorAfas.length===0 && nieuweRegelsZonderGuid.length){
+      showToast('⚠ Nieuwe regel(s) niet automatisch naar AFAS gestuurd, voeg manueel toe: '+nieuweRegelsZonderGuid.join(', '));
+      return;
+    }
+
     const resp = await fetch('https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/afas-offerte-sync', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY,'apikey':SUPABASE_ANON_KEY},
@@ -14794,7 +14820,7 @@ async function afasAutoSync(host, tipo){
         debiteurId,
         datum: s.datum || today(),
         status: 0,
-        groeperingen: s.groeperingen,
+        groeperingen: groeperingenVoorAfas,
         eindklant: {
           naam: eindklantNaam || undefined,
           email: eindklantEmail || undefined,
@@ -14807,6 +14833,10 @@ async function afasAutoSync(host, tipo){
     });
     const data = await resp.json();
     if(!resp.ok || data.error){ console.warn('AFAS auto-sync fout:', data.detail||data.error); return; }
+
+    if(nieuweRegelsZonderGuid.length){
+      showToast('✓ Offerte bijgewerkt in AFAS. ⚠ Nieuwe regel(s) manueel toevoegen in AFAS: '+nieuweRegelsZonderGuid.join(', '));
+    }
 
     // AFAS geeft na elke sync de echte regel-GUID's (GuLi) terug via de
     // "Blitz-verkoopofferteregels" GetConnector -- koppel die aan onze eigen
