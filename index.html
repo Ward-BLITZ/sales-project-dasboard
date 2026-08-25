@@ -14777,21 +14777,19 @@ async function afasAutoSync(host, tipo){
       return;
     }
 
-    // Regels die al eerder succesvol naar AFAS gingen, hoeven niet opnieuw
-    // mee -- voor Samenstelling-regels (laadstations, sku start met
-    // BPSW/BPST) is dat zelfs verplicht: AFAS kan zo'n regel niet via
-    // itemcode terugvinden bij een update ("Geen regel gevonden met
-    // itemcode..."), waardoor de HELE update anders mislukt. Nieuwe of
-    // gewijzigde Artikel/Kosten-regels werken wel via itemcode en gaan
-    // gewoon elke keer mee.
-    const isSamenstellingRegel = (sku) => {
-      const s2 = String(sku||'').toUpperCase();
-      return s2.startsWith('BPSW') || s2.startsWith('BPST');
-    };
+    // Regels die al eerder succesvol naar AFAS gingen, worden bij een update
+    // NOOIT opnieuw meegestuurd: itemcode-matching blijkt bij AFAS niet
+    // betrouwbaar voor een al-bestaande regel, ongeacht het type (zowel
+    // Samenstelling- als gewone Artikel-regels gaven "Geen regel gevonden
+    // met itemcode...", wat de HELE update deed mislukken). Enkel ECHT
+    // NIEUWE regels (nog nooit gesynct) gaan mee bij een update -- die
+    // worden dan gewoon als nieuwe regel toegevoegd.
+    // Let op: een wijziging (aantal/prijs) aan een reeds gesynchroniseerde
+    // regel gaat hierdoor voorlopig niet automatisch mee naar AFAS.
     const groeperingenVoorAfas = s.offertenummer
       ? s.groeperingen.map(g=>({
           ...g,
-          items: (g.items||[]).filter(it=> !(it._gesynct && isSamenstellingRegel(it.sku))),
+          items: (g.items||[]).filter(it=> !it._gesynct),
         })).filter(g=>g.items.length)
       : s.groeperingen;
 
