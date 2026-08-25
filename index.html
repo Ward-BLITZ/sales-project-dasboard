@@ -14777,15 +14777,23 @@ async function afasAutoSync(host, tipo){
       return;
     }
 
-    // Elke regel krijgt eenmalig een vaste GUID (blijft hetzelfde bij
-    // volgende opslagen) -- AFAS gebruikt dit (GuLi) om bij een update te
-    // herkennen welke regel het is, in plaats van op itemcode te matchen
-    // (dat brak op "Geen regel gevonden met itemcode...").
-    s.groeperingen.forEach(g=>{
-      (g.items||[]).forEach(it=>{
-        if(!it.guli) it.guli = '{'+crypto.randomUUID()+'}';
-      });
-    });
+    // Regels die al eerder succesvol naar AFAS gingen, hoeven niet opnieuw
+    // mee -- voor Samenstelling-regels (laadstations, sku start met
+    // BPSW/BPST) is dat zelfs verplicht: AFAS kan zo'n regel niet via
+    // itemcode terugvinden bij een update ("Geen regel gevonden met
+    // itemcode..."), waardoor de HELE update anders mislukt. Nieuwe of
+    // gewijzigde Artikel/Kosten-regels werken wel via itemcode en gaan
+    // gewoon elke keer mee.
+    const isSamenstellingRegel = (sku) => {
+      const s2 = String(sku||'').toUpperCase();
+      return s2.startsWith('BPSW') || s2.startsWith('BPST');
+    };
+    const groeperingenVoorAfas = s.offertenummer
+      ? s.groeperingen.map(g=>({
+          ...g,
+          items: (g.items||[]).filter(it=> !(it._gesynct && isSamenstellingRegel(it.sku))),
+        })).filter(g=>g.items.length)
+      : s.groeperingen;
 
     // Eindklantgegevens: bij een lead (B2C) is host zelf de lead; bij een
     // B2B-project zitten naam/contact elders op het project.
@@ -14794,6 +14802,12 @@ async function afasAutoSync(host, tipo){
       : (host.contact||host.klant||host.naam||'');
     const eindklantEmail = host.email || host.contactemail || '';
     const eindklantTel = host.tel || host.contactgsm || host.gsm || '';
+
+    if(s.offertenummer && !groeperingenVoorAfas.length){
+      // Alles wat nog verstuurd moest worden was al eerder gesynct (enkel
+      // een ongewijzigde Samenstelling-regel over) -- niets te doen.
+      return;
+    }
 
     const resp = await fetch('https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/afas-offerte-sync', {
       method:'POST',
@@ -14804,7 +14818,7 @@ async function afasAutoSync(host, tipo){
         debiteurId,
         datum: s.datum || today(),
         status: 0,
-        groeperingen: s.groeperingen,
+        groeperingen: groeperingenVoorAfas,
         eindklant: {
           naam: eindklantNaam || undefined,
           email: eindklantEmail || undefined,
@@ -14817,6 +14831,11 @@ async function afasAutoSync(host, tipo){
     });
     const data = await resp.json();
     if(!resp.ok || data.error){ console.warn('AFAS auto-sync fout:', data.detail||data.error); return; }
+
+    // Alles wat we net (opnieuw) naar AFAS gestuurd hebben, geldt vanaf nu
+    // als gesynchroniseerd -- nodig zodat een Samenstelling-regel bij een
+    // volgende update niet opnieuw wordt meegestuurd (zie hierboven).
+    s.groeperingen.forEach(g=>(g.items||[]).forEach(it=>{ it._gesynct = true; }));
 
     // Enkel bij een INSERT komt er een nieuw nummer terug — dat schrijven we
     // rechtstreeks weg (niet via sbSaveB2cLead/sbSaveProject, anders lopen we
