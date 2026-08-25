@@ -2608,7 +2608,16 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
   </div>
 </div>
 
-
+<!-- AFAS OFFERTE ZOEKEN / IMPORTEREN MODAL -->
+<div class="modal-overlay" id="afas-zoek-overlay">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title"><i class="ti ti-search" style="color:var(--green);margin-right:8px"></i>Offerte opzoeken in AFAS</span>
+      <button class="modal-close" onclick="afasSluitZoek()"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="afas-zoek-inhoud"></div>
+  </div>
+</div>
 
 <!-- SALES BEHEER: THUISINSTALLATIE OFFERTE-SJABLOON -->
 <div id="pane-sales" class="page" style="display:none;max-width:1100px">
@@ -13894,57 +13903,181 @@ async function afasSyncWebOffertes() {
 }
 
 // ── AFAS: offerte opzoeken op nummer + importeren/linken in dashboard ──────
-async function afasZoekOfferte(){
-  const nummer = prompt('AFAS-offertenummer opzoeken:');
-  if(!nummer || !nummer.trim()) return;
-  showToast('Offerte opzoeken in AFAS...');
+let afasHuidigeGevondenOfferte = null;
+
+function afasZoekOfferte(){
+  afasHuidigeGevondenOfferte = null;
+  document.getElementById('afas-zoek-inhoud').innerHTML = afasZoekFormHtml();
+  document.getElementById('afas-zoek-overlay').classList.add('open');
+  setTimeout(()=>{ const el=document.getElementById('afas-zoek-nummer'); if(el) el.focus(); },50);
+}
+function afasSluitZoek(){
+  document.getElementById('afas-zoek-overlay').classList.remove('open');
+}
+function afasZoekFormHtml(){
+  return `
+    <div class="field">
+      <label>Offertenummer</label>
+      <input id="afas-zoek-nummer" placeholder="bv. 50007004" autocomplete="off" onkeydown="if(event.key==='Enter')afasZoekOfferteUitvoeren()">
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:1rem">
+      <button class="btn primary" onclick="afasZoekOfferteUitvoeren()"><i class="ti ti-search"></i> Zoeken</button>
+    </div>`;
+}
+async function afasZoekOfferteUitvoeren(){
+  const inputEl = document.getElementById('afas-zoek-nummer');
+  const nummer = inputEl ? inputEl.value.trim() : '';
+  if(!nummer) return;
+  document.getElementById('afas-zoek-inhoud').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--tx3)">Zoeken in AFAS...</div>';
   try{
     const resp = await fetch('https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/afas-offerte-pull', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY,'apikey':SUPABASE_ANON_KEY},
-      body: JSON.stringify({actie:'haal-offerte', offertenummer: nummer.trim()}),
+      body: JSON.stringify({actie:'haal-offerte', offertenummer: nummer}),
     });
     const data = await resp.json();
-    if(!resp.ok || data.error){ showToast('Fout bij opzoeken: '+(data.error||'onbekende fout')); return; }
-    if(!data.gevonden){ showToast('Geen offerte gevonden met nummer '+nummer); return; }
-
+    if(!resp.ok || data.error){
+      document.getElementById('afas-zoek-inhoud').innerHTML = '<div style="text-align:center;padding:1rem 0;color:#a32d2d;font-size:12px">Fout: '+((data.error||'onbekende fout').replace(/</g,'&lt;'))+'</div>' + afasZoekFormHtml();
+      return;
+    }
+    if(!data.gevonden){
+      document.getElementById('afas-zoek-inhoud').innerHTML = '<div style="text-align:center;padding:1rem 0;color:var(--tx2);font-size:12px">Geen offerte gevonden met nummer "'+nummer.replace(/</g,'&lt;')+'".</div>' + afasZoekFormHtml();
+      return;
+    }
+    afasHuidigeGevondenOfferte = data.offerte;
     const offertenr = data.offerte.offertenummer;
     const bestaandeLead = (typeof b2cLeads!=='undefined'?b2cLeads:[]).find(l=>String(l._afasOfferteid)===String(offertenr));
     const bestaandProject = (typeof projects!=='undefined'?projects:[]).find(p=>String(p._afasOfferteid)===String(offertenr));
     if(bestaandeLead){
-      showToast('Al gekoppeld aan lead "'+(typeof b2cNaam==='function'?b2cNaam(bestaandeLead):bestaandeLead.voornaam)+'" — wordt geopend.');
+      afasSluitZoek();
+      showToast('Al gekoppeld aan lead "'+((typeof b2cNaam==='function'?b2cNaam(bestaandeLead):bestaandeLead.voornaam))+'" — wordt geopend.');
       if(typeof b2cOpenDetail==='function') b2cOpenDetail(bestaandeLead.id);
       return;
     }
     if(bestaandProject){
+      afasSluitZoek();
       showToast('Al gekoppeld aan project "'+(bestaandProject.naam||'')+'" — wordt geopend.');
       if(typeof b2bOpenDetail==='function') b2bOpenDetail(bestaandProject.id||bestaandProject._rowid);
       return;
     }
-    afasOffertImportKeuze(data.offerte);
+    afasToonKeuzeScherm(data.offerte);
   }catch(e){
-    showToast('Fout bij opzoeken: '+e.message);
+    document.getElementById('afas-zoek-inhoud').innerHTML = '<div style="text-align:center;padding:1rem 0;color:#a32d2d;font-size:12px">Fout: '+e.message.replace(/</g,'&lt;')+'</div>' + afasZoekFormHtml();
   }
 }
 
-function afasOffertImportKeuze(offerte){
-  const naam = (offerte.eindklant && (offerte.eindklant.naam || offerte.eindklant.bedrijf)) || 'onbekende klant';
-  const nieuw = confirm(
-    'Offerte '+offerte.offertenummer+' gevonden voor "'+naam+'".\n\n'+
-    'OK = nieuwe lead aanmaken met deze offerte als basis.\n'+
-    'Annuleren = linken aan een bestaande lead/project.'
-  );
-  if(nieuw) afasImporteerAlsNieuweLead(offerte);
-  else afasLinkAanBestaand(offerte);
+function afasOfferteSamenvattingHtml(offerte){
+  const ek = offerte.eindklant || {};
+  const naam = ek.naam || ek.bedrijf || 'Onbekende klant';
+  const aantalRegels = (offerte.groeperingen||[]).reduce((t,g)=>t+(g.items||[]).length,0);
+  return `
+    <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px;margin-bottom:1rem;font-size:12px">
+      <div style="font-weight:700;margin-bottom:4px">Offerte ${offerte.offertenummer} — ${String(naam).replace(/</g,'&lt;')}</div>
+      <div style="color:var(--tx2)">${ek.email||''}${ek.tel?(' · '+ek.tel):''}</div>
+      <div style="color:var(--tx3);margin-top:4px">${aantalRegels} regel${aantalRegels!==1?'s':''} · status: ${offerte.status||'-'}</div>
+    </div>`;
 }
 
-function afasImporteerAlsNieuweLead(offerte){
+function afasToonKeuzeScherm(offerte){
+  document.getElementById('afas-zoek-inhoud').innerHTML = afasOfferteSamenvattingHtml(offerte) + `
+    <p style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Wat wil je doen met deze offerte?</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem">
+      <button onclick="afasImporteerAlsNieuweLead()"
+        style="background:var(--bg2);border:2px solid var(--bd);border-radius:var(--rl);padding:1.25rem;cursor:pointer;text-align:center;transition:all .15s;font-family:inherit"
+        onmouseover="this.style.borderColor='#e85d04';this.style.background='rgba(232,93,4,.06)'"
+        onmouseout="this.style.borderColor='var(--bd)';this.style.background='var(--bg2)'">
+        <i class="ti ti-user-plus" style="font-size:28px;color:#e85d04;display:block;margin-bottom:8px"></i>
+        <div style="font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">Nieuwe lead aanmaken</div>
+        <div style="font-size:11px;color:var(--tx3)">Nieuwe lead met deze offerte als basis.</div>
+      </button>
+      <button onclick="afasToonLinkScherm()"
+        style="background:var(--bg2);border:2px solid var(--bd);border-radius:var(--rl);padding:1.25rem;cursor:pointer;text-align:center;transition:all .15s;font-family:inherit"
+        onmouseover="this.style.borderColor='var(--green)';this.style.background='rgba(0,223,163,.06)'"
+        onmouseout="this.style.borderColor='var(--bd)';this.style.background='var(--bg2)'">
+        <i class="ti ti-link" style="font-size:28px;color:var(--green);display:block;margin-bottom:8px"></i>
+        <div style="font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">Linken aan bestaande</div>
+        <div style="font-size:11px;color:var(--tx3)">Koppel aan een bestaande lead of project.</div>
+      </button>
+    </div>
+    <div style="text-align:center">
+      <button class="btn" onclick="afasSluitZoek()" style="font-size:12px">Annuleren</button>
+    </div>`;
+}
+
+function afasToonLinkScherm(){
+  document.getElementById('afas-zoek-inhoud').innerHTML = afasOfferteSamenvattingHtml(afasHuidigeGevondenOfferte) + `
+    <div class="field">
+      <label>Zoek een bestaande lead of project</label>
+      <input id="afas-link-zoek" placeholder="Naam of bedrijf..." autocomplete="off" oninput="afasLinkZoekenLive(this.value)">
+    </div>
+    <div id="afas-link-resultaten" style="max-height:220px;overflow-y:auto;margin-top:8px"></div>
+    <div style="text-align:center;margin-top:1rem">
+      <button class="btn" onclick="afasToonKeuzeScherm(afasHuidigeGevondenOfferte)" style="font-size:12px">Terug</button>
+    </div>`;
+  setTimeout(()=>{ const el=document.getElementById('afas-link-zoek'); if(el) el.focus(); },50);
+}
+
+function afasLinkZoekenLive(q){
+  const el = document.getElementById('afas-link-resultaten');
+  if(!el) return;
+  const zoekLower = (q||'').trim().toLowerCase();
+  if(zoekLower.length<2){ el.innerHTML=''; return; }
+  const leadMatches = (typeof b2cLeads!=='undefined'?b2cLeads:[]).filter(l=>
+    ((l.voornaam||'')+' '+(l.achternaam||'')).toLowerCase().includes(zoekLower) ||
+    (l.bedrijf||'').toLowerCase().includes(zoekLower)
+  ).slice(0,8);
+  const projectMatches = (typeof projects!=='undefined'?projects:[]).filter(p=>
+    (p.naam||'').toLowerCase().includes(zoekLower) || (p.klant||'').toLowerCase().includes(zoekLower)
+  ).slice(0,8);
+  if(!leadMatches.length && !projectMatches.length){
+    el.innerHTML = '<div style="font-size:12px;color:var(--tx3);padding:8px 2px">Niets gevonden.</div>';
+    return;
+  }
+  afasLinkKandidaten = leadMatches.map(l=>({tipo:'lead', obj:l})).concat(projectMatches.map(p=>({tipo:'project', obj:p})));
+  el.innerHTML = afasLinkKandidaten.map(function(k,i){
+    const naam = k.tipo==='lead' ? (((typeof b2cNaam==='function'?b2cNaam(k.obj):k.obj.voornaam)||'').toString()) : (k.obj.naam||'');
+    const icoon = k.tipo==='lead' ? 'ti-user' : 'ti-briefcase';
+    const kleur = k.tipo==='lead' ? 'var(--green)' : '#e85d04';
+    const label = k.tipo==='lead' ? 'lead' : 'project';
+    return '<div onclick="afasLinkKiesKandidaat('+i+')" style="padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);margin-bottom:6px;cursor:pointer;font-size:12px">'
+      +'<i class="ti '+icoon+'" style="margin-right:6px;color:'+kleur+'"></i>'
+      +naam.replace(/</g,'&lt;')+' <span style="color:var(--tx3)">('+label+')</span></div>';
+  }).join('');
+}
+
+let afasLinkKandidaten = [];
+
+function afasLinkKiesKandidaat(i){
+  const k = afasLinkKandidaten[i];
+  if(!k || !afasHuidigeGevondenOfferte) return;
+  const offerte = afasHuidigeGevondenOfferte;
+  const offerteData = { offertenummer: offerte.offertenummer, datum: offerte.datum, status: offerte.status, groeperingen: offerte.groeperingen };
+  if(k.tipo==='lead'){
+    k.obj._afasOfferteid = offerte.offertenummer;
+    k.obj.offerte = offerteData;
+    sbSaveB2cLead(k.obj).catch(e=>console.warn('AFAS-link save fout:', e.message));
+    if(typeof b2cRenderLeads==='function') b2cRenderLeads();
+    afasSluitZoek();
+    showToast('✓ Gelinkt aan lead "'+((typeof b2cNaam==='function'?b2cNaam(k.obj):k.obj.voornaam))+'"');
+  } else {
+    k.obj._afasOfferteid = offerte.offertenummer;
+    k.obj.offerte = offerteData;
+    sbSaveProject(k.obj).catch(e=>console.warn('AFAS-link save fout:', e.message));
+    if(typeof b2bRenderProjects==='function') b2bRenderProjects();
+    afasSluitZoek();
+    showToast('✓ Gelinkt aan project "'+(k.obj.naam||'')+'"');
+  }
+}
+
+function afasImporteerAlsNieuweLead(){
+  const offerte = afasHuidigeGevondenOfferte;
+  if(!offerte) return;
   const ek = offerte.eindklant || {};
   const naamDelen = (ek.naam||'').trim().split(/\s+/).filter(Boolean);
   const voornaam = naamDelen[0] || '';
   const achternaam = naamDelen.slice(1).join(' ') || '';
   const lokaalId = 'afas-' + offerte.offertenummer;
-  if((typeof b2cLeads!=='undefined'?b2cLeads:[]).some(l=>l.id===lokaalId)){ showToast('Deze lead bestaat al lokaal.'); return; }
+  if((typeof b2cLeads!=='undefined'?b2cLeads:[]).some(l=>l.id===lokaalId)){ showToast('Deze lead bestaat al lokaal.'); afasSluitZoek(); return; }
   const nieuweLead = {
     id: lokaalId,
     voornaam, achternaam,
@@ -13971,39 +14104,8 @@ function afasImporteerAlsNieuweLead(offerte){
   b2cLeads.push(nieuweLead);
   if(typeof b2cRenderLeads==='function') b2cRenderLeads();
   sbSaveB2cLead(nieuweLead).catch(e=>console.warn('AFAS-import save fout:', e.message));
+  afasSluitZoek();
   showToast('✓ Nieuwe lead aangemaakt: '+(voornaam+' '+achternaam).trim());
-}
-
-function afasLinkAanBestaand(offerte){
-  const zoek = prompt('Typ (een deel van) de naam/bedrijf van de bestaande lead of het project om te linken:');
-  if(!zoek || !zoek.trim()) return;
-  const zoekLower = zoek.trim().toLowerCase();
-  const kandLead = (typeof b2cLeads!=='undefined'?b2cLeads:[]).find(l=>
-    ((l.voornaam||'')+' '+(l.achternaam||'')).toLowerCase().includes(zoekLower) ||
-    (l.bedrijf||'').toLowerCase().includes(zoekLower)
-  );
-  const kandProject = (typeof projects!=='undefined'?projects:[]).find(p=>
-    (p.naam||'').toLowerCase().includes(zoekLower) || (p.klant||'').toLowerCase().includes(zoekLower)
-  );
-  const offerteData = { offertenummer: offerte.offertenummer, datum: offerte.datum, status: offerte.status, groeperingen: offerte.groeperingen };
-
-  if(kandLead && (!kandProject || confirm('Lead gevonden: "'+((typeof b2cNaam==='function'?b2cNaam(kandLead):kandLead.voornaam))+'".\nOK = deze gebruiken, Annuleren = het gevonden project proberen.'))){
-    kandLead._afasOfferteid = offerte.offertenummer;
-    kandLead.offerte = offerteData;
-    sbSaveB2cLead(kandLead).catch(e=>console.warn('AFAS-link save fout:', e.message));
-    if(typeof b2cRenderLeads==='function') b2cRenderLeads();
-    showToast('✓ Gelinkt aan lead "'+((typeof b2cNaam==='function'?b2cNaam(kandLead):kandLead.voornaam))+'"');
-    return;
-  }
-  if(kandProject){
-    kandProject._afasOfferteid = offerte.offertenummer;
-    kandProject.offerte = offerteData;
-    sbSaveProject(kandProject).catch(e=>console.warn('AFAS-link save fout:', e.message));
-    if(typeof b2bRenderProjects==='function') b2bRenderProjects();
-    showToast('✓ Gelinkt aan project "'+(kandProject.naam||'')+'"');
-    return;
-  }
-  showToast('Geen lead of project gevonden voor "'+zoek+'".');
 }
 
 // === WEEK VIEW + TODO FEATURES ===
