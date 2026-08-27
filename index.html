@@ -14,6 +14,11 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -772,6 +777,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
     <!-- Agenda knop -->
     <button class="tab-btn" id="tab-agenda" onclick="showTab('agenda')"><i class="ti ti-calendar"></i> Agenda</button>
     <button class="tab-btn" id="tab-todo" onclick="showTab('todo')"><i class="ti ti-check"></i> To Do</button>
+    <button class="tab-btn" id="tab-kaart" onclick="showTab('kaart')"><i class="ti ti-map-pin"></i> Kaart</button>
 
     <div class="sidebar-group-label">Klanten</div>
     <!-- B2C dropdown -->
@@ -879,6 +885,10 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
     <div class="mob-nav-label">Agenda</div>
     <button class="mob-nav-btn" onclick="mobNav('agenda')"><i class="ti ti-calendar"></i> Agenda</button>
     <button class="mob-nav-btn" onclick="mobNav('todo')"><i class="ti ti-check"></i> To Do</button>
+  </div>
+  <div class="mob-nav-section">
+    <div class="mob-nav-label">Kaart</div>
+    <button class="mob-nav-btn" onclick="mobNav('kaart')"><i class="ti ti-map-pin"></i> Kaart</button>
   </div>
   <div class="mob-nav-section">
     <div class="mob-nav-label">B2C</div>
@@ -1431,6 +1441,20 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
       <button class="btn primary" onclick="ssEditRegistratieOpslaan()"><i class="ti ti-check"></i> Opslaan</button>
     </div>
   </div>
+</div>
+
+<!-- KAART -->
+<div id="pane-kaart" class="page wide" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1rem">
+    <div>
+      <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700">Kaart</div>
+      <div style="font-size:12px;color:var(--tx2)">Klanten, partners, groothandels en prospects in kaart gebracht</div>
+    </div>
+    <button class="btn sm" onclick="kaartRenderPins()"><i class="ti ti-refresh"></i> Vernieuwen</button>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="kaart-filters"></div>
+  <div id="kaart-map" style="width:100%;height:70vh;min-height:420px;border-radius:var(--rl);overflow:hidden;border:1px solid var(--bd)"></div>
+  <div style="font-size:11px;color:var(--tx3);margin-top:6px" id="kaart-legenda-info"></div>
 </div>
 
 <!-- INSTALLATIE DOSSIER MODAL (volledig) -->
@@ -3062,7 +3086,7 @@ function respNames(afdeling){
 
 
 function showTab(name){
-  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda','service-stock','procurement','rapportage','wms','sales','todo','verlof'].forEach(id=>{
+  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda','service-stock','procurement','rapportage','wms','sales','todo','verlof','kaart'].forEach(id=>{
     const pane=document.getElementById('pane-'+id);
     if(pane)pane.style.display=(id===name)?'block':'none';
     const tb=document.getElementById('tab-'+id);
@@ -3089,6 +3113,7 @@ function showTab(name){
   if(name==='procurement'){wmsBeheerLaad();}
   if(name==='rapportage'){renderRapportage();}
   if(name==='wms'){document.getElementById('pane-wms').style.display='block';}
+  if(name==='kaart'){kaartInit();}
   if(name==='sales'){
     salesBeheerRender();
     // Artikelcatalogus (Supabase + AFAS) wordt elders lazy geladen (bv. bij het openen van een
@@ -10824,6 +10849,101 @@ async function geocodeBackfillProspects(){
   }
   if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-map-pin"></i> Locaties bijwerken';}
   showToast(gelukt+' van '+teDoen.length+' prospects voorzien van kaartlocatie.');
+}
+
+// ── KAART ─────────────────────────────────────────────
+let kaartMapObj=null,kaartClusterGroep=null,kaartGeinit=false;
+let kaartActieveFilters=null; // Set van categorienamen; null = nog niet geinitialiseerd
+const KAART_KLEUREN=['#00DFA3','#e85d04','#3b82f6','#a855f7','#f43f5e','#eab308','#14b8a6','#6366f1','#84cc16','#ec4899'];
+const KAART_PROSPECT_KLEUR='#8a9ba3';
+function kaartKleurVoorCategorie(cat){
+  if(cat==='Prospect')return KAART_PROSPECT_KLEUR;
+  let hash=0;
+  for(let i=0;i<cat.length;i++)hash=(hash*31+cat.charCodeAt(i))>>>0;
+  return KAART_KLEUREN[hash%KAART_KLEUREN.length];
+}
+function kaartAlleCategorieen(){
+  const cats=new Set();
+  klanten.forEach(k=>{if(k.lat!=null&&k.lat!=='')cats.add(k.typeVerkooprelatie||'Onbekend');});
+  if(prospects.some(p=>p.lat!=null&&p.lat!==''))cats.add('Prospect');
+  return[...cats].sort();
+}
+function kaartInit(){
+  if(typeof L==='undefined'){console.warn('Leaflet niet geladen — kaart kan niet tonen.');return;}
+  if(!kaartGeinit){
+    kaartMapObj=L.map('kaart-map').setView([50.85,4.35],8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap-auteurs'}).addTo(kaartMapObj);
+    kaartClusterGroep=L.markerClusterGroup();
+    kaartMapObj.addLayer(kaartClusterGroep);
+    kaartGeinit=true;
+  }
+  if(!kaartActieveFilters)kaartActieveFilters=new Set(kaartAlleCategorieen());
+  kaartRenderFilters();
+  kaartRenderPins();
+  setTimeout(()=>{if(kaartMapObj)kaartMapObj.invalidateSize();},150);
+}
+function kaartRenderFilters(){
+  const el=document.getElementById('kaart-filters');if(!el)return;
+  const cats=kaartAlleCategorieen();
+  if(!cats.length){el.innerHTML='<span style="font-size:12px;color:var(--tx3)">Nog geen locaties gevonden — gebruik de knop "Locaties bijwerken" bij Prospects of CRM.</span>';return;}
+  el.innerHTML=cats.map(cat=>{
+    const actief=kaartActieveFilters.has(cat);
+    const kleur=kaartKleurVoorCategorie(cat);
+    const catEsc=cat.replace(/'/g,"\\'");
+    return`<button class="pill${actief?' active':''}" style="border-color:${kleur};${actief?'background:'+kleur+';color:#fff':''}" onclick="kaartToggleFilter('${catEsc}')"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${actief?'#fff':kleur};margin-right:5px"></span>${cat}</button>`;
+  }).join('');
+}
+function kaartToggleFilter(cat){
+  if(kaartActieveFilters.has(cat))kaartActieveFilters.delete(cat);else kaartActieveFilters.add(cat);
+  kaartRenderFilters();
+  kaartRenderPins();
+}
+function kaartMaakPopup(naam,categorie,adres,extraHtml){
+  const kleur=kaartKleurVoorCategorie(categorie);
+  return`<div style="min-width:180px;font-family:'Inter',sans-serif">
+    <div style="font-weight:700;font-size:13px;margin-bottom:2px">${wmsEsc(naam)}</div>
+    <div style="font-size:11px;margin-bottom:6px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${kleur};margin-right:4px"></span>${wmsEsc(categorie)}</div>
+    ${adres?'<div style="font-size:11px;color:#555;margin-bottom:8px">'+wmsEsc(adres)+'</div>':''}
+    ${extraHtml||''}
+  </div>`;
+}
+function kaartRenderPins(){
+  if(!kaartMapObj||!kaartClusterGroep)return;
+  kaartClusterGroep.clearLayers();
+  let aantal=0;
+  klanten.forEach(k=>{
+    if(k.lat==null||k.lat===''||k.lng==null||k.lng==='')return;
+    const cat=k.typeVerkooprelatie||'Onbekend';
+    if(!kaartActieveFilters.has(cat))return;
+    const kleur=kaartKleurVoorCategorie(cat);
+    const marker=L.circleMarker([k.lat,k.lng],{radius:8,fillColor:kleur,fillOpacity:.9,color:'#fff',weight:2});
+    const btn='<button onclick="kaartOpenKlant(\''+String(k.id)+'\')" style="margin-top:4px;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer">Dossier openen</button>';
+    marker.bindPopup(kaartMaakPopup(k.naam,cat,k.adres,btn));
+    kaartClusterGroep.addLayer(marker);
+    aantal++;
+  });
+  prospects.forEach(p=>{
+    if(p.lat==null||p.lat===''||p.lng==null||p.lng==='')return;
+    if(!kaartActieveFilters.has('Prospect'))return;
+    const kleur=kaartKleurVoorCategorie('Prospect');
+    const marker=L.circleMarker([p.lat,p.lng],{radius:8,fillColor:kleur,fillOpacity:.9,color:'#fff',weight:2});
+    const btn='<button onclick="kaartOpenProspect('+JSON.stringify(p.id)+')" style="margin-top:4px;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer">Dossier openen</button>';
+    marker.bindPopup(kaartMaakPopup(p.naam,'Prospect',p.adres||p.postcode,btn));
+    kaartClusterGroep.addLayer(marker);
+    aantal++;
+  });
+  const infoEl=document.getElementById('kaart-legenda-info');
+  if(infoEl)infoEl.textContent=aantal+' locatie(s) zichtbaar.';
+}
+function kaartOpenKlant(id){
+  const idx=klanten.findIndex(k=>String(k.id)===String(id));
+  if(idx<0)return;
+  showTab('crm');
+  setTimeout(()=>openCrmModal(idx),150);
+}
+function kaartOpenProspect(id){
+  showTab('prospects');
+  setTimeout(()=>prospOpenEdit(id),150);
 }
 
 // ── THEMA TOGGLE ──────────────────────────────────────
