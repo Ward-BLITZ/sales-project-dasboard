@@ -10855,13 +10855,13 @@ async function afasLoadArtikelen() {
 // ── AFAS KLANTEN / DEBITEUREN (Infine_Debiteuren) ──────────────────────
 async function afasLoadKlanten() {
   try {
-    const rows = await afasFetchConnector('Infine_Debiteuren', 5000);
+    const rows = await afasFetchConnector('Infine_Debiteuren_2', 5000);
     if (!rows.length) return [];
     console.log('AFAS debiteuren velden:', Object.keys(rows[0]));
     console.log('AFAS debiteuren eerste rij VOLLEDIG:', JSON.stringify(rows[0], null, 2));
     return rows.map(r => {
-      const straat = [r.Straat||'', r.Huisnummer||'', r['Toev._aan_huisnr.']||''].filter(Boolean).join(' ');
-      const adres = [straat, r.Postcode||'', r.Woonplaats||''].filter(Boolean).join(', ');
+      const straat = [r.Straat_2||r.Straat||'', r.Huisnummer_2||r.Huisnummer||'', r['Toev._aan_huisnr._2']||r['Toev._aan_huisnr.']||''].filter(Boolean).join(' ');
+      const adres = [straat, r.Postcode_2||r.Postcode||'', r.Woonplaats_2||r.Woonplaats||''].filter(Boolean).join(', ');
       return {
         _afasId:     String(r.Nummer||r.nummer||'').trim(),
         _orgNummer:  String(r.Organisatienummer||r.OrganisatieNummer||r.Nummer||'').trim(),
@@ -10870,6 +10870,7 @@ async function afasLoadKlanten() {
         tel:   r.Telefoon||r.telefoon||r['Telefoonnr.']||'',
         email: r['E-mail']||r.Email||r.email||'',
         adres,
+        typeVerkooprelatie: r.Type_verkooprelatie||r['Type verkooprelatie']||'',
         isInstallatiepartner: false,
         _bron: 'afas'
       };
@@ -11021,6 +11022,7 @@ async function afasSyncKlantenEnLeveranciers() {
       if (a.adres && a.adres !== bestaand.adres) { bestaand.adres = a.adres; gewijzigd = true; }
       if (afasId  && !bestaand._afasId)          { bestaand._afasId = afasId; gewijzigd = true; }
       if (a.isLeverancier && !bestaand.isLeverancier) { bestaand.isLeverancier = true; gewijzigd = true; }
+      if (a.typeVerkooprelatie && a.typeVerkooprelatie !== bestaand.typeVerkooprelatie) { bestaand.typeVerkooprelatie = a.typeVerkooprelatie; gewijzigd = true; }
 
       // Alle contacten updaten (vervang volledig door AFAS lijst)
       if (alleContacten.length) {
@@ -11038,6 +11040,7 @@ async function afasSyncKlantenEnLeveranciers() {
         naam: a.naam, btw: a.btw, tel: a.tel, email: a.email,
         adres: a.adres, isInstallatiepartner: false,
         isLeverancier: a.isLeverancier || false,
+        typeVerkooprelatie: a.typeVerkooprelatie || '',
         _afasId: afasId,
         contacten: alleContacten,
         ...legacyVelden
