@@ -1086,6 +1086,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
         <span class="filter-label"><i class="ti ti-user-circle" style="margin-right:4px"></i>Resp:</span>
         <div class="pills" id="pills-prospects-resp"></div>
       </div>
+      <button class="btn sm" onclick="geocodeBackfillProspects()" title="Berekent kaartlocaties voor prospects zonder coördinaten" id="prosp-geocode-btn"><i class="ti ti-map-pin"></i> Locaties bijwerken</button>
       <button class="btn primary" onclick="prospOpenNieuw()"><i class="ti ti-plus"></i> Nieuw prospect</button>
     </div>
   </div>
@@ -1104,6 +1105,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
         <div class="field"><label>Naam prospect *</label><input id="prosp-naam" placeholder="bv. Parking Leuven NV"></div>
         <div class="field"><label>Project / omschrijving</label><input id="prosp-project" placeholder="bv. 20 laadpalen parking centrum"></div>
         <div class="field"><label>Postcode</label><input id="prosp-postcode" placeholder="bv. 3000" style="max-width:120px"></div>
+        <div class="field"><label>Volledig adres <span style="font-weight:400;color:var(--tx3)">(optioneel, geeft nauwkeurigere locatie op de kaart)</span></label><input id="prosp-adres" placeholder="bv. Diestsesteenweg 123, 3000 Leuven"></div>
         <div class="field"><label>Verantwoordelijke</label>
           <select id="prosp-resp">
             <option value="">— Kies —</option>
@@ -2218,6 +2220,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <input id="crm-search" type="text" placeholder="Zoek op naam, BTW, contactpersoon..." oninput="renderCrm()" style="max-width:400px">
     <button id="crm-partner-filter" class="btn sm" onclick="crmTogglePartnerFilter()" title="Toon enkel installatiepartners"><i class="ti ti-tools"></i> Partners</button>
     <button class="btn sm" onclick="afasCrmSync()" title="Klanten en leveranciers uit AFAS importeren" id="crm-afas-sync-btn"><i class="ti ti-building-factory"></i> AFAS sync</button>
+    <button class="btn sm" onclick="geocodeBackfillKlanten()" title="Berekent kaartlocaties voor klanten zonder coördinaten" id="crm-geocode-btn"><i class="ti ti-map-pin"></i> Locaties bijwerken</button>
   </div>
   <div class="crm-hdr">
     <span>Bedrijf</span><span>BTW-nummer</span><span>Contactpersoon</span><span>Tel / E-mail</span><span></span>
@@ -3169,6 +3172,7 @@ function prospOpenNieuw(){
   document.getElementById('prosp-naam').value='';
   document.getElementById('prosp-project').value='';
   document.getElementById('prosp-postcode').value='';
+  document.getElementById('prosp-adres').value='';
   document.getElementById('prosp-kans').value=50;
   document.getElementById('prosp-kans-lbl').textContent='50%';
   document.getElementById('prosp-moeder').value='';
@@ -3192,6 +3196,7 @@ function prospOpenEdit(id){
   document.getElementById('prosp-naam').value=p.naam||'';
   document.getElementById('prosp-project').value=p.project||'';
   document.getElementById('prosp-postcode').value=p.postcode||'';
+  document.getElementById('prosp-adres').value=p.adres||'';
   document.getElementById('prosp-kans').value=p.kans||50;
   document.getElementById('prosp-kans-lbl').textContent=(p.kans||50)+'%';
   document.getElementById('prosp-moeder').value=p.moeder||'';
@@ -3236,13 +3241,17 @@ function prospGetContacts(){
   }));
 }
 
-function prospSave(){
+async function prospSave(){
   const naam=document.getElementById('prosp-naam').value.trim();
   if(!naam){showToast('Naam is verplicht.');document.getElementById('prosp-naam').focus();return;}
+  const postcode=document.getElementById('prosp-postcode').value.trim();
+  const adres=document.getElementById('prosp-adres').value.trim();
+  if(!postcode&&!adres){showToast('Vul een postcode of volledig adres in — nodig voor de kaart.');document.getElementById('prosp-postcode').focus();return;}
   const data={
     naam,
     project:document.getElementById('prosp-project').value.trim(),
-    postcode:document.getElementById('prosp-postcode').value.trim(),
+    postcode,
+    adres,
     kans:parseInt(document.getElementById('prosp-kans').value)||0,
     resp:document.getElementById('prosp-resp').value,
     moeder:document.getElementById('prosp-moeder').value.trim(),
@@ -3250,6 +3259,8 @@ function prospSave(){
     contacts:prospGetContacts().filter(c=>c.naam||c.tel||c.email),
     aangemaakt:today()
   };
+  const geo=await geocodeLocatie({adres,postcode});
+  if(geo){data.lat=geo.lat;data.lng=geo.lng;data.geoBron=geo.bron;}
   if(prospEditId){
     const idx=prospects.findIndex(x=>x.id===prospEditId);
     if(idx>=0){prospects[idx]={...prospects[idx],...data};sbSaveProspect(prospects[idx]);}
@@ -4644,6 +4655,8 @@ async function saveCrmKlant(){
     contactemail:eersteContact.email||''
   };
   if(editingCrmId)k.id=editingCrmId;
+  const geo=await geocodeLocatie({adres:k.adres,postcode:''});
+  if(geo){k.lat=geo.lat;k.lng=geo.lng;k.geoBron=geo.bron;}
   closeCrmModal();
   try{
     const newId=await sbSaveKlant(k);
@@ -10722,6 +10735,95 @@ function renderRapB2b(){
       </tbody>
     </table>
   </div>`;
+}
+
+// ── GEOCODING (kaart-locaties: postcode-tabel + Nominatim) ────────────
+// Laag 1: Belgische postcodetabel (be_postcodes, snel/gratis, buurt-niveau).
+// Laag 2: volledig adres via OpenStreetMap Nominatim (nauwkeuriger, max 1
+// aanvraag/seconde — daarom lokaal doorgevoerd via _nominatimLaatsteAanroep).
+const _bePostcodeCache={};
+async function geocodePostcode(postcode){
+  const pc=String(postcode||'').trim();
+  if(!pc)return null;
+  if(_bePostcodeCache[pc]!==undefined)return _bePostcodeCache[pc];
+  try{
+    const rows=await sbFetch('be_postcodes?postcode=eq.'+encodeURIComponent(pc)+'&select=lat,lng');
+    if(rows&&rows.length){
+      const lat=rows.reduce((s,r)=>s+Number(r.lat),0)/rows.length;
+      const lng=rows.reduce((s,r)=>s+Number(r.lng),0)/rows.length;
+      const res={lat,lng,bron:'postcode'};
+      _bePostcodeCache[pc]=res;
+      return res;
+    }
+    _bePostcodeCache[pc]=null;
+  }catch(e){console.warn('geocodePostcode:',e.message);}
+  return null;
+}
+let _nominatimLaatsteAanroep=0;
+async function geocodeAdresVolledig(adres){
+  const a=String(adres||'').trim();
+  if(!a)return null;
+  const wacht=Math.max(0,1100-(Date.now()-_nominatimLaatsteAanroep));
+  if(wacht>0)await new Promise(r=>setTimeout(r,wacht));
+  _nominatimLaatsteAanroep=Date.now();
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=be&q='+encodeURIComponent(a);
+    const res=await fetch(url,{headers:{'Accept-Language':'nl'}});
+    const json=await res.json();
+    if(json&&json.length)return{lat:parseFloat(json[0].lat),lng:parseFloat(json[0].lon),bron:'adres'};
+  }catch(e){console.warn('geocodeAdresVolledig:',e.message);}
+  return null;
+}
+// Combineert beide lagen: volledig adres eerst (nauwkeuriger), anders postcode-middelpunt.
+async function geocodeLocatie({adres,postcode}){
+  if(adres&&adres.trim()){
+    const r=await geocodeAdresVolledig(adres);
+    if(r)return r;
+  }
+  if(postcode&&postcode.trim()){
+    const pcMatch=String(postcode).match(/\d{4}/);
+    const pc=pcMatch?pcMatch[0]:postcode.trim();
+    const r=await geocodePostcode(pc);
+    if(r)return r;
+  }
+  return null;
+}
+// Haalt een postcode uit een vrij ingetypt adres (bv. AFAS-adresveld "straat, nr, 3000 Leuven").
+function extraheerPostcodeUitAdres(adres){
+  const m=String(adres||'').match(/\b\d{4}\b/);
+  return m?m[0]:'';
+}
+// Eenmalige backfill: geocodeert alle klanten zonder lat/lng (knop "Locaties bijwerken" in CRM).
+async function geocodeBackfillKlanten(){
+  const btn=document.getElementById('crm-geocode-btn');
+  const teDoen=klanten.filter(k=>k.adres&&(k.lat===undefined||k.lat===null));
+  if(!teDoen.length){showToast('Alle klanten hebben al een kaartlocatie.');return;}
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Bezig… 0/'+teDoen.length;}
+  let gelukt=0;
+  for(let i=0;i<teDoen.length;i++){
+    const k=teDoen[i];
+    const geo=await geocodeLocatie({adres:k.adres,postcode:extraheerPostcodeUitAdres(k.adres)});
+    if(geo){k.lat=geo.lat;k.lng=geo.lng;k.geoBron=geo.bron;await sbSaveKlant(k);gelukt++;}
+    if(btn)btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Bezig… '+(i+1)+'/'+teDoen.length;
+  }
+  if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-map-pin"></i> Locaties bijwerken';}
+  showToast(gelukt+' van '+teDoen.length+' klanten voorzien van kaartlocatie.');
+}
+// Eenmalige backfill voor prospects zonder lat/lng.
+async function geocodeBackfillProspects(){
+  const btn=document.getElementById('prosp-geocode-btn');
+  const teDoen=prospects.filter(p=>(p.adres||p.postcode)&&(p.lat===undefined||p.lat===null));
+  if(!teDoen.length){showToast('Alle prospects hebben al een kaartlocatie (of missen postcode/adres).');return;}
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Bezig… 0/'+teDoen.length;}
+  let gelukt=0;
+  for(let i=0;i<teDoen.length;i++){
+    const p=teDoen[i];
+    const geo=await geocodeLocatie({adres:p.adres,postcode:p.postcode});
+    if(geo){p.lat=geo.lat;p.lng=geo.lng;p.geoBron=geo.bron;await sbSaveProspect(p);gelukt++;}
+    if(btn)btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Bezig… '+(i+1)+'/'+teDoen.length;
+  }
+  if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-map-pin"></i> Locaties bijwerken';}
+  showToast(gelukt+' van '+teDoen.length+' prospects voorzien van kaartlocatie.');
 }
 
 // ── THEMA TOGGLE ──────────────────────────────────────
