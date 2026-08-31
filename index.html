@@ -3562,6 +3562,26 @@ async function sbFetch(path,opts={}){
   const txt=await res.text();return txt?JSON.parse(txt):null;
 }
 
+// Haalt ALLE rijen op via limit/offset-paginatie, ongeacht PostgREST's max-rows cap.
+// BELANGRIJK: sbFetch() alleen geeft bij grote tabellen (klanten, prospects) een
+// stilzwijgend AFGEKAPTE lijst terug (PostgREST default max-rows), waardoor bv. de
+// AFAS-sync-matching de meeste klanten niet ziet en telkens nieuwe duplicaten aanmaakt.
+async function sbFetchAll(path,pageSize=1000){
+  let all=[];
+  let from=0;
+  while(true){
+    const sep=path.includes('?')?'&':'?';
+    const res=await fetch(sbUrl+'/rest/v1/'+path+sep+'limit='+pageSize+'&offset='+from,{headers:sbHeaders()});
+    if(!res.ok){const t=await res.text();throw new Error(res.status+': '+t);}
+    const txt=await res.text();
+    const page=txt?JSON.parse(txt):[];
+    all=all.concat(page);
+    if(page.length<pageSize)break;
+    from+=pageSize;
+  }
+  return all;
+}
+
 async function loadAll(){
   // Lopende projecten
   const rows=await sbFetch('projects?order=created_at.asc');
@@ -3629,7 +3649,7 @@ async function loadAll(){
 
   // Prospects laden
   try{
-    const prows=await sbFetch('prospects?order=created_at.asc');
+    const prows=await sbFetchAll('prospects?order=created_at.asc');
     if(prows&&prows.length>0){
       prospects=prows.map(r=>({...r.data,_sbid:r.id}));
       prospNextId=prospects.length?Math.max(...prospects.map(p=>p.id||0))+1:1;
@@ -4712,7 +4732,7 @@ let editingCrmIdx = null;
 async function loadKlanten(){
   if(!sbUrl)return;
   try{
-    const rows=await sbFetch('klanten?order=created_at.asc');
+    const rows=await sbFetchAll('klanten?order=created_at.asc');
     klanten=(rows||[]).map(r=>({id:r.id,...r.data}));
     try{localStorage.setItem('blitz_klanten',JSON.stringify(klanten));}catch{}
   }catch{}
@@ -11215,10 +11235,18 @@ function kaartToonZoekResultaten(json){
     } else {
       afstandTekst=r.afstandKm+' km · '+r.duurMinuten+' min';
     }
-    return '<div class="kaart-zoek-item" onclick="kaartFocusZoekResultaat('+i+')" style="padding:8px 10px;border-bottom:1px solid var(--bd);cursor:pointer;font-size:12px">'
+    const idEsc=String(r.entity_id).replace(/'/g,"\\'");
+    const naamEsc=String(r.naam||'').replace(/'/g,"\\'");
+    return '<div class="kaart-zoek-item" style="padding:8px 10px;border-bottom:1px solid var(--bd);font-size:12px">'
+      +'<div onclick="kaartFocusZoekResultaat('+i+')" style="cursor:pointer">'
       +'<div style="font-weight:600">'+wmsEsc(r.naam)+' <span style="font-weight:400;color:var(--tx3)">('+wmsEsc(r.categorie)+')</span></div>'
       +'<div style="color:var(--tx2)">'+wmsEsc(r.adres||'')+'</div>'
       +'<div style="color:var(--green);font-weight:600">'+afstandTekst+'</div>'
+      +'</div>'
+      +'<div id="kaart-zoek-acties-'+i+'" style="display:none;gap:8px;margin-top:8px">'
+      +'<button class="btn sm primary" style="flex:1" onclick="kaartActieDossierInline(\''+r.entity_type+'\',\''+idEsc+'\')">📂 Dossier</button>'
+      +'<button class="btn sm" style="flex:1" onclick="kaartActieBezoekInline(\''+r.entity_type+'\',\''+idEsc+'\',\''+naamEsc+'\')">📝 Bezoek</button>'
+      +'</div>'
       +'</div>';
   }).join('');
   el.innerHTML=html;
@@ -11262,7 +11290,8 @@ function kaartFocusZoekResultaat(i){
   const m=kaartZoekMarkers[i];
   const r=kaartZoekResultatenData[i];
   if(m)kaartMapObj.setView(m.getLatLng(),15);
-  if(r)kaartToonActieKeuze(r.entity_type,r.entity_id,r.naam);
+  const acties=document.getElementById('kaart-zoek-acties-'+i);
+  if(acties)acties.style.display=(acties.style.display==='flex')?'none':'flex';
 }
 
 function kaartBezoekLogKnop(entityType,entityId,naam){
@@ -11522,17 +11551,34 @@ function kaartRenderLijst(){
     return;
   }
   el.innerHTML='<div style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--bd)">'+items.length+' locatie(s)</div>'
-    +items.map((r,i)=>'<div class="kaart-zoek-item" onclick="kaartFocusLijstItem('+i+')" style="padding:8px 10px;border-bottom:1px solid var(--bd);cursor:pointer;font-size:12px">'
-      +'<div style="font-weight:600">'+wmsEsc(r.naam)+' <span style="font-weight:400;color:var(--tx3)">('+wmsEsc(r.categorie)+')</span></div>'
-      +'<div style="color:var(--tx2)">'+wmsEsc(r.adres||'')+'</div>'
-      +'</div>').join('');
+    +items.map((r,i)=>{
+      const idEsc=String(r.entity_id).replace(/'/g,"\\'");
+      const naamEsc=String(r.naam||'').replace(/'/g,"\\'");
+      return '<div class="kaart-zoek-item" style="padding:8px 10px;border-bottom:1px solid var(--bd);font-size:12px">'
+        +'<div onclick="kaartFocusLijstItem('+i+')" style="cursor:pointer">'
+        +'<div style="font-weight:600">'+wmsEsc(r.naam)+' <span style="font-weight:400;color:var(--tx3)">('+wmsEsc(r.categorie)+')</span></div>'
+        +'<div style="color:var(--tx2)">'+wmsEsc(r.adres||'')+'</div>'
+        +'</div>'
+        +'<div id="kaart-lijst-acties-'+i+'" style="display:none;gap:8px;margin-top:8px">'
+        +'<button class="btn sm primary" style="flex:1" onclick="kaartActieDossierInline(\''+r.entity_type+'\',\''+idEsc+'\')">📂 Dossier</button>'
+        +'<button class="btn sm" style="flex:1" onclick="kaartActieBezoekInline(\''+r.entity_type+'\',\''+idEsc+'\',\''+naamEsc+'\')">📝 Bezoek</button>'
+        +'</div>'
+        +'</div>';
+    }).join('');
 }
 
 function kaartFocusLijstItem(i){
   const r=kaartLijstData[i];
   if(!r)return;
   if(r.lat!=null&&r.lng!=null&&kaartMapObj)kaartMapObj.setView([r.lat,r.lng],15);
-  kaartToonActieKeuze(r.entity_type,r.entity_id,r.naam);
+  const acties=document.getElementById('kaart-lijst-acties-'+i);
+  if(acties)acties.style.display=(acties.style.display==='flex')?'none':'flex';
+}
+function kaartActieDossierInline(type,id){
+  if(type==='klant')kaartOpenKlant(id); else kaartOpenProspect(Number(id));
+}
+function kaartActieBezoekInline(type,id,naam){
+  bezoekOpenLogModal(type,id,naam);
 }
 
 function kaartWisZoekopdracht(){
