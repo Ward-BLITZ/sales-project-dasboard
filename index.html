@@ -2360,7 +2360,10 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 <div id="pane-crm" class="page" style="display:none">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
     <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">CRM — Klanten</div>
-    <button class="btn primary" onclick="openCrmModal(null)"><i class="ti ti-plus"></i> Nieuwe klant</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn primary" onclick="openCrmModal(null)"><i class="ti ti-plus"></i> Nieuwe klant</button>
+      <button class="btn" onclick="openFiliaalModal(null)" title="Filiaal/vestiging manueel toevoegen — wordt nooit door AFAS-sync aangeraakt"><i class="ti ti-building-store"></i> Filiaal toevoegen</button>
+    </div>
   </div>
   <div class="crm-search">
     <input id="crm-search" type="text" placeholder="Zoek op naam, BTW, contactpersoon..." oninput="renderCrm()" style="max-width:400px">
@@ -2373,6 +2376,39 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <span>Bedrijf</span><span>BTW-nummer</span><span>Contactpersoon</span><span>Tel / E-mail</span><span></span>
   </div>
   <div id="crm-list"></div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:26px 0 10px">
+    <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">Filialen</div>
+    <div style="font-size:11px;color:var(--tx3)">Manueel beheerd — AFAS kan hier niets aan wijzigen</div>
+  </div>
+  <div id="filialen-lijst"></div>
+</div>
+
+<!-- FILIAAL MODAL -->
+<div class="modal-overlay" id="filiaal-modal">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      <span class="modal-title" id="filiaal-modal-title">Nieuw filiaal</span>
+      <button class="modal-close" onclick="closeFiliaalModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="filiaal-id">
+    <div class="field"><label>Naam *</label><input id="filiaal-naam" placeholder="Rexel filiaal Gent"></div>
+    <div class="field">
+      <label>Gekoppeld bedrijf (optioneel)</label>
+      <select id="filiaal-moederklant"><option value="">— geen —</option></select>
+    </div>
+    <div class="field"><label>Categorie</label><input id="filiaal-categorie" placeholder="Wordt overgenomen van gekoppeld bedrijf, of 'Filiaal'"></div>
+    <div class="field">
+      <label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Adres *</label>
+      <input id="filiaal-adres" placeholder="Straat, nr, gemeente...">
+    </div>
+    <div class="field"><label>Notities</label><textarea id="filiaal-notities" rows="2"></textarea></div>
+    <div class="modal-footer" style="border-top:1px solid var(--bd);padding-top:12px;margin-top:6px">
+      <button class="btn danger" id="filiaal-del-btn" style="display:none;margin-right:auto" onclick="deleteFiliaal()"><i class="ti ti-trash"></i> Verwijderen</button>
+      <button class="btn" onclick="closeFiliaalModal()">Annuleren</button>
+      <button class="btn primary" onclick="saveFiliaal()"><i class="ti ti-check"></i> Opslaan</button>
+    </div>
+  </div>
 </div>
 
 <!-- CRM MODAL -->
@@ -3219,7 +3255,7 @@ function showTab(name){
   });
   if(name==='verkocht')renderVerkocht();
   if(name==='verloren')renderVerloren();
-  if(name==='crm'){loadKlanten().then(renderCrm);}
+  if(name==='crm'){loadKlanten().then(renderCrm);loadFilialen().then(renderFilialenLijst);}
   if(name==='instellingen'){loadServiceRoleKeyField();profielInfoRender();voorkeurenLaden();}
   if(name==='verlof'){verlofRender();}
   if(name==='gebruikers')loadGebruikers();
@@ -3631,6 +3667,7 @@ async function loadAll(){
     }
   }catch(e){console.warn('Auto-herstel service role key mislukt:',e.message);}
   await loadKlanten();
+  await loadFilialen();
   // B2C leads laden
   try{
     const b2crows=await sbFetch('b2c_leads?order=created_at.asc');
@@ -4736,6 +4773,110 @@ async function loadKlanten(){
     klanten=(rows||[]).map(r=>({id:r.id,...r.data}));
     try{localStorage.setItem('blitz_klanten',JSON.stringify(klanten));}catch{}
   }catch{}
+}
+
+// ── FILIALEN (manueel beheerd — AFAS-sync raakt deze tabel nooit aan) ──
+let filialen = [];
+async function loadFilialen(){
+  if(!sbUrl)return;
+  try{
+    const rows=await sbFetchAll('filialen?order=created_at.asc');
+    filialen=rows||[];
+    try{localStorage.setItem('blitz_filialen',JSON.stringify(filialen));}catch{}
+  }catch(e){console.warn('loadFilialen:',e.message);}
+}
+async function sbSaveFiliaal(f){
+  const body={naam:f.naam,adres:f.adres||null,postcode:f.postcode||null,lat:f.lat??null,lng:f.lng??null,geo_bron:f.geo_bron||null,moederklant_id:f.moederklant_id||null,categorie:f.categorie||null,notities:f.notities||null,aangemaakt_door:f.aangemaakt_door||null,updated_at:new Date().toISOString()};
+  if(f.id){
+    await sbFetch('filialen?id=eq.'+f.id,{method:'PATCH',body:JSON.stringify(body)});
+    return f.id;
+  } else {
+    const r=await sbFetch('filialen',{method:'POST',body:JSON.stringify(body)});
+    return r&&r[0]?r[0].id:null;
+  }
+}
+async function sbDeleteFiliaal(id){
+  await sbFetch('filialen?id=eq.'+id,{method:'DELETE'});
+}
+function filiaalVulMoederklantSelect(){
+  const sel=document.getElementById('filiaal-moederklant');
+  if(!sel)return;
+  const huidige=sel.value;
+  const opties=klanten.filter(k=>!k.isLeverancier).slice().sort((a,b)=>String(a.naam||'').localeCompare(String(b.naam||'')));
+  sel.innerHTML='<option value="">— geen —</option>'+opties.map(k=>'<option value="'+k.id+'">'+wmsEsc(k.naam)+'</option>').join('');
+  sel.value=huidige;
+}
+function openFiliaalModal(id){
+  filiaalVulMoederklantSelect();
+  const f=id?filialen.find(x=>String(x.id)===String(id)):null;
+  document.getElementById('filiaal-modal-title').textContent=f?'Filiaal bewerken':'Nieuw filiaal';
+  document.getElementById('filiaal-id').value=f?f.id:'';
+  document.getElementById('filiaal-naam').value=f?(f.naam||''):'';
+  document.getElementById('filiaal-moederklant').value=(f&&f.moederklant_id)?f.moederklant_id:'';
+  document.getElementById('filiaal-categorie').value=f?(f.categorie||''):'';
+  document.getElementById('filiaal-adres').value=f?(f.adres||''):'';
+  document.getElementById('filiaal-notities').value=f?(f.notities||''):'';
+  document.getElementById('filiaal-del-btn').style.display=f?'inline-flex':'none';
+  document.getElementById('filiaal-modal').classList.add('open');
+}
+function closeFiliaalModal(){
+  document.getElementById('filiaal-modal').classList.remove('open');
+}
+async function saveFiliaal(){
+  const id=document.getElementById('filiaal-id').value||null;
+  const naam=document.getElementById('filiaal-naam').value.trim();
+  const adres=document.getElementById('filiaal-adres').value.trim();
+  if(!naam){showToast('Naam is verplicht.');return;}
+  if(!adres){showToast('Adres is verplicht.');return;}
+  const moederklantId=document.getElementById('filiaal-moederklant').value||null;
+  let categorie=document.getElementById('filiaal-categorie').value.trim();
+  if(!categorie&&moederklantId){
+    const moeder=klanten.find(k=>String(k.id)===String(moederklantId));
+    if(moeder)categorie=moeder.typeVerkooprelatie||'';
+  }
+  const bestaand=id?filialen.find(x=>String(x.id)===String(id)):null;
+  let lat=bestaand?bestaand.lat:null, lng=bestaand?bestaand.lng:null, geoBron=bestaand?bestaand.geo_bron:null;
+  if(!bestaand||bestaand.adres!==adres){
+    showToast('Adres opzoeken...');
+    const geo=await geocodeLocatie({adres});
+    if(geo){lat=geo.lat;lng=geo.lng;geoBron=geo.bron;}
+  }
+  const gebruiker=currentUser?.user_metadata?.naam||currentUser?.email||'';
+  const payload={id,naam,adres,moederklant_id:moederklantId,categorie:categorie||null,notities:document.getElementById('filiaal-notities').value.trim()||null,lat,lng,geo_bron:geoBron,aangemaakt_door:bestaand?bestaand.aangemaakt_door:gebruiker};
+  await sbSaveFiliaal(payload);
+  await loadFilialen();
+  renderFilialenLijst();
+  if(typeof kaartRenderPins==='function')kaartRenderPins();
+  closeFiliaalModal();
+  showToast('Filiaal opgeslagen ✓');
+}
+async function deleteFiliaal(){
+  const id=document.getElementById('filiaal-id').value;
+  if(!id)return;
+  if(!confirm('Dit filiaal verwijderen?'))return;
+  await sbDeleteFiliaal(id);
+  await loadFilialen();
+  renderFilialenLijst();
+  if(typeof kaartRenderPins==='function')kaartRenderPins();
+  closeFiliaalModal();
+  showToast('Filiaal verwijderd.');
+}
+function renderFilialenLijst(){
+  const el=document.getElementById('filialen-lijst');
+  if(!el)return;
+  if(!filialen.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--tx3)">Nog geen filialen toegevoegd.</div>';return;}
+  el.innerHTML=filialen.map(f=>{
+    const moeder=f.moederklant_id?klanten.find(k=>String(k.id)===String(f.moederklant_id)):null;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--bd);font-size:13px">'
+      +'<div><div style="font-weight:600">'+wmsEsc(f.naam)+(moeder?' <span style="font-weight:400;color:var(--tx3)">('+wmsEsc(moeder.naam)+')</span>':'')+'</div>'
+      +'<div style="color:var(--tx2);font-size:12px">'+wmsEsc(f.adres||'')+'</div></div>'
+      +'<button class="btn sm" onclick="openFiliaalModal('+JSON.stringify(String(f.id))+')"><i class="ti ti-pencil"></i></button>'
+      +'</div>';
+  }).join('');
+}
+function kaartOpenFiliaal(id){
+  showTab('crm');
+  setTimeout(()=>openFiliaalModal(id),150);
 }
 
 async function sbSaveKlant(k){
@@ -11082,6 +11223,7 @@ function kaartAlleCategorieen(){
   const cats=new Set();
   klanten.forEach(k=>{if(k.isLeverancier)return;if(k.lat!=null&&k.lat!=='')cats.add(k.typeVerkooprelatie||'Onbekend');});
   if(prospects.some(p=>p.lat!=null&&p.lat!==''))cats.add('Prospect');
+  filialen.forEach(f=>{if(f.lat!=null&&f.lat!=='')cats.add(f.categorie||'Filiaal');});
   return[...cats].sort();
 }
 function kaartInit(){
@@ -11154,6 +11296,17 @@ function kaartRenderPins(){
     const marker=L.circleMarker([p.lat,p.lng],{radius:8,fillColor:kleur,fillOpacity:.9,color:'#fff',weight:2});
     const btn='<button onclick="kaartOpenProspect('+JSON.stringify(p.id)+')" style="margin-top:4px;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer">Dossier openen</button>'+kaartBezoekLogKnop('prospect',p.id,p.naam);
     marker.bindPopup(kaartMaakPopup(p.naam,'Prospect',p.adres||p.postcode,btn));
+    kaartClusterGroep.addLayer(marker);
+    aantal++;
+  });
+  filialen.forEach(f=>{
+    if(f.lat==null||f.lat===''||f.lng==null||f.lng==='')return;
+    const cat=f.categorie||'Filiaal';
+    if(!kaartActieveFilters.has(cat))return;
+    const kleur=kaartKleurVoorCategorie(cat);
+    const marker=L.circleMarker([f.lat,f.lng],{radius:8,fillColor:kleur,fillOpacity:.9,color:'#fff',weight:2,dashArray:'2,2'});
+    const btn='<button onclick="kaartOpenFiliaal('+JSON.stringify(String(f.id))+')" style="margin-top:4px;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer">Dossier openen</button>'+kaartBezoekLogKnop('filiaal',f.id,f.naam);
+    marker.bindPopup(kaartMaakPopup(f.naam,cat,f.adres,btn));
     kaartClusterGroep.addLayer(marker);
     aantal++;
   });
@@ -11505,7 +11658,7 @@ async function bezoekSaveInstellingen(){
 // blijven staan ook al is er een correct straatadres gekend.
 async function geocodeForceerKlantAdressen(){
   const btn=document.getElementById('crm-forceer-geocode-btn');
-  const teDoen=klanten.filter(k=>k.adres&&k.adres.trim());
+  const teDoen=klanten.filter(k=>!k.isLeverancier&&k.adres&&k.adres.trim());
   if(!teDoen.length){showToast('Geen klanten met een adres gevonden.');return;}
   if(!confirm('Dit herberekent de kaartlocatie van '+teDoen.length+' klanten op basis van hun volledige adres (kan enkele minuten duren). Doorgaan?'))return;
   if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Bezig… 0/'+teDoen.length;}
@@ -11544,6 +11697,12 @@ function kaartRenderLijst(){
     if(!kaartActieveFilters||!kaartActieveFilters.has('Prospect'))return;
     items.push({entity_type:'prospect',entity_id:p.id,naam:p.naam,categorie:'Prospect',adres:p.adres||p.postcode,lat:p.lat,lng:p.lng});
   });
+  filialen.forEach(f=>{
+    if(f.lat==null||f.lat===''||f.lng==null||f.lng==='')return;
+    const cat=f.categorie||'Filiaal';
+    if(!kaartActieveFilters||!kaartActieveFilters.has(cat))return;
+    items.push({entity_type:'filiaal',entity_id:f.id,naam:f.naam,categorie:cat,adres:f.adres,lat:f.lat,lng:f.lng});
+  });
   items.sort((a,b)=>String(a.naam||'').localeCompare(String(b.naam||'')));
   kaartLijstData=items;
   if(!items.length){
@@ -11575,7 +11734,7 @@ function kaartFocusLijstItem(i){
   if(acties)acties.style.display=(acties.style.display==='flex')?'none':'flex';
 }
 function kaartActieDossierInline(type,id){
-  if(type==='klant')kaartOpenKlant(id); else kaartOpenProspect(Number(id));
+  if(type==='klant')kaartOpenKlant(id); else if(type==='filiaal')kaartOpenFiliaal(id); else kaartOpenProspect(Number(id));
 }
 function kaartActieBezoekInline(type,id,naam){
   bezoekOpenLogModal(type,id,naam);
