@@ -1499,7 +1499,7 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
   </div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="kaart-filters"></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
-    <input id="kaart-zoek-postcode" placeholder="Naam, postcode of gemeente..." style="max-width:200px;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px">
+    <input id="kaart-zoek-postcode" placeholder="Naam, postcode of gemeente..." oninput="kaartZoekLive(this.value)" style="max-width:200px;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx);font-size:13px">
     <button class="btn sm primary" onclick="kaartZoekDichtstbij()"><i class="ti ti-search"></i> Dichtstbijzijnde zoeken</button>
     <button class="btn sm" onclick="kaartZoekMijnLocatie()" title="Gebruik mijn huidige locatie"><i class="ti ti-current-location"></i></button>
   </div>
@@ -1525,11 +1525,16 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
     </div>
   </div>
 
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:12px">
+    <div class="stat-card"><div class="stat-label">Totaal omzet (alle jaren)</div><div class="stat-value" id="sales-cijfers-totaal-omzet" style="font-size:22px">€ 0</div></div>
+    <div class="stat-card"><div class="stat-label">Totaal aantal orders (alle jaren)</div><div class="stat-value" id="sales-cijfers-totaal-orders" style="font-size:22px">0</div></div>
+  </div>
+
+  <div id="sales-cijfers-selectie-label" style="font-size:12px;color:var(--tx3);font-weight:600;margin:0 0 6px 2px"></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
     <div class="stat-card"><div class="stat-label">Year to date</div><div class="stat-value" id="sales-cijfers-ytd">€ 0</div></div>
     <div class="stat-card"><div class="stat-label">Deze maand</div><div class="stat-value" id="sales-cijfers-huidige-maand">€ 0</div></div>
     <div class="stat-card"><div class="stat-label">Deze week</div><div class="stat-value" id="sales-cijfers-huidige-week">€ 0</div></div>
-    <div class="stat-card"><div class="stat-label">Totaal aantal orders</div><div class="stat-value" id="sales-cijfers-totaal-orders">0</div></div>
   </div>
 
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
@@ -11422,6 +11427,16 @@ function kaartZoekOpNaam(query){
   resultaten.sort((a,b)=>String(a.naam||'').localeCompare(String(b.naam||'')));
   return resultaten;
 }
+let kaartZoekLiveTimer=null;
+function kaartZoekLive(waarde){
+  clearTimeout(kaartZoekLiveTimer);
+  kaartZoekLiveTimer=setTimeout(()=>{
+    const q=(waarde||'').trim();
+    if(!q){ kaartWisZoekopdracht(); return; }
+    const resultaten=kaartZoekOpNaam(q);
+    kaartToonZoekResultaten({resultaten});
+  },150);
+}
 async function kaartZoekDichtstbij(){
   const query=(document.getElementById('kaart-zoek-postcode').value||'').trim();
   if(!query){showToast('Vul een naam, postcode of gemeente in.');return;}
@@ -12149,6 +12164,19 @@ function salesCijfersRender(){
 
   const totaalEl = document.getElementById('sales-cijfers-totaal-orders');
   if(totaalEl) totaalEl.textContent = salesOrders.length.toLocaleString('nl-BE');
+
+  const totaalOmzetEl = document.getElementById('sales-cijfers-totaal-omzet');
+  if(totaalOmzetEl) totaalOmzetEl.textContent = salesFmtEuro(salesOrders.reduce((s,o)=>s+(o.totaalbedragExclusief||0),0));
+
+  const selectieEl = document.getElementById('sales-cijfers-selectie-label');
+  if(selectieEl){
+    const maandNamenLang=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+    let selectieTekst='';
+    if(salesCijfersView==='jaar') selectieTekst='Geselecteerd overzicht: jaar '+salesCijfersJaar;
+    else if(salesCijfersView==='maand') selectieTekst='Geselecteerd overzicht: '+maandNamenLang[salesCijfersMaand-1]+' '+salesCijfersJaar;
+    else if(salesCijfersView==='week') selectieTekst='Geselecteerd overzicht: week '+salesCijfersWeek+', '+salesCijfersJaar;
+    selectieEl.textContent=selectieTekst;
+  }
   const laatsteEl = document.getElementById('sales-cijfers-laatste-sync');
   if(laatsteEl) laatsteEl.textContent = salesCijfersLaatsteSync ? new Date(salesCijfersLaatsteSync).toLocaleString('nl-BE') : 'nog niet gesynchroniseerd';
 
