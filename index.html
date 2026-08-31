@@ -1462,8 +1462,10 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
     <button class="btn sm primary" onclick="kaartZoekDichtstbij()"><i class="ti ti-search"></i> Dichtstbijzijnde zoeken</button>
     <button class="btn sm" onclick="kaartZoekMijnLocatie()" title="Gebruik mijn huidige locatie"><i class="ti ti-current-location"></i></button>
   </div>
-  <div id="kaart-zoek-resultaten" style="display:none;max-height:220px;overflow-y:auto;border:1px solid var(--bd);border-radius:var(--r);margin-bottom:12px;background:var(--bg)"></div>
-  <div id="kaart-map" style="width:100%;height:70vh;min-height:420px;border-radius:var(--rl);overflow:hidden;border:1px solid var(--bd);position:relative;z-index:1"></div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
+    <div id="kaart-map" style="flex:2 1 480px;min-width:280px;height:70vh;min-height:420px;border-radius:var(--rl);overflow:hidden;border:1px solid var(--bd);position:relative;z-index:1"></div>
+    <div id="kaart-zoek-resultaten" style="display:none;flex:1 1 300px;min-width:260px;max-height:70vh;overflow-y:auto;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg)"></div>
+  </div>
   <div style="font-size:11px;color:var(--tx3);margin-top:6px" id="kaart-legenda-info"></div>
 </div>
 
@@ -2304,6 +2306,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <button id="crm-partner-filter" class="btn sm" onclick="crmTogglePartnerFilter()" title="Toon enkel installatiepartners"><i class="ti ti-tools"></i> Partners</button>
     <button class="btn sm" onclick="afasCrmSync()" title="Klanten en leveranciers uit AFAS importeren" id="crm-afas-sync-btn"><i class="ti ti-building-factory"></i> AFAS sync</button>
     <button class="btn sm" onclick="geocodeBackfillKlanten()" title="Berekent kaartlocaties voor klanten zonder coördinaten" id="crm-geocode-btn"><i class="ti ti-map-pin"></i> Locaties bijwerken</button>
+    <button class="btn sm" onclick="geocodeForceerKlantAdressen()" title="Herberekent de locatie van ALLE klanten met een adres, ook als ze al coördinaten hebben — lost het probleem op dat pins allemaal in het stadscentrum staan" id="crm-forceer-geocode-btn"><i class="ti ti-map-pin"></i> Forceer adres-herberekening</button>
   </div>
   <div class="crm-hdr">
     <span>Bedrijf</span><span>BTW-nummer</span><span>Contactpersoon</span><span>Tel / E-mail</span><span></span>
@@ -11209,6 +11212,32 @@ async function bezoekSaveInstellingen(){
   }
   showToast('Instellingen opgeslagen ✓');
   bezoekSluitInstellingen();
+}
+
+// Herberekent de kaartlocatie van ALLE klanten met een adres via het volledige adres (Nominatim),
+// ook als ze al coördinaten hebben. Nodig omdat een eerdere geocode-poging soms stil terugvalt op
+// het postcode-middelpunt (bv. bij een tijdelijke Nominatim-fout), waardoor pins in het stadscentrum
+// blijven staan ook al is er een correct straatadres gekend.
+async function geocodeForceerKlantAdressen(){
+  const btn=document.getElementById('crm-forceer-geocode-btn');
+  const teDoen=klanten.filter(k=>k.adres&&k.adres.trim());
+  if(!teDoen.length){showToast('Geen klanten met een adres gevonden.');return;}
+  if(!confirm('Dit herberekent de kaartlocatie van '+teDoen.length+' klanten op basis van hun volledige adres (kan enkele minuten duren). Doorgaan?'))return;
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Bezig… 0/'+teDoen.length;}
+  let gelukt=0;
+  for(let i=0;i<teDoen.length;i++){
+    const k=teDoen[i];
+    const geo=await geocodeAdresVolledig(k.adres);
+    if(geo&&(k.lat!==geo.lat||k.lng!==geo.lng)){
+      k.lat=geo.lat;k.lng=geo.lng;k.geoBron=geo.bron;
+      await sbSaveKlant(k);
+      gelukt++;
+    }
+    if(btn)btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Bezig… '+(i+1)+'/'+teDoen.length;
+  }
+  if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-map-pin"></i> Forceer adres-herberekening';}
+  showToast(gelukt+' van '+teDoen.length+' klanten kregen een nauwkeurigere locatie.');
+  if(typeof kaartRenderPins==='function')kaartRenderPins();
 }
 
 // ── THEMA TOGGLE ──────────────────────────────────────
