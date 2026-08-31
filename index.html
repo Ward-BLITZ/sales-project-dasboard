@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -807,6 +808,7 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
         <button class="nav-dd-item" id="tab-verloren" onclick="showTab('verloren');closeAllNavDd()"><i class="ti ti-x"></i> Verloren</button>
         <div style="height:1px;background:var(--bd);margin:4px 8px"></div>
         <button class="nav-dd-item" id="tab-kaart" onclick="showTab('kaart');closeAllNavDd()"><i class="ti ti-map-pin"></i> Kaart</button>
+        <button class="nav-dd-item" id="tab-sales-cijfers" onclick="showTab('sales-cijfers');closeAllNavDd()"><i class="ti ti-chart-bar"></i> Sales cijfers</button>
       </div>
     </div>
 
@@ -1507,6 +1509,50 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
   </div>
   <div style="font-size:11px;color:var(--tx3);margin-top:6px" id="kaart-legenda-info"></div>
 </div>
+
+
+
+<!-- SALES CIJFERS (AFAS Blitz_Salesorder) -->
+<div id="pane-sales-cijfers" class="page" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1rem">
+    <div>
+      <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700">Sales cijfers</div>
+      <div style="font-size:12px;color:var(--tx2)">Omzet excl. BTW per jaar, maand en week — bron: AFAS (Blitz_Salesorder)</div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:11px;color:var(--tx3)">Laatst gesynchroniseerd: <span id="sales-cijfers-laatste-sync">—</span></span>
+      <button class="btn sm" onclick="afasSyncSalesOrders()" id="sales-cijfers-sync-btn"><i class="ti ti-building-factory"></i> AFAS sync</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">Year to date</div><div class="stat-value" id="sales-cijfers-ytd">€ 0</div></div>
+    <div class="stat-card"><div class="stat-label">Deze maand</div><div class="stat-value" id="sales-cijfers-huidige-maand">€ 0</div></div>
+    <div class="stat-card"><div class="stat-label">Deze week</div><div class="stat-value" id="sales-cijfers-huidige-week">€ 0</div></div>
+    <div class="stat-card"><div class="stat-label">Totaal aantal orders</div><div class="stat-value" id="sales-cijfers-totaal-orders">0</div></div>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+    <button class="btn sm primary" id="sales-cijfers-view-jaar" onclick="salesCijfersZetView('jaar')">Jaaroverzicht</button>
+    <button class="btn sm" id="sales-cijfers-view-maand" onclick="salesCijfersZetView('maand')">Maandoverzicht</button>
+    <button class="btn sm" id="sales-cijfers-view-week" onclick="salesCijfersZetView('week')">Weekoverzicht</button>
+    <select id="sales-cijfers-jaar" onchange="salesCijfersJaarGewijzigd()" style="padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)"></select>
+    <div id="sales-cijfers-maand-wrap" style="display:none">
+      <select id="sales-cijfers-maand" onchange="salesCijfersMaandGewijzigd()" style="padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)"></select>
+    </div>
+    <div id="sales-cijfers-week-wrap" style="display:none">
+      <select id="sales-cijfers-week" onchange="salesCijfersWeekGewijzigd()" style="padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)"></select>
+    </div>
+    <span style="margin-left:auto;font-size:13px;font-weight:700">Totaal deze weergave: <span id="sales-cijfers-view-totaal" style="color:var(--green)">€ 0</span></span>
+  </div>
+
+  <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:14px;margin-bottom:16px;height:320px">
+    <canvas id="sales-cijfers-chart"></canvas>
+  </div>
+
+  <div id="sales-cijfers-tabel" style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:4px 14px"></div>
+</div>
+
 
 <!-- KAART ACTIEKEUZE (dossier openen / bezoek noteren) -->
 <div class="modal-overlay" id="kaart-actie-overlay">
@@ -3279,6 +3325,7 @@ function showTab(name){
   if(name==='rapportage'){renderRapportage();}
   if(name==='wms'){document.getElementById('pane-wms').style.display='block';}
   if(name==='kaart'){kaartInit();}
+  if(name==='sales-cijfers'){salesCijfersInit();}
   if(name==='sales'){
     salesBeheerRender();
     // Artikelcatalogus (Supabase + AFAS) wordt elders lazy geladen (bv. bij het openen van een
@@ -11928,6 +11975,244 @@ async function afasFetchConnector(connectorName, take=1000, extraParams='') {
   if (json.error) throw new Error(json.error);
   return json.rows || json.data?.rows || [];
 }
+
+// ── SALES CIJFERS (AFAS Blitz_Salesorder-connector) ────────────────────
+let salesOrders = [];
+let salesCijfersView = 'jaar';
+let salesCijfersJaar = new Date().getFullYear();
+let salesCijfersMaand = new Date().getMonth()+1;
+let salesCijfersWeek = salesIsoWeekVanDatum(new Date());
+let salesCijfersChart = null;
+let salesCijfersLaatsteSync = null;
+
+function salesFmtEuro(v){ return '€ '+Math.round(v||0).toLocaleString('nl-BE'); }
+
+function salesIsoWeekVanDatum(d){
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNr = (dt.getUTCDay() + 6) % 7;
+  dt.setUTCDate(dt.getUTCDate() - dayNr + 3);
+  const firstThursday = new Date(Date.UTC(dt.getUTCFullYear(),0,4));
+  return 1 + Math.round(((dt - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay()+6)%7)) / 7);
+}
+
+function salesParseGetal(v){
+  if(v==null||v==='')return null;
+  if(typeof v==='number')return v;
+  const g = String(v).replace(/\./g,'').replace(',', '.').replace(/[^0-9.\-]/g,'');
+  const n = parseFloat(g);
+  return isNaN(n)?null:n;
+}
+function salesParseDatum(v){
+  if(!v)return null;
+  const s = String(v).slice(0,10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+}
+
+async function loadSalesOrders(){
+  if(!sbUrl)return;
+  try{
+    const rows = await sbFetchAll('sales_orders?order=datum.asc');
+    salesOrders = (rows||[]).map(r=>({
+      id:r.id, afasNummer:r.afas_nummer, typeOrder:r.type_order, status:r.status,
+      datum:r.datum, naam:r.naam, opdrachtnummerReferentie:r.opdrachtnummer_referentie,
+      totaalaantal:r.totaalaantal!=null?Number(r.totaalaantal):null,
+      offerteBevestigd:r.offerte_bevestigd, datumLevering:r.datum_levering, levering:r.levering,
+      totaalbedragExclusief:r.totaalbedrag_exclusief!=null?Number(r.totaalbedrag_exclusief):0,
+      syncedAt:r.synced_at
+    }));
+    salesCijfersLaatsteSync = salesOrders.length ? salesOrders.reduce((m,o)=>(o.syncedAt&&o.syncedAt>m)?o.syncedAt:m, salesOrders[0].syncedAt||'') : null;
+  }catch(e){ console.warn('loadSalesOrders:', e.message); }
+}
+
+async function afasSyncSalesOrders(){
+  const btn = document.getElementById('sales-cijfers-sync-btn');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Laden…'; }
+  showToast('Salesorders laden vanuit AFAS…');
+  try{
+    const rows = await afasFetchConnector('Blitz_Salesorder', 20000);
+    if(rows.length) console.log('AFAS salesorder velden:', Object.keys(rows[0]));
+    const gemapt = rows.map(r=>({
+      afas_nummer: String(r.Nummer||r.nummer||'').trim(),
+      type_order: r.Type_order||r.TypeOrder||r.type_order||'',
+      status: r.Status||r.status||'',
+      datum: salesParseDatum(r.Datum||r.datum),
+      naam: r.Naam||r.naam||'',
+      opdrachtnummer_referentie: r.Opdrachtnummer_referentie||r['Opdrachtnummer/referentie']||r.Opdrachtnummer_referenti||'',
+      totaalaantal: salesParseGetal(r.Totaalaantal),
+      offerte_bevestigd: String(r.Offerte_Bevestigd!=null?r.Offerte_Bevestigd:''),
+      datum_levering: salesParseDatum(r.Datum_levering__toegezegd_||r['Datum levering (toegezegd)']||r.Datum_levering__toegezeg||r.Datum_levering),
+      levering: r.Levering||r.levering||'',
+      totaalbedrag_exclusief: salesParseGetal(r.Totaalbedrag_exclusief) || 0,
+    })).filter(o=>o.afas_nummer);
+    const CHUNK=500;
+    for(let i=0;i<gemapt.length;i+=CHUNK){
+      const stuk = gemapt.slice(i,i+CHUNK);
+      await sbFetch('sales_orders?on_conflict=afas_nummer',{
+        method:'POST',
+        headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body: JSON.stringify(stuk)
+      });
+    }
+    await loadSalesOrders();
+    salesCijfersVulSelects();
+    salesCijfersRender();
+    showToast(`✓ ${gemapt.length} salesorders gesynchroniseerd.`);
+  }catch(e){
+    showToast('⚠ Sales-sync mislukt: '+e.message);
+    console.error('afasSyncSalesOrders:', e);
+  }finally{
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-building-factory"></i> AFAS sync'; }
+  }
+}
+
+function salesCijfersJarenBeschikbaar(){
+  const jaren = new Set(salesOrders.filter(o=>o.datum).map(o=>Number(o.datum.slice(0,4))));
+  jaren.add(new Date().getFullYear());
+  return [...jaren].sort((a,b)=>b-a);
+}
+
+function salesCijfersInit(){
+  loadSalesOrders().then(()=>{
+    salesCijfersVulSelects();
+    salesCijfersRender();
+  });
+}
+
+function salesCijfersVulSelects(){
+  const jarenSel = document.getElementById('sales-cijfers-jaar');
+  if(jarenSel){
+    const jaren = salesCijfersJarenBeschikbaar();
+    if(!jaren.includes(salesCijfersJaar)) salesCijfersJaar = jaren[0];
+    jarenSel.innerHTML = jaren.map(j=>'<option value="'+j+'"'+(j===salesCijfersJaar?' selected':'')+'>'+j+'</option>').join('');
+  }
+  const maandSel = document.getElementById('sales-cijfers-maand');
+  if(maandSel && !maandSel.dataset.gevuld){
+    const maandNamen=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+    maandSel.innerHTML = maandNamen.map((m,i)=>'<option value="'+(i+1)+'"'+((i+1)===salesCijfersMaand?' selected':'')+'>'+m+'</option>').join('');
+    maandSel.dataset.gevuld='1';
+  }
+  const weekSel = document.getElementById('sales-cijfers-week');
+  if(weekSel && !weekSel.dataset.gevuld){
+    let opties='';
+    for(let w=1;w<=53;w++) opties+='<option value="'+w+'"'+(w===salesCijfersWeek?' selected':'')+'>week '+w+'</option>';
+    weekSel.innerHTML = opties;
+    weekSel.dataset.gevuld='1';
+  }
+}
+
+function salesCijfersZetView(view){
+  salesCijfersView = view;
+  ['jaar','maand','week'].forEach(v=>{
+    const btn = document.getElementById('sales-cijfers-view-'+v);
+    if(btn) btn.classList.toggle('primary', v===view);
+  });
+  const maandWrap = document.getElementById('sales-cijfers-maand-wrap');
+  const weekWrap = document.getElementById('sales-cijfers-week-wrap');
+  if(maandWrap) maandWrap.style.display = (view==='maand') ? 'inline-block' : 'none';
+  if(weekWrap) weekWrap.style.display = (view==='week') ? 'inline-block' : 'none';
+  salesCijfersRender();
+}
+function salesCijfersJaarGewijzigd(){
+  salesCijfersJaar = Number(document.getElementById('sales-cijfers-jaar').value);
+  salesCijfersRender();
+}
+function salesCijfersMaandGewijzigd(){
+  salesCijfersMaand = Number(document.getElementById('sales-cijfers-maand').value);
+  salesCijfersRender();
+}
+function salesCijfersWeekGewijzigd(){
+  salesCijfersWeek = Number(document.getElementById('sales-cijfers-week').value);
+  salesCijfersRender();
+}
+
+function salesCijfersOrdersVoorJaar(jaar){
+  return salesOrders.filter(o=>o.datum && Number(o.datum.slice(0,4))===jaar);
+}
+
+function salesCijfersRender(){
+  const vandaag = new Date();
+  const huidigJaar = vandaag.getFullYear();
+  const vandaagKey = vandaag.toISOString().slice(0,10);
+  const ytdTotal = salesCijfersOrdersVoorJaar(huidigJaar).filter(o=>o.datum<=vandaagKey).reduce((s,o)=>s+(o.totaalbedragExclusief||0),0);
+  const ytdEl = document.getElementById('sales-cijfers-ytd');
+  if(ytdEl) ytdEl.textContent = salesFmtEuro(ytdTotal);
+
+  const maandKey = vandaag.toISOString().slice(0,7);
+  const maandTotal = salesOrders.filter(o=>o.datum && o.datum.slice(0,7)===maandKey).reduce((s,o)=>s+(o.totaalbedragExclusief||0),0);
+  const maandEl = document.getElementById('sales-cijfers-huidige-maand');
+  if(maandEl) maandEl.textContent = salesFmtEuro(maandTotal);
+
+  const huidigeWeek = salesIsoWeekVanDatum(vandaag);
+  const weekTotal = salesOrders.filter(o=>o.datum && Number(o.datum.slice(0,4))===huidigJaar && salesIsoWeekVanDatum(new Date(o.datum))===huidigeWeek).reduce((s,o)=>s+(o.totaalbedragExclusief||0),0);
+  const weekEl = document.getElementById('sales-cijfers-huidige-week');
+  if(weekEl) weekEl.textContent = salesFmtEuro(weekTotal);
+
+  const totaalEl = document.getElementById('sales-cijfers-totaal-orders');
+  if(totaalEl) totaalEl.textContent = salesOrders.length.toLocaleString('nl-BE');
+  const laatsteEl = document.getElementById('sales-cijfers-laatste-sync');
+  if(laatsteEl) laatsteEl.textContent = salesCijfersLaatsteSync ? new Date(salesCijfersLaatsteSync).toLocaleString('nl-BE') : 'nog niet gesynchroniseerd';
+
+  let labels=[], data=[], tabelRijen=[];
+  if(salesCijfersView==='jaar'){
+    const jaarOrders = salesCijfersOrdersVoorJaar(salesCijfersJaar);
+    const maandNamen=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    for(let m=1;m<=12;m++){
+      const orders = jaarOrders.filter(o=>Number(o.datum.slice(5,7))===m);
+      const tot = orders.reduce((s,o)=>s+(o.totaalbedragExclusief||0),0);
+      labels.push(maandNamen[m-1]);
+      data.push(tot);
+      tabelRijen.push({label: maandNamen[m-1]+' '+salesCijfersJaar, bedrag: tot, aantal: orders.length});
+    }
+  } else if(salesCijfersView==='maand'){
+    const dagenInMaand = new Date(salesCijfersJaar, salesCijfersMaand, 0).getDate();
+    const maandSleutel = salesCijfersJaar+'-'+String(salesCijfersMaand).padStart(2,'0');
+    const maandOrders = salesOrders.filter(o=>o.datum && o.datum.slice(0,7)===maandSleutel);
+    for(let d=1;d<=dagenInMaand;d++){
+      const orders = maandOrders.filter(o=>Number(o.datum.slice(8,10))===d);
+      const tot = orders.reduce((s,o)=>s+(o.totaalbedragExclusief||0),0);
+      labels.push(String(d));
+      data.push(tot);
+      tabelRijen.push({label: String(d).padStart(2,'0')+'/'+String(salesCijfersMaand).padStart(2,'0')+'/'+salesCijfersJaar, bedrag: tot, aantal: orders.length});
+    }
+  } else if(salesCijfersView==='week'){
+    const weekOrders = salesOrders.filter(o=>o.datum && Number(o.datum.slice(0,4))===salesCijfersJaar && salesIsoWeekVanDatum(new Date(o.datum))===salesCijfersWeek);
+    const dagNamen=['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
+    for(let d=0;d<7;d++){
+      const orders = weekOrders.filter(o=>((new Date(o.datum)).getDay()+6)%7===d);
+      const tot = orders.reduce((s,o)=>s+(o.totaalbedragExclusief||0),0);
+      labels.push(dagNamen[d]);
+      data.push(tot);
+      tabelRijen.push({label: dagNamen[d], bedrag: tot, aantal: orders.length});
+    }
+  }
+
+  const totVanView = data.reduce((a,b)=>a+b,0);
+  const totEl = document.getElementById('sales-cijfers-view-totaal');
+  if(totEl) totEl.textContent = salesFmtEuro(totVanView);
+
+  const canvas = document.getElementById('sales-cijfers-chart');
+  if(canvas && typeof Chart!=='undefined'){
+    if(salesCijfersChart) salesCijfersChart.destroy();
+    salesCijfersChart = new Chart(canvas.getContext('2d'), {
+      type:'bar',
+      data:{ labels, datasets:[{ label:'Omzet excl. BTW', data, backgroundColor:'#00DFA3' }] },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(ctx)=>salesFmtEuro(ctx.parsed.y) } } },
+        scales:{ y:{ ticks:{ callback:(v)=>salesFmtEuro(v) } } }
+      }
+    });
+  }
+
+  const tabelEl = document.getElementById('sales-cijfers-tabel');
+  if(tabelEl){
+    tabelEl.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<thead><tr style="text-align:left;border-bottom:1px solid var(--bd)"><th style="padding:8px">Periode</th><th style="padding:8px">Aantal orders</th><th style="padding:8px;text-align:right">Omzet excl. BTW</th></tr></thead>'
+      + '<tbody>' + tabelRijen.map(r=>'<tr style="border-bottom:1px solid var(--bd)"><td style="padding:8px">'+r.label+'</td><td style="padding:8px">'+r.aantal+'</td><td style="padding:8px;text-align:right">'+salesFmtEuro(r.bedrag)+'</td></tr>').join('')
+      + '</tbody></table>';
+  }
+}
+
 
 async function afasLoadArtikelen() {
   try {
