@@ -1464,7 +1464,7 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
   </div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
     <div id="kaart-map" style="flex:2 1 480px;min-width:280px;height:70vh;min-height:420px;border-radius:var(--rl);overflow:hidden;border:1px solid var(--bd);position:relative;z-index:1"></div>
-    <div id="kaart-zoek-resultaten" style="display:none;flex:1 1 300px;min-width:260px;max-height:70vh;overflow-y:auto;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg)"></div>
+    <div id="kaart-zoek-resultaten" style="flex:1 1 300px;min-width:260px;max-height:70vh;overflow-y:auto;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg)"></div>
   </div>
   <div style="font-size:11px;color:var(--tx3);margin-top:6px" id="kaart-legenda-info"></div>
 </div>
@@ -11006,6 +11006,7 @@ function kaartRenderPins(){
   });
   const infoEl=document.getElementById('kaart-legenda-info');
   if(infoEl)infoEl.textContent=aantal+' locatie(s) zichtbaar.';
+  if(typeof kaartRenderLijst==='function')kaartRenderLijst();
 }
 function kaartOpenKlant(id){
   const idx=klanten.findIndex(k=>String(k.id)===String(id));
@@ -11052,18 +11053,23 @@ function kaartZoekMijnLocatie(){
 }
 
 function kaartToonZoekResultaten(json){
+  kaartZoekActief=true;
   kaartZoekResultatenData=json.resultaten||[];
   if(kaartZoekOorsprongMarker){kaartMapObj.removeLayer(kaartZoekOorsprongMarker);kaartZoekOorsprongMarker=null;}
   kaartZoekMarkers.forEach(m=>kaartMapObj.removeLayer(m));
   kaartZoekMarkers=[];
   const el=document.getElementById('kaart-zoek-resultaten');
   if(!el)return;
+  const wisKnop='<div style="padding:8px 10px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center">'
+    +'<span style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px">'+kaartZoekResultatenData.length+' resultaat/resultaten</span>'
+    +'<button class="btn sm" onclick="kaartWisZoekopdracht()" style="font-size:11px;padding:3px 8px">Wis zoekopdracht</button>'
+    +'</div>';
   if(!kaartZoekResultatenData.length){
-    el.innerHTML='<div style="padding:10px;font-size:12px;color:var(--tx3)">Geen resultaten gevonden.</div>';
+    el.innerHTML=wisKnop+'<div style="padding:10px;font-size:12px;color:var(--tx3)">Geen resultaten gevonden.</div>';
     el.style.display='block';
     return;
   }
-  let html='';
+  let html=wisKnop;
   if(json.limietBereikt){
     html+='<div style="padding:8px 10px;font-size:11px;background:#FEF3C7;color:#92400E;border-radius:6px;margin:8px 8px 0">Maandelijkse Google-limiet bereikt — afstanden zijn hemelsbrede schattingen.</div>';
   }
@@ -11238,6 +11244,53 @@ async function geocodeForceerKlantAdressen(){
   if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-map-pin"></i> Forceer adres-herberekening';}
   showToast(gelukt+' van '+teDoen.length+' klanten kregen een nauwkeurigere locatie.');
   if(typeof kaartRenderPins==='function')kaartRenderPins();
+}
+
+let kaartZoekActief=false;
+let kaartLijstData=[];
+
+function kaartRenderLijst(){
+  if(kaartZoekActief)return;
+  const el=document.getElementById('kaart-zoek-resultaten');
+  if(!el)return;
+  const items=[];
+  klanten.forEach(k=>{
+    if(k.lat==null||k.lat===''||k.lng==null||k.lng==='')return;
+    const cat=k.typeVerkooprelatie||'Onbekend';
+    if(!kaartActieveFilters||!kaartActieveFilters.has(cat))return;
+    items.push({entity_type:'klant',entity_id:k.id,naam:k.naam,categorie:cat,adres:k.adres,lat:k.lat,lng:k.lng});
+  });
+  prospects.forEach(p=>{
+    if(p.lat==null||p.lat===''||p.lng==null||p.lng==='')return;
+    if(!kaartActieveFilters||!kaartActieveFilters.has('Prospect'))return;
+    items.push({entity_type:'prospect',entity_id:p.id,naam:p.naam,categorie:'Prospect',adres:p.adres||p.postcode,lat:p.lat,lng:p.lng});
+  });
+  items.sort((a,b)=>String(a.naam||'').localeCompare(String(b.naam||'')));
+  kaartLijstData=items;
+  if(!items.length){
+    el.innerHTML='<div style="padding:10px;font-size:12px;color:var(--tx3)">Geen locaties zichtbaar met de huidige filters.</div>';
+    return;
+  }
+  el.innerHTML='<div style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--bd)">'+items.length+' locatie(s)</div>'
+    +items.map((r,i)=>'<div class="kaart-zoek-item" onclick="kaartFocusLijstItem('+i+')" style="padding:8px 10px;border-bottom:1px solid var(--bd);cursor:pointer;font-size:12px">'
+      +'<div style="font-weight:600">'+wmsEsc(r.naam)+' <span style="font-weight:400;color:var(--tx3)">('+wmsEsc(r.categorie)+')</span></div>'
+      +'<div style="color:var(--tx2)">'+wmsEsc(r.adres||'')+'</div>'
+      +'</div>').join('');
+}
+
+function kaartFocusLijstItem(i){
+  const r=kaartLijstData[i];
+  if(r&&r.lat!=null&&r.lng!=null&&kaartMapObj)kaartMapObj.setView([r.lat,r.lng],15);
+}
+
+function kaartWisZoekopdracht(){
+  kaartZoekActief=false;
+  if(kaartZoekOorsprongMarker){kaartMapObj.removeLayer(kaartZoekOorsprongMarker);kaartZoekOorsprongMarker=null;}
+  kaartZoekMarkers.forEach(m=>{if(m)kaartMapObj.removeLayer(m);});
+  kaartZoekMarkers=[];
+  const inp=document.getElementById('kaart-zoek-postcode');
+  if(inp)inp.value='';
+  kaartRenderLijst();
 }
 
 // ── THEMA TOGGLE ──────────────────────────────────────
