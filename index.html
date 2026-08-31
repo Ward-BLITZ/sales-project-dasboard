@@ -11017,7 +11017,7 @@ function extraheerPostcodeUitAdres(adres){
 // Eenmalige backfill: geocodeert alle klanten zonder lat/lng (knop "Locaties bijwerken" in CRM).
 async function geocodeBackfillKlanten(){
   const btn=document.getElementById('crm-geocode-btn');
-  const teDoen=klanten.filter(k=>k.adres&&(k.lat===undefined||k.lat===null));
+  const teDoen=klanten.filter(k=>k.adres&&k.adres.trim()&&k.geoBron!=='adres');
   if(!teDoen.length){showToast('Alle klanten hebben al een kaartlocatie.');return;}
   if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Bezig… 0/'+teDoen.length;}
   let gelukt=0;
@@ -11033,7 +11033,7 @@ async function geocodeBackfillKlanten(){
 // Eenmalige backfill voor prospects zonder lat/lng.
 async function geocodeBackfillProspects(){
   const btn=document.getElementById('prosp-geocode-btn');
-  const teDoen=prospects.filter(p=>(p.adres||p.postcode)&&(p.lat===undefined||p.lat===null));
+  const teDoen=prospects.filter(p=>(p.adres||p.postcode)&&p.geoBron!=='adres');
   if(!teDoen.length){showToast('Alle prospects hebben al een kaartlocatie (of missen postcode/adres).');return;}
   if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Bezig… 0/'+teDoen.length;}
   let gelukt=0;
@@ -11060,7 +11060,7 @@ function kaartKleurVoorCategorie(cat){
 }
 function kaartAlleCategorieen(){
   const cats=new Set();
-  klanten.forEach(k=>{if(k.lat!=null&&k.lat!=='')cats.add(k.typeVerkooprelatie||'Onbekend');});
+  klanten.forEach(k=>{if(k.isLeverancier)return;if(k.lat!=null&&k.lat!=='')cats.add(k.typeVerkooprelatie||'Onbekend');});
   if(prospects.some(p=>p.lat!=null&&p.lat!==''))cats.add('Prospect');
   return[...cats].sort();
 }
@@ -11073,7 +11073,14 @@ function kaartInit(){
     kaartMapObj.addLayer(kaartClusterGroep);
     kaartGeinit=true;
   }
-  if(!kaartActieveFilters)kaartActieveFilters=new Set(kaartAlleCategorieen());
+  if(!kaartActieveFilters){
+    const catsOnth=kaartAlleCategorieen();
+    let opgeslagenFilters=null;
+    try{opgeslagenFilters=JSON.parse(localStorage.getItem('blitz_kaart_filters')||'null');}catch(e){}
+    kaartActieveFilters=(Array.isArray(opgeslagenFilters)&&opgeslagenFilters.length)
+      ? new Set(opgeslagenFilters.filter(c=>catsOnth.includes(c)))
+      : new Set(catsOnth);
+  }
   kaartRenderFilters();
   kaartRenderPins();
   setTimeout(()=>{if(kaartMapObj)kaartMapObj.invalidateSize();},150);
@@ -11091,6 +11098,7 @@ function kaartRenderFilters(){
 }
 function kaartToggleFilter(cat){
   if(kaartActieveFilters.has(cat))kaartActieveFilters.delete(cat);else kaartActieveFilters.add(cat);
+  try{localStorage.setItem('blitz_kaart_filters',JSON.stringify([...kaartActieveFilters]));}catch(e){}
   kaartRenderFilters();
   kaartRenderPins();
 }
@@ -11108,6 +11116,7 @@ function kaartRenderPins(){
   kaartClusterGroep.clearLayers();
   let aantal=0;
   klanten.forEach(k=>{
+    if(k.isLeverancier)return;
     if(k.lat==null||k.lat===''||k.lng==null||k.lng==='')return;
     const cat=k.typeVerkooprelatie||'Onbekend';
     if(!kaartActieveFilters.has(cat))return;
