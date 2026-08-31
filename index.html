@@ -11097,14 +11097,27 @@ function kaartToonZoekResultaten(json){
     kaartZoekOorsprongMarker.bindPopup('Zoekpunt');
     kaartZoekOorsprongMarker.addTo(kaartMapObj);
   }
+  if(kaartClusterGroep&&kaartMapObj.hasLayer(kaartClusterGroep))kaartMapObj.removeLayer(kaartClusterGroep);
+  const kaartZoekCoordTeller={};
   kaartZoekResultatenData.forEach(r=>{
     if(r.lat==null||r.lng==null){kaartZoekMarkers.push(null);return;}
-    bounds.push([r.lat,r.lng]);
-    const m=L.circleMarker([r.lat,r.lng],{radius:9,fillColor:'#2563EB',fillOpacity:.9,color:'#fff',weight:2});
+    const coordSleutel=Number(r.lat).toFixed(5)+','+Number(r.lng).toFixed(5);
+    const n=kaartZoekCoordTeller[coordSleutel]||0;
+    kaartZoekCoordTeller[coordSleutel]=n+1;
+    let latPin=Number(r.lat),lngPin=Number(r.lng);
+    if(n>0){
+      const hoek=n*137.5*Math.PI/180;
+      const straal=0.00035*(1+Math.floor(n/8));
+      latPin+=Math.cos(hoek)*straal;
+      lngPin+=Math.sin(hoek)*straal/Math.max(0.3,Math.cos(latPin*Math.PI/180));
+    }
+    bounds.push([latPin,lngPin]);
+    const m=L.circleMarker([latPin,lngPin],{radius:9,fillColor:'#2563EB',fillOpacity:.9,color:'#fff',weight:2});
     let btn=(r.entity_type==='klant')
       ? '<button onclick="kaartOpenKlant(\''+String(r.entity_id).replace(/'/g,"\\'")+'\')" style="margin-top:4px;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer">Dossier openen</button>'
       : '<button onclick="kaartOpenProspect('+Number(r.entity_id)+')" style="margin-top:4px;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer">Dossier openen</button>';
     btn+=kaartBezoekLogKnop(r.entity_type,r.entity_id,r.naam);
+    if(n>0)btn='<div style="font-size:10px;color:#e85d04;margin-bottom:2px"><i class="ti ti-alert-triangle"></i> Geschatte locatie (zelfde coördinaat als '+n+' andere)</div>'+btn;
     m.bindPopup(kaartMaakPopup(r.naam,r.categorie,r.adres,btn));
     m.addTo(kaartMapObj);
     kaartZoekMarkers.push(m);
