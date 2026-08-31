@@ -898,6 +898,7 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
   <div class="mob-nav-section">
     <div class="mob-nav-label">Sales</div>
     <button class="mob-nav-btn" onclick="mobNav('kaart')"><i class="ti ti-map-pin"></i> Kaart</button>
+    <button class="mob-nav-btn" onclick="mobNav('sales-cijfers')"><i class="ti ti-chart-bar"></i> Sales cijfers</button>
     <button class="mob-nav-btn" onclick="mobNav('b2c')"><i class="ti ti-users"></i> B2C: Leads &amp; Opvolging</button>
     <button class="mob-nav-btn" onclick="mobNav('b2c-gewonnen')"><i class="ti ti-trophy"></i> B2C: Gewonnen</button>
     <button class="mob-nav-btn" onclick="mobNav('b2c-verloren')"><i class="ti ti-x"></i> B2C: Verloren</button>
@@ -905,17 +906,23 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
     <button class="mob-nav-btn" onclick="mobNav('lopend')"><i class="ti ti-briefcase"></i> B2B: Projecten</button>
     <button class="mob-nav-btn" onclick="mobNav('prospects')"><i class="ti ti-target"></i> B2B: Prospects</button>
     <button class="mob-nav-btn" onclick="mobNav('verkocht')"><i class="ti ti-trophy"></i> B2B: Verkocht</button>
+    <button class="mob-nav-btn" onclick="mobNav('verloren')"><i class="ti ti-x"></i> B2B: Verloren</button>
   </div>
   <div class="mob-nav-section">
     <div class="mob-nav-label">Service &amp; Installatie</div>
     <button class="mob-nav-btn" onclick="mobNav('installaties')"><i class="ti ti-tool"></i> Installaties</button>
     <button class="mob-nav-btn" onclick="mobNav('si-opvolging')"><i class="ti ti-phone"></i> Opvolging</button>
+    <button class="mob-nav-btn" onclick="mobNav('si-afgerond')"><i class="ti ti-circle-check"></i> Afgerond</button>
+    <button class="mob-nav-btn" onclick="mobNav('si-agenda')"><i class="ti ti-calendar-event"></i> Agenda service</button>
+    <button class="mob-nav-btn" onclick="mobNav('service-stock')"><i class="ti ti-package"></i> Registraties</button>
   </div>
   <div class="mob-nav-section">
     <div class="mob-nav-label">Beheer</div>
     <button class="mob-nav-btn" onclick="mobNav('crm')"><i class="ti ti-address-book"></i> CRM</button>
     <button class="mob-nav-btn" onclick="mobNav('rapportage')"><i class="ti ti-chart-bar"></i> Rapportage</button>
     <button class="mob-nav-btn" onclick="mobNav('wms')"><i class="ti ti-packages"></i> Operations</button>
+    <button class="mob-nav-btn" onclick="mobNav('procurement')"><i class="ti ti-shopping-cart"></i> Procurement</button>
+    <button class="mob-nav-btn" onclick="mobNav('laadpunten-cijfers')"><i class="ti ti-plug"></i> Laadpunten</button>
   </div>
   <div style="padding:16px 20px;margin-top:auto">
     <button class="btn" onclick="doLogout();mobNavClose()" style="width:100%;justify-content:center"><i class="ti ti-logout"></i> Afmelden</button>
@@ -12359,16 +12366,26 @@ async function afasSyncLaadpunten(){
     });
 
     const onherkendeOmschrijvingen = new Set();
+    const sleutelTellers = {};
     const gemapt = lineRows.map(r=>{
       const pakbon = String(r.Nummer_pakbon||r['Nummer pakbon']||r.nummer_pakbon||'').trim();
       const volgnummer = String(r.Volgnummer||r.volgnummer||'').trim();
       const omschrijving = r.Omschrijving||r.omschrijving||'';
       const aantal = salesParseGetal(r.Aantal_eenheden||r['Aantal eenheden'])||0;
+      const serienummer = String(r.Serienummer||r.serienummer||'').trim();
+      const barcode = String(r.Barcode||r.barcode||'').trim();
       const header = notesPerPakbon.get(pakbon);
       const multiplier = laadpuntenBepaalMultiplier(omschrijving);
       if(multiplier===0 && omschrijving && /dual|single/i.test(omschrijving)) onherkendeOmschrijvingen.add(omschrijving);
+      // pakbonnummer+volgnummer is niet altijd uniek (AFAS geeft blijkbaar per
+      // serienummer een eigen regel) — vul aan met serienummer/barcode, en als
+      // laatste vangnet een teller, zodat de sleutel altijd uniek is.
+      const basisSleutel = pakbon+'-'+volgnummer+(serienummer?('-'+serienummer):(barcode?('-b'+barcode):''));
+      const n = sleutelTellers[basisSleutel]||0;
+      sleutelTellers[basisSleutel]=n+1;
+      const regel_sleutel = n>0 ? basisSleutel+'-'+n : basisSleutel;
       return {
-        regel_sleutel: pakbon+'-'+volgnummer,
+        regel_sleutel,
         pakbonnummer: pakbon,
         volgnummer,
         datum: header ? header.datum : null,
