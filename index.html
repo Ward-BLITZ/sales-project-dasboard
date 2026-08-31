@@ -67,6 +67,7 @@ body.app-active{padding-left:0}
 #tab-zoek:hover{background:var(--bg2);color:var(--tx2)}
 #tab-zoek::after{content:''}
 #tab-hamburger{display:none}
+#mobile-nav-panel{display:none}
 .sidebar-group-label{display:none}
 .tab-right{margin-left:auto;margin-top:0;display:flex;flex-direction:row;align-items:center;gap:6px;padding:0;border-top:none;flex-shrink:0}
 .tab-right .btn{width:auto;justify-content:center;padding:6px 10px}
@@ -842,6 +843,8 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
         <button class="nav-dd-item" id="tab-wms-grondplan-dd" onclick="wmsSetPage('grondplan');showTab('wms');closeAllNavDd()" style="display:none"><i class="ti ti-map"></i> Grondplan</button>
         <button class="nav-dd-item" id="tab-wms-leveranciers-dd" onclick="wmsSetPage('leveranciers');showTab('wms');closeAllNavDd()" style="display:none"><i class="ti ti-truck"></i> Leveranciers</button>
         <button class="nav-dd-item" id="tab-wms-dashboard-dd" onclick="wmsSetPage('dashboard');showTab('wms');closeAllNavDd()" style="display:none"><i class="ti ti-layout-dashboard"></i> WMS Dashboard</button>
+        <div style="height:1px;background:var(--bd);margin:4px 8px"></div>
+        <button class="nav-dd-item" id="tab-laadpunten-cijfers" onclick="showTab('laadpunten-cijfers');closeAllNavDd()"><i class="ti ti-plug"></i> Laadpunten</button>
       </div>
     </div>
 
@@ -882,7 +885,7 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
 </div>
 
 <!-- MOBILE NAV PANEL -->
-<div id="mobile-nav-panel" style="display:none">
+<div id="mobile-nav-panel">
   <div class="mob-nav-header">
     <span style="display:flex;align-items:center"><img src="data:image/png;base64,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" alt="BLITZ" style="height:16px;width:auto"></span>
     <button onclick="mobNavClose()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer"><i class="ti ti-x"></i></button>
@@ -1559,6 +1562,54 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
   </div>
 
   <div id="sales-cijfers-tabel" style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:4px 14px"></div>
+</div>
+
+<div id="pane-laadpunten-cijfers" class="page" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1rem">
+    <div>
+      <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700">Laadpunten</div>
+      <div style="font-size:12px;color:var(--tx2)">Aantal geleverde laadpunten per jaar, maand en week — bron: AFAS (Blitz_Deliverynotes / Blitz_Deliverynotelines)</div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:11px;color:var(--tx3)">Laatst gesynchroniseerd: <span id="laadpunten-cijfers-laatste-sync">—</span></span>
+      <button class="btn sm" onclick="afasSyncLaadpunten()" id="laadpunten-cijfers-sync-btn"><i class="ti ti-building-factory"></i> AFAS sync</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:12px">
+    <div class="stat-card"><div class="stat-label">Totaal laadpunten (alle jaren)</div><div class="stat-value" id="laadpunten-cijfers-totaal-laadpunten" style="font-size:22px">0</div></div>
+    <div class="stat-card"><div class="stat-label">Totaal aantal pakbonnen (alle jaren)</div><div class="stat-value" id="laadpunten-cijfers-totaal-pakbonnen" style="font-size:22px">0</div></div>
+  </div>
+
+  <div id="laadpunten-cijfers-selectie-label" style="font-size:12px;color:var(--tx3);font-weight:600;margin:0 0 6px 2px"></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">Year to date</div><div class="stat-value" id="laadpunten-cijfers-ytd">0</div></div>
+    <div class="stat-card"><div class="stat-label">Deze maand</div><div class="stat-value" id="laadpunten-cijfers-huidige-maand">0</div></div>
+    <div class="stat-card"><div class="stat-label">Deze week</div><div class="stat-value" id="laadpunten-cijfers-huidige-week">0</div></div>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+    <button class="btn sm primary" id="laadpunten-cijfers-view-jaar" onclick="laadpuntenCijfersZetView('jaar')">Jaaroverzicht</button>
+    <button class="btn sm" id="laadpunten-cijfers-view-maand" onclick="laadpuntenCijfersZetView('maand')">Maandoverzicht</button>
+    <button class="btn sm" id="laadpunten-cijfers-view-week" onclick="laadpuntenCijfersZetView('week')">Weekoverzicht</button>
+    <select id="laadpunten-cijfers-jaar" onchange="laadpuntenCijfersJaarGewijzigd()" style="padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)"></select>
+    <div id="laadpunten-cijfers-maand-wrap" style="display:none">
+      <select id="laadpunten-cijfers-maand" onchange="laadpuntenCijfersMaandGewijzigd()" style="padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)"></select>
+    </div>
+    <div id="laadpunten-cijfers-week-wrap" style="display:none">
+      <select id="laadpunten-cijfers-week" onchange="laadpuntenCijfersWeekGewijzigd()" style="padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)"></select>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;padding:8px 18px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r)">
+      <span style="font-size:12px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.3px">Totaal deze weergave</span>
+      <span id="laadpunten-cijfers-view-totaal" style="font-family:'Poppins',sans-serif;font-size:19px;font-weight:800;color:#2563EB">0</span>
+    </div>
+  </div>
+
+  <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:14px;margin-bottom:16px;height:320px">
+    <canvas id="laadpunten-cijfers-chart"></canvas>
+  </div>
+
+  <div id="laadpunten-cijfers-tabel" style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:4px 14px"></div>
 </div>
 
 
@@ -3305,7 +3356,7 @@ function respNames(afdeling){
 
 
 function showTab(name){
-  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda','service-stock','procurement','rapportage','wms','sales','todo','verlof','kaart','sales-cijfers'].forEach(id=>{
+  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda','service-stock','procurement','rapportage','wms','sales','todo','verlof','kaart','sales-cijfers','laadpunten-cijfers'].forEach(id=>{
     const pane=document.getElementById('pane-'+id);
     if(pane)pane.style.display=(id===name)?'block':'none';
     const tb=document.getElementById('tab-'+id);
@@ -3334,6 +3385,7 @@ function showTab(name){
   if(name==='wms'){document.getElementById('pane-wms').style.display='block';}
   if(name==='kaart'){kaartInit();}
   if(name==='sales-cijfers'){salesCijfersInit();}
+  if(name==='laadpunten-cijfers'){laadpuntenCijfersInit();}
   if(name==='sales'){
     salesBeheerRender();
     // Artikelcatalogus (Supabase + AFAS) wordt elders lazy geladen (bv. bij het openen van een
@@ -12246,6 +12298,270 @@ function salesCijfersRender(){
   }
 }
 
+
+// ── LAADPUNTEN (AFAS Blitz_Deliverynotes + Blitz_Deliverynotelines) ───
+let laadpuntenRegels = [];
+let laadpuntenView = 'jaar';
+let laadpuntenJaar = new Date().getFullYear();
+let laadpuntenMaand = new Date().getMonth()+1;
+let laadpuntenWeek = salesIsoWeekVanDatum(new Date());
+let laadpuntenChart = null;
+let laadpuntenLaatsteSync = null;
+
+function laadpuntenFmt(v){ return Math.round(v||0).toLocaleString('nl-BE'); }
+
+// Herkent "dual one" / "dual two" (= 2 laadpunten/stuk) en "single one"
+// (= 1 laadpunt/stuk) in de omschrijving, ongevoelig voor hoofdletters,
+// spaties, koppeltekens e.d. Onherkende omschrijvingen tellen als 0.
+function laadpuntenBepaalMultiplier(omschrijving){
+  const o = String(omschrijving||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(o.includes('dualone')||o.includes('dualtwo')) return 2;
+  if(o.includes('singleone')) return 1;
+  return 0;
+}
+
+async function loadLaadpuntenRegels(){
+  if(!sbUrl)return;
+  try{
+    const rows = await sbFetchAll('laadpunten_orders?order=datum.asc');
+    laadpuntenRegels = (rows||[]).map(r=>({
+      id:r.id, pakbonnummer:r.pakbonnummer, volgnummer:r.volgnummer, datum:r.datum,
+      naam:r.naam, omschrijving:r.omschrijving,
+      aantal:r.aantal!=null?Number(r.aantal):0,
+      multiplier:r.multiplier!=null?Number(r.multiplier):0,
+      laadpunten:r.laadpunten!=null?Number(r.laadpunten):0,
+      syncedAt:r.synced_at
+    }));
+    laadpuntenLaatsteSync = laadpuntenRegels.length ? laadpuntenRegels.reduce((m,o)=>(o.syncedAt&&o.syncedAt>m)?o.syncedAt:m, laadpuntenRegels[0].syncedAt||'') : null;
+  }catch(e){ console.warn('loadLaadpuntenRegels:', e.message); }
+}
+
+async function afasSyncLaadpunten(){
+  const btn = document.getElementById('laadpunten-cijfers-sync-btn');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Laden…'; }
+  showToast('Laadpunten laden vanuit AFAS…');
+  try{
+    const [notesRows, lineRows] = await Promise.all([
+      afasFetchConnector('Blitz_Deliverynotes', 20000),
+      afasFetchConnector('Blitz_Deliverynotelines', 20000)
+    ]);
+    if(notesRows.length) console.log('AFAS deliverynotes velden:', Object.keys(notesRows[0]));
+    if(lineRows.length) console.log('AFAS deliverynotelines velden:', Object.keys(lineRows[0]));
+
+    const notesPerPakbon = new Map();
+    notesRows.forEach(r=>{
+      const pakbon = String(r.Pakbonnummer||r.pakbonnummer||'').trim();
+      if(!pakbon) return;
+      notesPerPakbon.set(pakbon, {
+        datum: salesParseDatum(r.Datum||r.datum),
+        naam: r.Naam||r.naam||''
+      });
+    });
+
+    const onherkendeOmschrijvingen = new Set();
+    const gemapt = lineRows.map(r=>{
+      const pakbon = String(r.Nummer_pakbon||r['Nummer pakbon']||r.nummer_pakbon||'').trim();
+      const volgnummer = String(r.Volgnummer||r.volgnummer||'').trim();
+      const omschrijving = r.Omschrijving||r.omschrijving||'';
+      const aantal = salesParseGetal(r.Aantal_eenheden||r['Aantal eenheden'])||0;
+      const header = notesPerPakbon.get(pakbon);
+      const multiplier = laadpuntenBepaalMultiplier(omschrijving);
+      if(multiplier===0 && omschrijving && /dual|single/i.test(omschrijving)) onherkendeOmschrijvingen.add(omschrijving);
+      return {
+        regel_sleutel: pakbon+'-'+volgnummer,
+        pakbonnummer: pakbon,
+        volgnummer,
+        datum: header ? header.datum : null,
+        naam: header ? header.naam : '',
+        omschrijving,
+        aantal,
+        multiplier,
+        laadpunten: aantal*multiplier
+      };
+    }).filter(o=>o.pakbonnummer && o.volgnummer);
+
+    if(onherkendeOmschrijvingen.size) console.warn('Laadpunten: omschrijvingen met "dual"/"single" die niet exact herkend zijn (tellen nu als 0 laadpunten) — laat dit weten zodat de herkenning kan worden uitgebreid:', [...onherkendeOmschrijvingen]);
+
+    const CHUNK=500;
+    for(let i=0;i<gemapt.length;i+=CHUNK){
+      const stuk = gemapt.slice(i,i+CHUNK);
+      await sbFetch('laadpunten_orders?on_conflict=regel_sleutel',{
+        method:'POST',
+        headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body: JSON.stringify(stuk)
+      });
+    }
+    await loadLaadpuntenRegels();
+    laadpuntenCijfersVulSelects();
+    laadpuntenCijfersRender();
+    showToast(`✓ ${gemapt.length} pakbonregels gesynchroniseerd.`);
+  }catch(e){
+    showToast('⚠ Laadpunten-sync mislukt: '+e.message);
+    console.error('afasSyncLaadpunten:', e);
+  }finally{
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-building-factory"></i> AFAS sync'; }
+  }
+}
+
+function laadpuntenOrdersVoorJaar(jaar){
+  return laadpuntenRegels.filter(o=>o.datum && Number(o.datum.slice(0,4))===jaar);
+}
+
+function laadpuntenCijfersJarenBeschikbaar(){
+  const jaren = new Set(laadpuntenRegels.filter(o=>o.datum).map(o=>Number(o.datum.slice(0,4))));
+  jaren.add(new Date().getFullYear());
+  return [...jaren].sort((a,b)=>b-a);
+}
+
+function laadpuntenCijfersInit(){
+  loadLaadpuntenRegels().then(()=>{
+    laadpuntenCijfersVulSelects();
+    laadpuntenCijfersRender();
+  });
+}
+
+function laadpuntenCijfersVulSelects(){
+  const jarenSel = document.getElementById('laadpunten-cijfers-jaar');
+  if(jarenSel){
+    const jaren = laadpuntenCijfersJarenBeschikbaar();
+    if(!jaren.includes(laadpuntenJaar)) laadpuntenJaar = jaren[0];
+    jarenSel.innerHTML = jaren.map(j=>'<option value="'+j+'"'+(j===laadpuntenJaar?' selected':'')+'>'+j+'</option>').join('');
+  }
+  const maandSel = document.getElementById('laadpunten-cijfers-maand');
+  if(maandSel && !maandSel.dataset.gevuld){
+    const maandNamen=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+    maandSel.innerHTML = maandNamen.map((m,i)=>'<option value="'+(i+1)+'"'+((i+1)===laadpuntenMaand?' selected':'')+'>'+m+'</option>').join('');
+    maandSel.dataset.gevuld='1';
+  }
+  const weekSel = document.getElementById('laadpunten-cijfers-week');
+  if(weekSel && !weekSel.dataset.gevuld){
+    let opties='';
+    for(let w=1;w<=53;w++) opties+='<option value="'+w+'"'+(w===laadpuntenWeek?' selected':'')+'>week '+w+'</option>';
+    weekSel.innerHTML = opties;
+    weekSel.dataset.gevuld='1';
+  }
+}
+
+function laadpuntenCijfersZetView(view){
+  laadpuntenView = view;
+  ['jaar','maand','week'].forEach(v=>{
+    const btn = document.getElementById('laadpunten-cijfers-view-'+v);
+    if(btn) btn.classList.toggle('primary', v===view);
+  });
+  const maandWrap = document.getElementById('laadpunten-cijfers-maand-wrap');
+  const weekWrap = document.getElementById('laadpunten-cijfers-week-wrap');
+  if(maandWrap) maandWrap.style.display = (view==='maand') ? 'inline-block' : 'none';
+  if(weekWrap) weekWrap.style.display = (view==='week') ? 'inline-block' : 'none';
+  laadpuntenCijfersRender();
+}
+function laadpuntenCijfersJaarGewijzigd(){
+  laadpuntenJaar = Number(document.getElementById('laadpunten-cijfers-jaar').value);
+  laadpuntenCijfersRender();
+}
+function laadpuntenCijfersMaandGewijzigd(){
+  laadpuntenMaand = Number(document.getElementById('laadpunten-cijfers-maand').value);
+  laadpuntenCijfersRender();
+}
+function laadpuntenCijfersWeekGewijzigd(){
+  laadpuntenWeek = Number(document.getElementById('laadpunten-cijfers-week').value);
+  laadpuntenCijfersRender();
+}
+
+function laadpuntenCijfersRender(){
+  const vandaag = new Date();
+  const huidigJaar = vandaag.getFullYear();
+  const vandaagKey = vandaag.toISOString().slice(0,10);
+  const ytdTotal = laadpuntenOrdersVoorJaar(huidigJaar).filter(o=>o.datum<=vandaagKey).reduce((s,o)=>s+(o.laadpunten||0),0);
+  const ytdEl = document.getElementById('laadpunten-cijfers-ytd');
+  if(ytdEl) ytdEl.textContent = laadpuntenFmt(ytdTotal);
+
+  const maandKey = vandaag.toISOString().slice(0,7);
+  const maandTotal = laadpuntenRegels.filter(o=>o.datum && o.datum.slice(0,7)===maandKey).reduce((s,o)=>s+(o.laadpunten||0),0);
+  const maandEl = document.getElementById('laadpunten-cijfers-huidige-maand');
+  if(maandEl) maandEl.textContent = laadpuntenFmt(maandTotal);
+
+  const huidigeWeek = salesIsoWeekVanDatum(vandaag);
+  const weekTotal = laadpuntenRegels.filter(o=>o.datum && Number(o.datum.slice(0,4))===huidigJaar && salesIsoWeekVanDatum(new Date(o.datum))===huidigeWeek).reduce((s,o)=>s+(o.laadpunten||0),0);
+  const weekEl = document.getElementById('laadpunten-cijfers-huidige-week');
+  if(weekEl) weekEl.textContent = laadpuntenFmt(weekTotal);
+
+  const totaalLaadpuntenEl = document.getElementById('laadpunten-cijfers-totaal-laadpunten');
+  if(totaalLaadpuntenEl) totaalLaadpuntenEl.textContent = laadpuntenFmt(laadpuntenRegels.reduce((s,o)=>s+(o.laadpunten||0),0));
+  const totaalPakbonnenEl = document.getElementById('laadpunten-cijfers-totaal-pakbonnen');
+  if(totaalPakbonnenEl) totaalPakbonnenEl.textContent = new Set(laadpuntenRegels.map(o=>o.pakbonnummer)).size.toLocaleString('nl-BE');
+  const laatsteEl = document.getElementById('laadpunten-cijfers-laatste-sync');
+  if(laatsteEl) laatsteEl.textContent = laadpuntenLaatsteSync ? new Date(laadpuntenLaatsteSync).toLocaleString('nl-BE') : 'nog niet gesynchroniseerd';
+
+  const selectieEl = document.getElementById('laadpunten-cijfers-selectie-label');
+  if(selectieEl){
+    const maandNamenLang=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+    let selectieTekst='';
+    if(laadpuntenView==='jaar') selectieTekst='Geselecteerd overzicht: jaar '+laadpuntenJaar;
+    else if(laadpuntenView==='maand') selectieTekst='Geselecteerd overzicht: '+maandNamenLang[laadpuntenMaand-1]+' '+laadpuntenJaar;
+    else if(laadpuntenView==='week') selectieTekst='Geselecteerd overzicht: week '+laadpuntenWeek+', '+laadpuntenJaar;
+    selectieEl.textContent=selectieTekst;
+  }
+
+  let labels=[], data=[], tabelRijen=[];
+  if(laadpuntenView==='jaar'){
+    const jaarRegels = laadpuntenOrdersVoorJaar(laadpuntenJaar);
+    const maandNamen=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    for(let m=1;m<=12;m++){
+      const regels = jaarRegels.filter(o=>Number(o.datum.slice(5,7))===m);
+      const tot = regels.reduce((s,o)=>s+(o.laadpunten||0),0);
+      labels.push(maandNamen[m-1]);
+      data.push(tot);
+      tabelRijen.push({label: maandNamen[m-1]+' '+laadpuntenJaar, bedrag: tot, aantal: new Set(regels.map(o=>o.pakbonnummer)).size});
+    }
+  } else if(laadpuntenView==='maand'){
+    const dagenInMaand = new Date(laadpuntenJaar, laadpuntenMaand, 0).getDate();
+    const maandSleutel = laadpuntenJaar+'-'+String(laadpuntenMaand).padStart(2,'0');
+    const maandRegels = laadpuntenRegels.filter(o=>o.datum && o.datum.slice(0,7)===maandSleutel);
+    for(let d=1;d<=dagenInMaand;d++){
+      const regels = maandRegels.filter(o=>Number(o.datum.slice(8,10))===d);
+      const tot = regels.reduce((s,o)=>s+(o.laadpunten||0),0);
+      labels.push(String(d));
+      data.push(tot);
+      tabelRijen.push({label: String(d).padStart(2,'0')+'/'+String(laadpuntenMaand).padStart(2,'0')+'/'+laadpuntenJaar, bedrag: tot, aantal: new Set(regels.map(o=>o.pakbonnummer)).size});
+    }
+  } else if(laadpuntenView==='week'){
+    const weekRegels = laadpuntenRegels.filter(o=>o.datum && Number(o.datum.slice(0,4))===laadpuntenJaar && salesIsoWeekVanDatum(new Date(o.datum))===laadpuntenWeek);
+    const dagNamen=['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
+    for(let d=0;d<7;d++){
+      const regels = weekRegels.filter(o=>((new Date(o.datum)).getDay()+6)%7===d);
+      const tot = regels.reduce((s,o)=>s+(o.laadpunten||0),0);
+      labels.push(dagNamen[d]);
+      data.push(tot);
+      tabelRijen.push({label: dagNamen[d], bedrag: tot, aantal: new Set(regels.map(o=>o.pakbonnummer)).size});
+    }
+  }
+
+  const totVanView = data.reduce((a,b)=>a+b,0);
+  const totEl = document.getElementById('laadpunten-cijfers-view-totaal');
+  if(totEl) totEl.textContent = laadpuntenFmt(totVanView);
+
+  const canvas = document.getElementById('laadpunten-cijfers-chart');
+  if(canvas && typeof Chart!=='undefined'){
+    if(laadpuntenChart) laadpuntenChart.destroy();
+    laadpuntenChart = new Chart(canvas.getContext('2d'), {
+      type:'bar',
+      data:{ labels, datasets:[{ label:'Laadpunten', data, backgroundColor:'#2563EB' }] },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(ctx)=>laadpuntenFmt(ctx.parsed.y)+' laadpunten' } } },
+        scales:{ y:{ ticks:{ callback:(v)=>laadpuntenFmt(v) } } }
+      }
+    });
+  }
+
+  const tabelEl = document.getElementById('laadpunten-cijfers-tabel');
+  if(tabelEl){
+    tabelEl.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<thead><tr style="text-align:left;border-bottom:1px solid var(--bd)"><th style="padding:8px">Periode</th><th style="padding:8px">Aantal pakbonnen</th><th style="padding:8px;text-align:right">Laadpunten</th></tr></thead>'
+      + '<tbody>' + tabelRijen.map(r=>'<tr style="border-bottom:1px solid var(--bd)"><td style="padding:8px">'+r.label+'</td><td style="padding:8px">'+r.aantal+'</td><td style="padding:8px;text-align:right">'+laadpuntenFmt(r.bedrag)+'</td></tr>').join('')
+      + '</tbody></table>';
+  }
+}
 
 async function afasLoadArtikelen() {
   try {
