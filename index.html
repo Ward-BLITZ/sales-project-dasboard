@@ -1548,7 +1548,10 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
     <div id="sales-cijfers-week-wrap" style="display:none">
       <select id="sales-cijfers-week" onchange="salesCijfersWeekGewijzigd()" style="padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);color:var(--tx)"></select>
     </div>
-    <span style="margin-left:auto;font-size:13px;font-weight:700">Totaal deze weergave: <span id="sales-cijfers-view-totaal" style="color:var(--green)">€ 0</span></span>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;padding:8px 18px;background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r)">
+      <span style="font-size:12px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.3px">Totaal deze weergave</span>
+      <span id="sales-cijfers-view-totaal" style="font-family:'Poppins',sans-serif;font-size:19px;font-weight:800;color:var(--green)">€ 0</span>
+    </div>
   </div>
 
   <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:14px;margin-bottom:16px;height:320px">
@@ -11851,6 +11854,8 @@ function kaartWisZoekopdracht(){
   kaartZoekMarkers=[];
   const inp=document.getElementById('kaart-zoek-postcode');
   if(inp)inp.value='';
+  if(kaartClusterGroep&&kaartMapObj&&!kaartMapObj.hasLayer(kaartClusterGroep))kaartMapObj.addLayer(kaartClusterGroep);
+  if(typeof kaartRenderPins==='function')kaartRenderPins();
   kaartRenderLijst();
 }
 
