@@ -1,0 +1,22 @@
+{
+  "name": "Blitz Power Dashboard",
+  "short_name": "Blitz Dashboard",
+  "description": "Blitz Power sales- en salesdashboard: leads, klanten, kaart, sales cijfers en beheer.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "./pwa-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./pwa-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Veldwerk (kaart + prospects)",
+      "url": "./?veld=1",
+      "icons": [{ "src": "./pwa-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}
