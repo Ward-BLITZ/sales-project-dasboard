@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Blitz Power — Veldapp</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Veldapp">
+<meta name="theme-color" content="#0b1f1a">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
+<style>
+  :root{
+    --brand:#00DFA3; --bg:#0b1f1a; --bg2:#122b24; --bg3:#173b31; --card:#0f2620;
+    --tx:#eafff7; --tx2:#a9c9c0; --tx3:#6f8f86; --bd:#1f4238; --danger:#f43f5e; --warn:#eab308;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Inter',Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
+  input,select,textarea,button{font-family:inherit;font-size:15px}
+  ::placeholder{color:var(--tx3)}
+  #app{display:none;flex-direction:column;height:100vh;height:100dvh}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg2);border-bottom:1px solid var(--bd);flex:0 0 auto}
+  .topbar h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.2px}
+  .topbar h1 span{color:var(--brand)}
+  .icon-btn{background:none;border:none;color:var(--tx2);font-size:20px;padding:6px;cursor:pointer;line-height:1}
+  .view{flex:1 1 auto;display:none;flex-direction:column;overflow:hidden;min-height:0}
+  .view.active{display:flex}
+  .toolbar{display:flex;gap:8px;padding:10px 12px;background:var(--bg2);border-bottom:1px solid var(--bd);flex:0 0 auto}
+  .toolbar input[type=text]{flex:1;background:var(--card);border:1px solid var(--bd);color:var(--tx);border-radius:10px;padding:10px 12px}
+  .btn{background:var(--bg3);border:1px solid var(--bd);color:var(--tx);border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600;white-space:nowrap}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#04241a}
+  .btn.danger{background:transparent;border-color:var(--danger);color:var(--danger)}
+  .btn.small{padding:6px 10px;font-size:12px;border-radius:8px}
+  .btn:disabled{opacity:.5}
+  .pills{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--bd);flex:0 0 auto;overflow-x:auto}
+  .pill{border:1px solid var(--bd);background:var(--card);color:var(--tx2);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center}
+  .pill.active{color:#04241a}
+  #kaart-map{flex:1 1 55%;min-height:220px;background:#0a0a0a}
+  #kaart-lijst-wrap{flex:1 1 45%;overflow-y:auto;background:var(--bg);border-top:1px solid var(--bd)}
+  #kaart-lijst-info{padding:8px 12px;font-size:11px;color:var(--tx3)}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:8px 12px}
+  .card-titel{font-weight:700;font-size:14px;margin-bottom:2px}
+  .card-sub{font-size:12px;color:var(--tx2);display:flex;align-items:center;gap:5px}
+  .card-meta{font-size:11px;color:var(--tx3);margin-top:4px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 auto}
+  .badge{display:inline-block;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;margin-left:6px}
+  .badge.rood{background:rgba(244,63,94,.15);color:#f87289}
+  .badge.groen{background:rgba(0,223,163,.15);color:var(--brand)}
+  #prospects-lijst{flex:1 1 auto;overflow-y:auto}
+  .fab{position:absolute;right:16px;bottom:76px;width:52px;height:52px;border-radius:50%;background:var(--brand);color:#04241a;border:none;font-size:26px;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer;z-index:500}
+  .bottomnav{display:flex;border-top:1px solid var(--bd);background:var(--bg2);flex:0 0 auto}
+  .bottomnav button{flex:1;background:none;border:none;color:var(--tx3);padding:9px 0 8px;font-size:11px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .bottomnav button.active{color:var(--brand)}
+  .bottomnav .ic{font-size:19px}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:flex-end;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal-box{background:var(--bg2);border-radius:16px 16px 0 0;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+  .modal-overlay.center{align-items:center}
+  .modal-overlay.center .modal-box{border-radius:16px;max-width:380px;margin:0 16px}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .modal-title{font-weight:700;font-size:16px}
+  .modal-close{background:none;border:none;color:var(--tx2);font-size:20px;cursor:pointer}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;color:var(--tx2);margin-bottom:5px;font-weight:600}
+  .field input,.field select,.field textarea{width:100%;background:var(--card);border:1px solid var(--bd);color:var(--tx);border-radius:10px;padding:10px 12px}
+  .field textarea{min-height:70px;resize:vertical}
+  .row2{display:flex;gap:8px}
+  .row2>.field{flex:1;min-width:0}
+  .contact-row{display:flex;gap:6px;margin-bottom:8px}
+  .contact-row .c-naam,.contact-row .c-tel,.contact-row .c-email{flex:1;min-width:0}
+  .contact-row .c-rol{width:100%}
+  .section-title{font-size:12px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:.4px;margin:16px 0 8px}
+  .log-item{border-left:2px solid var(--bd);padding:6px 0 6px 10px;margin-bottom:6px;font-size:12px}
+  .log-item .lbl{font-weight:700}
+  #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:#111;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:2000;max-width:88%;text-align:center}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .auth-wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .auth-box{width:100%;max-width:340px;background:var(--bg2);border:1px solid var(--bd);border-radius:16px;padding:26px 22px}
+  .auth-box h1{text-align:center;font-size:20px;margin:0 0 4px}
+  .auth-box p{text-align:center;color:var(--tx3);font-size:12px;margin:0 0 20px}
+  .err{display:none;background:rgba(244,63,94,.12);color:#f87289;border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:12px}
+  .err.show{display:block}
+  .toggle-row{display:flex;align-items:center;gap:8px;margin:2px 0 12px}
+  .toggle-row input{width:auto}
+  a.link{color:var(--brand);text-decoration:none;font-weight:600}
+  .leaflet-popup-content{font-family:inherit}
+  .spin{display:inline-block;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .empty{padding:30px 20px;text-align:center;color:var(--tx3);font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="auth-wrap" id="auth-screen">
+  <div class="auth-box">
+    <h1>Blitz <span style="color:var(--brand)">Power</span></h1>
+    <p>Veldapp — kaart &amp; prospects</p>
+    <div class="err" id="login-error"></div>
+    <div class="field"><label>E-mailadres</label><input type="email" id="login-email" placeholder="naam@blitzpower.com" autocomplete="username"></div>
+    <div class="field"><label>Wachtwoord</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn primary auth-btn" style="width:100%" onclick="doLogin()">Inloggen</button>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <h1>Blitz <span>Veld</span>app</h1>
+    <button class="icon-btn" onclick="doLogout()" title="Uitloggen">⎋</button>
+  </div>
+
+  <!-- ══ KAART ══ -->
+  <div class="view active" id="view-kaart" style="position:relative">
+    <div class="toolbar">
+      <input type="text" id="kaart-zoek-postcode" placeholder="Postcode of gemeente…" inputmode="numeric" onkeydown="if(event.key==='Enter')kaartZoekPostcode()">
+      <button class="btn" onclick="kaartZoekPostcode()">🔍</button>
+      <button class="btn" onclick="kaartZoekGPS()" title="Zoek rond mijn locatie">📍</button>
+    </div>
+    <div class="pills" id="kaart-filters"></div>
+    <div id="kaart-map"></div>
+    <div id="kaart-lijst-wrap">
+      <div id="kaart-lijst-info" style="display:flex;align-items:center;justify-content:space-between">
+        <span id="kaart-lijst-tekst">Locaties in de buurt</span>
+        <button class="btn small" id="kaart-wis-btn" style="display:none" onclick="kaartWisZoek()">✕ Wis zoekopdracht</button>
+      </div>
+      <div id="kaart-lijst"></div>
+    </div>
+  </div>
+
+  <!-- ══ PROSPECTS ══ -->
+  <div class="view" id="view-prospects" style="position:relative">
+    <div class="toolbar">
+      <input type="text" id="prosp-zoek" placeholder="Zoek prospect, adres, contact…" oninput="prospSetZoek(this.value)">
+    </div>
+    <div class="pills" id="prosp-status-pills"></div>
+    <div id="prospects-lijst"></div>
+    <button class="fab" onclick="prospOpenNieuw()">＋</button>
+  </div>
+
+  <div class="bottomnav">
+    <button id="nav-kaart" class="active" onclick="showTab('kaart')"><span class="ic">🗺️</span>Kaart</button>
+    <button id="nav-prospects" onclick="showTab('prospects')"><span class="ic">👥</span>Prospects</button>
+  </div>
+</div>
+
+<!-- ACTIEKEUZE -->
+<div class="modal-overlay center" id="actie-overlay">
+  <div class="modal-box">
+    <div class="modal-header"><span class="modal-title" id="actie-titel">Actie</span><button class="modal-close" onclick="modalSluiten('actie-overlay')">✕</button></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn primary" onclick="kaartActieDossier()">📂 Dossier openen</button>
+      <button class="btn" onclick="kaartActieBezoek()">📝 Bezoek noteren</button>
+      <button class="btn" onclick="modalSluiten('actie-overlay')">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<!-- KLANT MINI-DOSSIER (readonly) -->
+<div class="modal-overlay" id="klant-overlay">
+  <div class="modal-box">
+    <div class="modal-header"><span class="modal-title" id="klant-naam-titel">Klant</span><button class="modal-close" onclick="modalSluiten('klant-overlay')">✕</button></div>
+    <div id="klant-info" style="font-size:13px;color:var(--tx2);line-height:1.7"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn primary" style="flex:1" onclick="modalSluiten('klant-overlay');bezoekOpenLogModal(window._klantCtx.entityType,window._klantCtx.entityId,window._klantCtx.naam)">📝 Bezoek noteren</button>
+    </div>
+  </div>
+</div>
+
+<!-- BEZOEK LOG -->
+<div class="modal-overlay" id="bezoek-overlay">
+  <div class="modal-box">
+    <div class="modal-header"><span class="modal-title">Bezoek — <span id="bezoek-naam"></span></span><button class="modal-close" onclick="modalSluiten('bezoek-overlay')">✕</button></div>
+    <div class="row2">
+      <div class="field"><label>Datum</label><input type="date" id="bezoek-datum" onchange="bezoekTijdstipGewijzigd()"></div>
+      <div class="field"><label>Uur</label><input type="time" id="bezoek-uur" onchange="bezoekTijdstipGewijzigd()"></div>
+    </div>
+    <div id="bezoek-modus-label" style="font-size:12px;font-weight:700;margin-bottom:10px"></div>
+
+    <div id="bezoek-toekomst-vak">
+      <div class="field"><label>Opmerkingen / agenda</label><textarea id="bezoek-notitie-toekomst" placeholder="Doel van de afspraak…"></textarea></div>
+    </div>
+
+    <div id="bezoek-verleden-vak" style="display:none">
+      <div class="field"><label>Is het bezoek doorgegaan?</label>
+        <select id="bezoek-doorgegaan" onchange="bezoekDoorgegaanGewijzigd()">
+          <option value="ja">Ja, doorgegaan</option>
+          <option value="nee">Nee, niet doorgegaan</option>
+        </select>
+      </div>
+      <div class="field" id="bezoek-evaluatie-veld" style="display:none">
+        <label>Evaluatie kennismaking</label>
+        <select id="bezoek-evaluatie">
+          <option value="">— kies —</option>
+          <option value="offerte">Converteren naar offerte</option>
+          <option value="installateur">Wordt installatiepartner</option>
+          <option value="niets">Niets (geen vervolg)</option>
+        </select>
+      </div>
+      <div class="field"><label>Volgend bezoek (optioneel)</label><input type="date" id="bezoek-volgend"></div>
+      <div class="field"><label>Notities</label><textarea id="bezoek-notitie-verleden" placeholder="Verslag van het bezoek…"></textarea></div>
+    </div>
+
+    <button class="btn primary" style="width:100%" onclick="bezoekOpslaan()">Opslaan</button>
+  </div>
+</div>
+
+<!-- PROSPECT MODAL -->
+<div class="modal-overlay" id="prosp-overlay">
+  <div class="modal-box">
+    <div class="modal-header"><span class="modal-title" id="prosp-modal-titel">Nieuwe prospect</span><button class="modal-close" onclick="modalSluiten('prosp-overlay')">✕</button></div>
+
+    <div class="field"><label>Naam / bedrijf *</label><input type="text" id="prosp-naam"></div>
+    <div class="field"><label>Project / omschrijving</label><input type="text" id="prosp-project"></div>
+    <div class="row2">
+      <div class="field"><label>Postcode</label><input type="text" id="prosp-postcode" inputmode="numeric"></div>
+      <div class="field"><label>Kans (%)</label><input type="number" id="prosp-kans" min="0" max="100"></div>
+    </div>
+    <div class="field"><label>Volledig adres <span style="font-weight:400;color:var(--tx3)">(aanbevolen, voor nauwkeurige kaartlocatie)</span></label><input type="text" id="prosp-adres" placeholder="Straat 12, 3000 Leuven"></div>
+    <div class="field"><label>Verantwoordelijke *</label><input type="text" id="prosp-resp" placeholder="naam of e-mail"></div>
+    <div class="field"><label>Moederbedrijf / groep</label><input type="text" id="prosp-moeder"></div>
+
+    <div class="section-title">Contactpersonen</div>
+    <div id="prosp-contacts"></div>
+    <button class="btn small" onclick="prospAddContact()">＋ Contact toevoegen</button>
+
+    <div class="field" style="margin-top:14px"><label>Notities</label><textarea id="prosp-notities"></textarea></div>
+
+    <div class="section-title">AFAS-bedrijf koppelen</div>
+    <div id="prosp-afas-gekoppeld" style="display:none;font-size:13px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:8px"></div>
+    <div id="prosp-afas-zoekblok">
+      <input type="text" id="prosp-afas-zoek" placeholder="Zoek bedrijf in AFAS…" oninput="prospAfasZoek(this.value)">
+      <div id="prosp-afas-resultaten"></div>
+    </div>
+
+    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Status &amp; activiteitenlog</span><span id="prosp-status-badge"></span>
+    </div>
+    <div id="prosp-activiteitenlog"><div class="empty">Nog geen bezoeken geregistreerd.</div></div>
+    <button class="btn small" onclick="prospPlanKennismaking()" style="margin-top:4px">📝 Bezoek noteren</button>
+
+    <div style="display:flex;gap:8px;margin-top:18px">
+      <button class="btn primary" style="flex:1" onclick="prospSave()">Opslaan</button>
+      <button class="btn danger" id="prosp-delete-btn" onclick="prospDelete()" style="display:none">Verwijderen</button>
+    </div>
+  </div>
+</div>
+
+<!-- DUPLICAAT -->
+<div class="modal-overlay center" id="prosp-dup-overlay">
+  <div class="modal-box">
+    <div class="modal-header"><span class="modal-title">Prospect bestaat mogelijk al</span><button class="modal-close" onclick="prospDupAnnuleer()">✕</button></div>
+    <div style="font-size:13px;color:var(--tx2);margin-bottom:14px">Er bestaat al een prospect ("<strong id="prosp-dup-naam"></strong>") met <span id="prosp-dup-reden">dezelfde gegevens</span>. Wat wil je doen?</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn primary" onclick="prospDupOpenBestaand()">📂 Bestaande prospect openen</button>
+      <button class="btn" onclick="prospDupTochNieuw()">＋ Toch nieuwe aanmaken</button>
+      <button class="btn" onclick="prospDupAnnuleer()">Annuleren</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+const SUPABASE_URL='https://rhztaqutznafsgprnkvn.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoenRhcXV0em5hZnNncHJua3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTI2MjYsImV4cCI6MjA5NzI2ODYyNn0.n-ojVvnlm8x-g-O6WNoN8un67oR-yHMSlaJVuh_8caI';
+let supabaseClient=null, currentUser=null;
+
+function initSupabaseClient(){
+  if(supabaseClient)return true;
+  try{ supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY); return true; }
+  catch(e){ console.error(e); return false; }
+}
+
+// ── UTIL ────────────────────────────────────────────────
+function wmsEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(window._toastT);window._toastT=setTimeout(()=>el.classList.remove('show'),3200);}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function nowUur(){const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function modalOpenen(id){document.getElementById(id).classList.add('open');}
+function modalSluiten(id){document.getElementById(id).classList.remove('open');}
+function normTekst(s){return String(s||'').trim().toLowerCase().replace(/[.,]/g,'').replace(/\s+/g,' ');}
+
+// ── AUTH ────────────────────────────────────────────────
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-password').value;
+  const errEl=document.getElementById('login-error');
+  errEl.classList.remove('show');
+  if(!email||!pw){errEl.textContent='Vul e-mail en wachtwoord in.';errEl.classList.add('show');return;}
+  if(typeof supabase==='undefined'){errEl.textContent='Kon de app-bibliotheek niet laden. Check je internetverbinding.';errEl.classList.add('show');return;}
+  if(!initSupabaseClient()){errEl.textContent='Kon geen verbinding maken met de database.';errEl.classList.add('show');return;}
+  const btn=document.querySelector('.auth-btn');
+  const origTxt=btn.textContent; btn.textContent='Bezig…'; btn.disabled=true;
+  try{
+    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:pw});
+    btn.textContent=origTxt; btn.disabled=false;
+    if(error){
+      const msg={'Invalid login credentials':'Verkeerd e-mailadres of wachtwoord.','Email not confirmed':'E-mail nog niet bevestigd.'}[error.message]||('Fout: '+error.message);
+      errEl.textContent='❌ '+msg; errEl.classList.add('show'); return;
+    }
+    await onLoggedIn(data.user);
+  }catch(e){
+    btn.textContent=origTxt; btn.disabled=false;
+    errEl.textContent='❌ Verbindingsfout: '+e.message; errEl.classList.add('show');
+  }
+}
+async function doLogout(){
+  if(supabaseClient)await supabaseClient.auth.signOut();
+  currentUser=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('login-password').value='';
+}
+async function onLoggedIn(user){
+  currentUser=user;
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  showToast('Welkom, '+(user.user_metadata?.naam||user.email)+'!');
+  document.getElementById('prosp-resp').value=user.email;
+  await laadData();
+  kaartInit();
+  prospRenderStatusPills();
+  prospRender();
+  setTimeout(()=>{if(kaartMapObj)kaartMapObj.invalidateSize();},200);
+}
+(async function initAuth(){
+  if(!initSupabaseClient())return;
+  const {data:{session}}=await supabaseClient.auth.getSession();
+  if(session&&session.user)await onLoggedIn(session.user);
+})();
+
+// ── DATA ────────────────────────────────────────────────
+let klanten=[]; // lichte objecten voor de kaart
+let prospects=[]; // volledige objecten (bewerkbaar)
+let prospNextId=1;
+
+async function laadData(){
+  try{
+    const {data:kRows,error:kErr}=await supabaseClient
+      .from('klanten')
+      .select('id,naam:data->>naam,adres:data->>adres,postcode:data->>postcode,categorie:data->>typeVerkooprelatie,lat:data->>lat,lng:data->>lng,telefoon:data->>telefoon,email:data->>email,btw:data->>btw');
+    if(kErr)throw kErr;
+    klanten=(kRows||[]).map(r=>({...r,lat:r.lat?Number(r.lat):null,lng:r.lng?Number(r.lng):null}));
+  }catch(e){console.error('laadData klanten:',e.message);showToast('Kon klanten niet laden: '+e.message);}
+  try{
+    const {data:pRows,error:pErr}=await supabaseClient.from('prospects').select('id,data');
+    if(pErr)throw pErr;
+    prospects=(pRows||[]).map(r=>({...r.data,id:r.id}));
+    prospNextId=prospects.reduce((m,p)=>Math.max(m,Number(p.id)||0),0)+1;
+  }catch(e){console.error('laadData prospects:',e.message);showToast('Kon prospects niet laden: '+e.message);}
+}
+
+async function sbSaveProspect(p){
+  try{
+    const {id,...rest}=p;
+    const {error}=await supabaseClient.from('prospects').upsert({id,data:rest});
+    if(error)throw error;
+  }catch(e){console.error('sbSaveProspect:',e.message);showToast('Opslaan mislukt: '+e.message);}
+}
+async function sbDeleteProspect(id){
+  try{ await supabaseClient.from('prospects').delete().eq('id',id); }
+  catch(e){console.error('sbDeleteProspect:',e.message);}
+}
+async function sbSaveKlant(dataObj){
+  try{ const {error}=await supabaseClient.from('klanten').insert({data:dataObj}); if(error)throw error; }
+  catch(e){console.error('sbSaveKlant:',e.message);showToast('Opslaan als klant mislukt: '+e.message);}
+}
+
+// ── TABS ────────────────────────────────────────────────
+function showTab(tab){
+  document.getElementById('view-kaart').classList.toggle('active',tab==='kaart');
+  document.getElementById('view-prospects').classList.toggle('active',tab==='prospects');
+  document.getElementById('nav-kaart').classList.toggle('active',tab==='kaart');
+  document.getElementById('nav-prospects').classList.toggle('active',tab==='prospects');
+  if(tab==='kaart'&&kaartMapObj)setTimeout(()=>kaartMapObj.invalidateSize(),80);
+}
+
+// ── GEOCODING ───────────────────────────────────────────
+async function geocodePostcode(pc){
+  pc=String(pc||'').trim(); if(!pc)return null;
+  try{
+    const {data,error}=await supabaseClient.from('be_postcodes').select('lat,lng').eq('postcode',pc);
+    if(error||!data||!data.length)return null;
+    const lat=data.reduce((s,r)=>s+Number(r.lat),0)/data.length;
+    const lng=data.reduce((s,r)=>s+Number(r.lng),0)/data.length;
+    return{lat,lng,bron:'postcode'};
+  }catch(e){return null;}
+}
+let _nominatimLaatst=0;
+async function geocodeAdresVolledig(adres){
+  const a=String(adres||'').trim(); if(!a)return null;
+  const wacht=Math.max(0,1100-(Date.now()-_nominatimLaatst)); if(wacht>0)await new Promise(r=>setTimeout(r,wacht));
+  _nominatimLaatst=Date.now();
+  try{
+    const res=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=be&q='+encodeURIComponent(a),{headers:{'Accept-Language':'nl'}});
+    const json=await res.json();
+    if(json&&json.length)return{lat:parseFloat(json[0].lat),lng:parseFloat(json[0].lon),bron:'adres'};
+  }catch(e){}
+  return null;
+}
+async function geocodeLocatie({adres,postcode}){
+  if(adres&&adres.trim()){const r=await geocodeAdresVolledig(adres); if(r)return r;}
+  if(postcode&&postcode.trim()){const m=String(postcode).match(/\d{4}/); const r=await geocodePostcode(m?m[0]:postcode.trim()); if(r)return r;}
+  return null;
+}
+
+// ── KAART ───────────────────────────────────────────────
+let kaartMapObj=null,kaartClusterGroep=null,kaartGeinit=false;
+let kaartActieveFilters=null;
+let kaartZoekActief=false, kaartZoekResultaten=[];
+const KAART_KLEUREN=['#00DFA3','#e85d04','#3b82f6','#a855f7','#f43f5e','#eab308','#14b8a6','#6366f1','#84cc16','#ec4899'];
+const KAART_PROSPECT_KLEUR='#8a9ba3';
+
+function kaartKleurVoorCategorie(cat){
+  if(cat==='Prospect')return KAART_PROSPECT_KLEUR;
+  let hash=0; for(let i=0;i<cat.length;i++)hash=(hash*31+cat.charCodeAt(i))>>>0;
+  return KAART_KLEUREN[hash%KAART_KLEUREN.length];
+}
+function kaartAlleCategorieen(){
+  const cats=new Set();
+  klanten.forEach(k=>{if(k.lat!=null)cats.add(k.categorie||'Onbekend');});
+  if(prospects.some(p=>p.lat!=null))cats.add('Prospect');
+  return[...cats].sort();
+}
+function kaartInit(){
+  if(typeof L==='undefined'){console.warn('Leaflet niet geladen.');return;}
+  if(!kaartGeinit){
+    kaartMapObj=L.map('kaart-map').setView([50.85,4.35],8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(kaartMapObj);
+    kaartClusterGroep=L.markerClusterGroup();
+    kaartMapObj.addLayer(kaartClusterGroep);
+    kaartGeinit=true;
+  }
+  if(!kaartActieveFilters)kaartActieveFilters=new Set(kaartAlleCategorieen());
+  kaartRenderFilters();
+  kaartRenderPins();
+  kaartRenderStandaardLijst();
+}
+function kaartRenderFilters(){
+  const el=document.getElementById('kaart-filters');
+  const cats=kaartAlleCategorieen();
+  if(!cats.length){el.innerHTML='<span style="font-size:12px;color:var(--tx3)">Nog geen locaties gevonden.</span>';return;}
+  el.innerHTML=cats.map(cat=>{
+    const actief=kaartActieveFilters.has(cat);
+    const kleur=kaartKleurVoorCategorie(cat);
+    const esc=cat.replace(/'/g,"\\'");
+    return`<button class="pill${actief?' active':''}" style="border-color:${kleur};${actief?'background:'+kleur:''}" onclick="kaartToggleFilter('${esc}')"><span class="dot" style="background:${actief?'#04241a':kleur};margin-right:5px"></span>${wmsEsc(cat)}</button>`;
+  }).join('');
+}
+function kaartToggleFilter(cat){
+  if(kaartActieveFilters.has(cat))kaartActieveFilters.delete(cat); else kaartActieveFilters.add(cat);
+  kaartRenderFilters(); kaartRenderPins();
+  if(kaartZoekActief)kaartRenderZoekResultaten(kaartZoekResultaten); else kaartRenderStandaardLijst();
+}
+function kaartMaakPopup(naam,categorie,adres){
+  const kleur=kaartKleurVoorCategorie(categorie);
+  return`<div style="min-width:160px"><div style="font-weight:700;font-size:13px">${wmsEsc(naam)}</div>
+    <div style="font-size:11px;margin:2px 0"><span class="dot" style="background:${kleur};margin-right:4px"></span>${wmsEsc(categorie)}</div>
+    ${adres?'<div style="font-size:11px;color:#555">'+wmsEsc(adres)+'</div>':''}</div>`;
+}
+function kaartRenderPins(){
+  if(!kaartMapObj||!kaartClusterGroep)return;
+  kaartClusterGroep.clearLayers();
+  klanten.forEach(k=>{
+    if(k.lat==null||k.lng==null)return;
+    const cat=k.categorie||'Onbekend';
+    if(!kaartActieveFilters.has(cat))return;
+    const kleur=kaartKleurVoorCategorie(cat);
+    const marker=L.circleMarker([k.lat,k.lng],{radius:8,fillColor:kleur,fillOpacity:.9,color:'#fff',weight:2});
+    marker.on('click',()=>kaartToonActieKeuze('klant',k.id,k.naam));
+    kaartClusterGroep.addLayer(marker);
+  });
+  prospects.forEach(p=>{
+    if(p.lat==null||p.lng==null)return;
+    if(!kaartActieveFilters.has('Prospect'))return;
+    const kleur=kaartKleurVoorCategorie('Prospect');
+    const marker=L.circleMarker([p.lat,p.lng],{radius:8,fillColor:kleur,fillOpacity:.9,color:'#fff',weight:2});
+    marker.on('click',()=>kaartToonActieKeuze('prospect',p.id,p.naam));
+    kaartClusterGroep.addLayer(marker);
+  });
+}
+function kaartRenderStandaardLijst(){
+  document.getElementById('kaart-lijst-tekst').textContent='Locaties in de buurt';
+  document.getElementById('kaart-wis-btn').style.display='none';
+  const el=document.getElementById('kaart-lijst');
+  const items=[];
+  klanten.forEach(k=>{ if(k.lat!=null&&kaartActieveFilters.has(k.categorie||'Onbekend')) items.push({type:'klant',id:k.id,naam:k.naam,cat:k.categorie||'Onbekend',adres:k.adres}); });
+  prospects.forEach(p=>{ if(p.lat!=null&&kaartActieveFilters.has('Prospect')) items.push({type:'prospect',id:p.id,naam:p.naam,cat:'Prospect',adres:p.adres||p.postcode}); });
+  if(!items.length){el.innerHTML='<div class="empty">Geen locaties met de huidige filters.</div>';return;}
+  el.innerHTML=items.slice(0,150).map(it=>{
+    const kleur=kaartKleurVoorCategorie(it.cat);
+    return`<div class="card" onclick="kaartToonActieKeuze('${it.type}','${wmsEsc(String(it.id))}','${wmsEsc(it.naam).replace(/'/g,"\\'")}')">
+      <div class="card-titel">${wmsEsc(it.naam)}</div>
+      <div class="card-sub"><span class="dot" style="background:${kleur}"></span>${wmsEsc(it.cat)}</div>
+      ${it.adres?'<div class="card-meta">'+wmsEsc(it.adres)+'</div>':''}
+    </div>`;
+  }).join('');
+}
+function kaartRenderZoekResultaten(resultaten){
+  kaartZoekActief=true; kaartZoekResultaten=resultaten;
+  document.getElementById('kaart-lijst-tekst').textContent=resultaten.length+' resultaat/resultaten';
+  document.getElementById('kaart-wis-btn').style.display='inline-block';
+  const el=document.getElementById('kaart-lijst');
+  const gefilterd=resultaten.filter(r=>kaartActieveFilters.has(r.categorie||'Onbekend'));
+  if(!gefilterd.length){el.innerHTML='<div class="empty">Geen resultaten binnen de gekozen categorieën.</div>';return;}
+  el.innerHTML=gefilterd.map(r=>{
+    const kleur=kaartKleurVoorCategorie(r.categorie||'Onbekend');
+    const afst=r.afstandKm!=null?r.afstandKm+' km':(r.hemelsbrede_afstand_km!=null?'±'+r.hemelsbrede_afstand_km+' km':'');
+    const duur=r.duurMinuten!=null?' · '+r.duurMinuten+' min':'';
+    return`<div class="card" onclick="kaartToonActieKeuze('${r.entity_type}','${wmsEsc(String(r.entity_id))}','${wmsEsc(r.naam).replace(/'/g,"\\'")}')">
+      <div class="card-titel">${wmsEsc(r.naam)}</div>
+      <div class="card-sub"><span class="dot" style="background:${kleur}"></span>${wmsEsc(r.categorie||'Onbekend')} · <strong style="color:var(--brand)">${afst}${duur}</strong></div>
+      ${r.adres?'<div class="card-meta">'+wmsEsc(r.adres)+'</div>':''}
+      ${r.hemelsbreedeSchatting?'<div class="card-meta" style="color:var(--warn)">Schatting (hemelsbrede afstand)</div>':''}
+    </div>`;
+  }).join('');
+  if(kaartMapObj&&resultaten.length){
+    const groep=L.featureGroup(resultaten.filter(r=>r.lat&&r.lng).map(r=>L.marker([r.lat,r.lng])));
+    if(groep.getLayers().length)kaartMapObj.fitBounds(groep.getBounds().pad(.25));
+  }
+}
+function kaartWisZoek(){
+  kaartZoekActief=false; kaartZoekResultaten=[];
+  document.getElementById('kaart-zoek-postcode').value='';
+  kaartRenderStandaardLijst();
+}
+async function kaartVoerZoekUit(oorsprong){
+  showToast('Zoeken naar dichtstbijzijnde locaties…');
+  const cats=kaartAlleCategorieen();
+  const actief=[...kaartActieveFilters];
+  const categorieen=actief.length&&actief.length<cats.length?actief:null;
+  try{
+    const resp=await fetch(SUPABASE_URL+'/functions/v1/kaart-dichtstbij',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY,'apikey':SUPABASE_ANON_KEY},
+      body:JSON.stringify({actie:'dichtstbij',...oorsprong,categorieen,limiet:30})
+    });
+    const json=await resp.json();
+    if(!resp.ok||json.error)throw new Error(json.error||'onbekende fout');
+    kaartRenderZoekResultaten(json.resultaten||[]);
+    showToast((json.resultaten||[]).length+' resultaten gevonden'+(json.viaGoogle?'':' (schatting)'));
+  }catch(e){ showToast('Zoeken mislukt: '+e.message); }
+}
+function kaartZoekPostcode(){
+  const pc=document.getElementById('kaart-zoek-postcode').value.trim();
+  if(!pc){showToast('Vul een postcode of gemeente in.');return;}
+  kaartVoerZoekUit({postcode:pc});
+}
+function kaartZoekGPS(){
+  if(!navigator.geolocation){showToast('GPS niet beschikbaar op dit toestel.');return;}
+  showToast('Locatie opvragen…');
+  navigator.geolocation.getCurrentPosition(
+    pos=>kaartVoerZoekUit({lat:pos.coords.latitude,lng:pos.coords.longitude}),
+    err=>showToast('Kon locatie niet bepalen: '+err.message),
+    {enableHighAccuracy:true,timeout:10000}
+  );
+}
+
+// ── ACTIEKEUZE + KLANT-DOSSIER ─────────────────────────
+window._actieCtx=null; window._klantCtx=null;
+function kaartToonActieKeuze(entityType,entityId,naam){
+  window._actieCtx={entityType,entityId,naam};
+  document.getElementById('actie-titel').textContent=naam;
+  modalOpenen('actie-overlay');
+}
+function kaartActieDossier(){
+  const ctx=window._actieCtx; modalSluiten('actie-overlay');
+  if(!ctx)return;
+  if(ctx.entityType==='prospect')prospOpenEdit(Number(ctx.entityId));
+  else kaartOpenKlant(ctx.entityId);
+}
+function kaartActieBezoek(){
+  const ctx=window._actieCtx; modalSluiten('actie-overlay');
+  if(!ctx)return;
+  bezoekOpenLogModal(ctx.entityType,ctx.entityId,ctx.naam);
+}
+function kaartOpenKlant(id){
+  const k=klanten.find(x=>String(x.id)===String(id));
+  if(!k){showToast('Klant niet gevonden.');return;}
+  window._klantCtx={entityType:'klant',entityId:k.id,naam:k.naam};
+  document.getElementById('klant-naam-titel').textContent=k.naam;
+  document.getElementById('klant-info').innerHTML=`
+    <div><strong>Categorie:</strong> ${wmsEsc(k.categorie||'Onbekend')}</div>
+    ${k.adres?'<div><strong>Adres:</strong> '+wmsEsc(k.adres)+'</div>':''}
+    ${k.telefoon?'<div><strong>Tel:</strong> <a class="link" href="tel:'+wmsEsc(k.telefoon)+'">'+wmsEsc(k.telefoon)+'</a></div>':''}
+    ${k.email?'<div><strong>E-mail:</strong> <a class="link" href="mailto:'+wmsEsc(k.email)+'">'+wmsEsc(k.email)+'</a></div>':''}
+  `;
+  modalOpenen('klant-overlay');
+}
+
+// ── BEZOEK NOTEREN (datum/uur-gevoelig) ────────────────
+window._bezoekCtx=null;
+function bezoekOpenLogModal(entityType,entityId,naam){
+  window._bezoekCtx={entityType,entityId:String(entityId),naam};
+  document.getElementById('bezoek-naam').textContent=naam;
+  document.getElementById('bezoek-datum').value=today();
+  document.getElementById('bezoek-uur').value=nowUur();
+  document.getElementById('bezoek-notitie-toekomst').value='';
+  document.getElementById('bezoek-notitie-verleden').value='';
+  document.getElementById('bezoek-doorgegaan').value='ja';
+  document.getElementById('bezoek-evaluatie').value='';
+  document.getElementById('bezoek-volgend').value='';
+  bezoekTijdstipGewijzigd();
+  modalOpenen('bezoek-overlay');
+}
+function bezoekLogIsToekomst(){
+  const d=document.getElementById('bezoek-datum').value, u=document.getElementById('bezoek-uur').value||'00:00';
+  if(!d)return true;
+  return new Date(d+'T'+u+':00').getTime()>Date.now();
+}
+function bezoekTijdstipGewijzigd(){
+  const toekomst=bezoekLogIsToekomst();
+  document.getElementById('bezoek-toekomst-vak').style.display=toekomst?'block':'none';
+  document.getElementById('bezoek-verleden-vak').style.display=toekomst?'none':'block';
+  const lbl=document.getElementById('bezoek-modus-label');
+  lbl.textContent=toekomst?'📅 In de toekomst — wordt ingepland als nieuwe afspraak':'✅ In het verleden — evaluatie van het bezoek';
+  lbl.style.color=toekomst?'#3b82f6':'var(--brand)';
+  if(!toekomst)bezoekDoorgegaanGewijzigd();
+}
+function bezoekDoorgegaanGewijzigd(){
+  const doorgegaan=document.getElementById('bezoek-doorgegaan').value==='ja';
+  const isProspect=window._bezoekCtx&&window._bezoekCtx.entityType==='prospect';
+  document.getElementById('bezoek-evaluatie-veld').style.display=(doorgegaan&&isProspect)?'block':'none';
+}
+async function bezoekOpslaan(){
+  const ctx=window._bezoekCtx; if(!ctx)return;
+  const datum=document.getElementById('bezoek-datum').value;
+  const uur=document.getElementById('bezoek-uur').value;
+  if(!datum||!uur){showToast('Vul datum en uur in.');return;}
+  const toekomst=bezoekLogIsToekomst();
+  const rij={
+    entity_type:ctx.entityType, entity_id:String(ctx.entityId), entity_naam:ctx.naam,
+    aangemaakt_door:currentUser?.email||''
+  };
+  if(toekomst){
+    rij.status='gepland'; rij.gepland_op=datum; rij.notities=document.getElementById('bezoek-notitie-toekomst').value.trim();
+  }else{
+    const doorgegaan=document.getElementById('bezoek-doorgegaan').value==='ja';
+    rij.status=doorgegaan?'doorgegaan':'niet_doorgegaan';
+    rij.uitgevoerd_op=datum;
+    rij.notities=document.getElementById('bezoek-notitie-verleden').value.trim();
+    const volgend=document.getElementById('bezoek-volgend').value; if(volgend)rij.volgend_bezoek_op=volgend;
+    if(doorgegaan&&ctx.entityType==='prospect'){
+      const ev=document.getElementById('bezoek-evaluatie').value;
+      if(ev)rij.evaluatie=ev;
+    }
+  }
+  try{
+    const {data,error}=await supabaseClient.from('bezoeken').insert(rij).select().single();
+    if(error)throw error;
+    // Agenda-koppeling: veilige single-row upsert (nooit de volledige tabel herschrijven)
+    await supabaseClient.from('ag_afspraken').upsert({
+      id:'bezoek-'+data.id, titel:(toekomst?'Bezoek: ':'Evaluatie: ')+ctx.naam,
+      datum, uur, type:'Andere', resp:currentUser?.email||'',
+      notitie:rij.notities||'', linkid:String(ctx.entityId), linklabel:ctx.naam, linktype:ctx.entityType
+    });
+  }catch(e){ showToast('Opslaan mislukt: '+e.message); return; }
+
+  if(!toekomst&&ctx.entityType==='prospect'){
+    const p=prospects.find(x=>String(x.id)===String(ctx.entityId));
+    const ev=document.getElementById('bezoek-evaluatie').value;
+    if(p&&ev==='installateur'){ await bezoekZetOmNaarPartner(p); }
+    else if(p&&ev==='offerte'){ p.klaarVoorOfferte=true; await sbSaveProspect(p); }
+    else if(p&&ev==='niets'){ p.status='afgewezen'; await sbSaveProspect(p); }
+  }
+  modalSluiten('bezoek-overlay');
+  showToast(toekomst?'Afspraak ingepland ✓':'Bezoek geregistreerd ✓');
+  if(document.getElementById('prosp-overlay').classList.contains('open')){
+    const p=prospects.find(x=>String(x.id)===String(ctx.entityId));
+    if(p){ bezoekRenderActiviteitenlog(p); prospRenderStatusBadge(p); }
+  }
+  prospRender();
+}
+async function bezoekZetOmNaarPartner(p){
+  if(!confirm('Prospect "'+p.naam+'" omzetten naar installatiepartner in de klantenlijst?'))return;
+  const klantData={
+    naam:p.naam, adres:p.adres||'', postcode:p.postcode||'', typeVerkooprelatie:'Installateur',
+    lat:p.lat, lng:p.lng, geoBron:p.geoBron||'', isInstallatiepartner:true,
+    telefoon:(p.contacts&&p.contacts[0]&&p.contacts[0].tel)||'', email:(p.contacts&&p.contacts[0]&&p.contacts[0].email)||''
+  };
+  await sbSaveKlant(klantData);
+  showToast('Toegevoegd als installatiepartner ✓');
+  await laadData(); kaartRenderFilters(); kaartRenderPins(); kaartRenderStandaardLijst();
+}
+
+// ── PROSPECTS ───────────────────────────────────────────
+let prospEditId=null, prospZoekTerm='', prospStatusFilter='alle';
+
+function prospSetZoek(v){ prospZoekTerm=v; prospRender(); }
+function prospSetStatus(s){ prospStatusFilter=s; prospRenderStatusPills(); prospRender(); }
+function prospRenderStatusPills(){
+  const el=document.getElementById('prosp-status-pills');
+  const opties=[['alle','Alle'],['actief','Actief'],['afgewezen','Afgewezen']];
+  el.innerHTML=opties.map(([v,l])=>`<button class="pill${prospStatusFilter===v?' active':''}" style="${prospStatusFilter===v?'background:var(--brand);border-color:var(--brand)':''}" onclick="prospSetStatus('${v}')">${l}</button>`).join('');
+}
+function prospRender(){
+  const el=document.getElementById('prospects-lijst');
+  let lijst=prospects.slice();
+  if(prospStatusFilter==='actief')lijst=lijst.filter(p=>p.status!=='afgewezen');
+  if(prospStatusFilter==='afgewezen')lijst=lijst.filter(p=>p.status==='afgewezen');
+  const term=normTekst(prospZoekTerm);
+  if(term){
+    lijst=lijst.filter(p=>{
+      const hooi=[p.naam,p.project,p.postcode,p.adres,p.moeder,...(p.contacts||[]).map(c=>c.naam)].map(normTekst).join(' ');
+      return hooi.includes(term);
+    });
+  }
+  if(!lijst.length){el.innerHTML='<div class="empty">Geen prospects gevonden.</div>';return;}
+  el.innerHTML=lijst.map(p=>{
+    let badge='';
+    if(p.status==='afgewezen')badge='<span class="badge rood">Afgewezen</span>';
+    else if(p.klaarVoorOfferte)badge='<span class="badge groen">Klaar voor offerte</span>';
+    return`<div class="card" onclick="prospOpenEdit(${p.id})">
+      <div class="card-titel">${wmsEsc(p.naam)}${badge}</div>
+      <div class="card-sub">${wmsEsc(p.project||'')}</div>
+      <div class="card-meta">${wmsEsc(p.adres||p.postcode||'')}${p.resp?' · '+wmsEsc(p.resp):''}</div>
+    </div>`;
+  }).join('');
+}
+
+function prospGetContacts(){
+  return Array.from(document.querySelectorAll('.contact-row')).map(row=>({
+    naam:row.querySelector('.c-naam').value.trim(), tel:row.querySelector('.c-tel').value.trim(),
+    email:row.querySelector('.c-email').value.trim(), rol:row.querySelector('.c-rol').value.trim()
+  }));
+}
+function prospRenderContacts(rows){
+  const el=document.getElementById('prosp-contacts');
+  el.innerHTML=rows.map((c,i)=>`<div class="contact-row" style="flex-direction:column;align-items:stretch;border:1px solid var(--bd);border-radius:10px;padding:8px;background:var(--card)">
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <input class="c-naam" placeholder="Naam" value="${wmsEsc(c.naam)}">
+      <input class="c-tel" placeholder="Tel" value="${wmsEsc(c.tel)}" style="max-width:100px">
+      <input class="c-email" placeholder="E-mail" value="${wmsEsc(c.email)}">
+      <button class="btn small danger" onclick="prospRemoveContact(${i})">✕</button>
+    </div>
+    <input class="c-rol" placeholder="Functie/rol" value="${wmsEsc(c.rol)}">
+  </div>`).join('');
+}
+function prospAddContact(){ const rows=prospGetContacts(); rows.push({naam:'',tel:'',email:'',rol:''}); prospRenderContacts(rows); }
+function prospRemoveContact(i){ const rows=prospGetContacts(); if(rows.length<=1){showToast('Minstens 1 contact.');return;} rows.splice(i,1); prospRenderContacts(rows); }
+
+function prospOpenNieuw(){
+  prospEditId=null; window._prospDupBevestigd=false; window._prospLinkPending=null;
+  document.getElementById('prosp-modal-titel').textContent='Nieuwe prospect';
+  document.getElementById('prosp-naam').value='';
+  document.getElementById('prosp-project').value='';
+  document.getElementById('prosp-postcode').value='';
+  document.getElementById('prosp-kans').value='';
+  document.getElementById('prosp-adres').value='';
+  document.getElementById('prosp-resp').value=currentUser?.email||'';
+  document.getElementById('prosp-moeder').value='';
+  document.getElementById('prosp-notities').value='';
+  document.getElementById('prosp-afas-zoek').value='';
+  document.getElementById('prosp-afas-resultaten').innerHTML='';
+  document.getElementById('prosp-afas-gekoppeld').style.display='none';
+  document.getElementById('prosp-afas-zoekblok').style.display='block';
+  document.getElementById('prosp-status-badge').innerHTML='';
+  document.getElementById('prosp-activiteitenlog').innerHTML='<div class="empty">Nog geen bezoeken geregistreerd.</div>';
+  document.getElementById('prosp-delete-btn').style.display='none';
+  prospRenderContacts([{naam:'',tel:'',email:'',rol:''}]);
+  modalOpenen('prosp-overlay');
+}
+function prospOpenEdit(id){
+  const p=prospects.find(x=>x.id===id); if(!p)return;
+  prospEditId=id; window._prospDupBevestigd=false; window._prospLinkPending=null;
+  document.getElementById('prosp-modal-titel').textContent=p.naam;
+  document.getElementById('prosp-naam').value=p.naam||'';
+  document.getElementById('prosp-project').value=p.project||'';
+  document.getElementById('prosp-postcode').value=p.postcode||'';
+  document.getElementById('prosp-kans').value=p.kans||'';
+  document.getElementById('prosp-adres').value=p.adres||'';
+  document.getElementById('prosp-resp').value=p.resp||'';
+  document.getElementById('prosp-moeder').value=p.moeder||'';
+  document.getElementById('prosp-notities').value=p.notities||'';
+  document.getElementById('prosp-afas-zoek').value='';
+  document.getElementById('prosp-afas-resultaten').innerHTML='';
+  document.getElementById('prosp-delete-btn').style.display='inline-block';
+  prospRenderContacts(p.contacts&&p.contacts.length?p.contacts:[{naam:'',tel:'',email:'',rol:''}]);
+  prospToonAfasLink(p);
+  bezoekRenderActiviteitenlog(p);
+  prospRenderStatusBadge(p);
+  modalOpenen('prosp-overlay');
+}
+
+async function prospSave(){
+  const naam=document.getElementById('prosp-naam').value.trim();
+  if(!naam){showToast('Naam is verplicht.');document.getElementById('prosp-naam').focus();return;}
+  const respVeld=document.getElementById('prosp-resp').value.trim();
+  if(!respVeld){showToast('Kies een verantwoordelijke.');document.getElementById('prosp-resp').focus();return;}
+  const postcode=document.getElementById('prosp-postcode').value.trim();
+  const adres=document.getElementById('prosp-adres').value.trim();
+  if(!postcode&&!adres){showToast('Vul een postcode of volledig adres in — nodig voor de kaart.');return;}
+
+  const bestaand=prospEditId?prospects.find(x=>x.id===prospEditId):null;
+  const data={
+    naam, project:document.getElementById('prosp-project').value.trim(), postcode, adres,
+    kans:parseInt(document.getElementById('prosp-kans').value)||0, resp:respVeld,
+    moeder:document.getElementById('prosp-moeder').value.trim(),
+    notities:document.getElementById('prosp-notities').value.trim(),
+    contacts:prospGetContacts().filter(c=>c.naam||c.tel||c.email),
+    aangemaakt:bestaand?.aangemaakt||today(),
+    status:bestaand?.status, klaarVoorOfferte:bestaand?.klaarVoorOfferte,
+    afasLink:bestaand?bestaand.afasLink:(window._prospLinkPending||undefined)
+  };
+
+  if(!prospEditId&&!window._prospDupBevestigd){
+    const naamNorm=normTekst(naam);
+    const adresNorm=normTekst(adres);
+    let reden='';
+    const dubbel=prospects.find(x=>{
+      if(normTekst(x.naam)===naamNorm){reden='dezelfde naam';return true;}
+      if(adresNorm&&normTekst(x.adres)===adresNorm){reden='hetzelfde volledige adres';return true;}
+      return false;
+    });
+    if(dubbel){
+      window._prospDupData=data; window._prospDupId=dubbel.id;
+      document.getElementById('prosp-dup-naam').textContent=dubbel.naam;
+      document.getElementById('prosp-dup-reden').textContent=reden||'dezelfde gegevens';
+      modalOpenen('prosp-dup-overlay');
+      return;
+    }
+  }
+  window._prospDupBevestigd=false;
+
+  const geo=await geocodeLocatie({adres,postcode});
+  if(geo){data.lat=geo.lat;data.lng=geo.lng;data.geoBron=geo.bron;}
+  else if(bestaand){data.lat=bestaand.lat;data.lng=bestaand.lng;data.geoBron=bestaand.geoBron;}
+
+  if(prospEditId){
+    const idx=prospects.findIndex(x=>x.id===prospEditId);
+    if(idx>=0){ prospects[idx]={...prospects[idx],...data}; await sbSaveProspect(prospects[idx]); }
+  }else{
+    data.id=prospNextId++;
+    prospects.push(data);
+    await sbSaveProspect(data);
+  }
+  modalSluiten('prosp-overlay'); prospRender();
+  kaartAlleCategorieen(); kaartRenderPins(); if(!kaartZoekActief)kaartRenderStandaardLijst();
+  showToast(prospEditId?'Prospect opgeslagen ✓':'Prospect aangemaakt ✓');
+}
+async function prospDelete(){
+  const p=prospects.find(x=>x.id===prospEditId); if(!p)return;
+  if(!confirm('Prospect "'+p.naam+'" verwijderen?'))return;
+  await sbDeleteProspect(p.id);
+  prospects=prospects.filter(x=>x.id!==prospEditId);
+  modalSluiten('prosp-overlay'); prospRender();
+  showToast('Prospect verwijderd.');
+}
+function prospDupOpenBestaand(){ modalSluiten('prosp-dup-overlay'); const id=window._prospDupId; modalSluiten('prosp-overlay'); setTimeout(()=>prospOpenEdit(id),150); }
+function prospDupTochNieuw(){ modalSluiten('prosp-dup-overlay'); window._prospDupBevestigd=true; prospSave(); }
+function prospDupAnnuleer(){ modalSluiten('prosp-dup-overlay'); }
+
+// AFAS koppelen (o.b.v. de lichte klanten-lijst die al geladen is)
+function prospAfasZoek(term){
+  const el=document.getElementById('prosp-afas-resultaten');
+  const t=normTekst(term);
+  if(t.length<2){el.innerHTML='';return;}
+  const treffers=klanten.filter(k=>normTekst(k.naam).includes(t)).slice(0,8);
+  if(!treffers.length){el.innerHTML='<div class="card-meta" style="padding:6px 0">Geen bedrijven gevonden.</div>';return;}
+  el.innerHTML=treffers.map(k=>`<div class="card" style="margin:6px 0;cursor:pointer" onclick="prospAfasKoppel('${wmsEsc(String(k.id))}')">
+    <div class="card-titel" style="font-size:13px">${wmsEsc(k.naam)}</div>
+    <div class="card-meta">${wmsEsc(k.adres||'')}</div></div>`).join('');
+}
+function prospAfasKoppel(klantId){
+  const k=klanten.find(x=>String(x.id)===String(klantId)); if(!k)return;
+  const p=prospEditId?prospects.find(x=>x.id===prospEditId):null;
+  const link={id:k.id,naam:k.naam,adres:k.adres||'',telefoon:k.telefoon||'',email:k.email||'',btw:k.btw||''};
+  if(p){ p.afasLink=link; sbSaveProspect(p); }
+  window._prospLinkPending=link;
+  prospToonAfasLink({afasLink:link});
+  showToast('Gekoppeld aan '+k.naam+' ✓');
+}
+function prospAfasOntkoppel(){
+  const p=prospEditId?prospects.find(x=>x.id===prospEditId):null;
+  if(p){ p.afasLink=null; sbSaveProspect(p); }
+  window._prospLinkPending=null;
+  prospToonAfasLink({afasLink:null});
+}
+function prospToonAfasLink(p){
+  const link=p.afasLink||window._prospLinkPending;
+  const gekEl=document.getElementById('prosp-afas-gekoppeld'), zoekEl=document.getElementById('prosp-afas-zoekblok');
+  if(link){
+    gekEl.style.display='block'; zoekEl.style.display='none';
+    gekEl.innerHTML=`<strong>${wmsEsc(link.naam)}</strong><br>${wmsEsc(link.adres||'')}<br><button class="btn small" style="margin-top:6px" onclick="prospAfasOntkoppel()">Ontkoppelen</button>`;
+  }else{
+    gekEl.style.display='none'; zoekEl.style.display='block';
+  }
+}
+
+function prospRenderStatusBadge(p){
+  const el=document.getElementById('prosp-status-badge');
+  if(p.status==='afgewezen')el.innerHTML='<span class="badge rood">Afgewezen</span>';
+  else if(p.klaarVoorOfferte)el.innerHTML='<span class="badge groen">Klaar voor offerte</span>';
+  else el.innerHTML='';
+}
+function prospPlanKennismaking(){
+  const p=prospects.find(x=>x.id===prospEditId); if(!p){showToast('Sla de prospect eerst op.');return;}
+  bezoekOpenLogModal('prospect',p.id,p.naam);
+}
+async function bezoekRenderActiviteitenlog(p){
+  const el=document.getElementById('prosp-activiteitenlog');
+  el.innerHTML='<div class="empty">Laden…</div>';
+  try{
+    const {data,error}=await supabaseClient.from('bezoeken').select('*').eq('entity_type','prospect').eq('entity_id',String(p.id)).order('created_at',{ascending:false});
+    if(error)throw error;
+    if(!data||!data.length){el.innerHTML='<div class="empty">Nog geen bezoeken geregistreerd.</div>';return;}
+    const statusLbl={gepland:'📅 Gepland',doorgegaan:'✅ Doorgegaan',niet_doorgegaan:'❌ Niet doorgegaan'};
+    const evalLbl={offerte:'→ Offerte',installateur:'→ Installatiepartner',niets:'→ Geen vervolg'};
+    el.innerHTML=data.map(b=>`<div class="log-item">
+      <span class="lbl">${statusLbl[b.status]||b.status}</span> — ${wmsEsc(b.gepland_op||b.uitgevoerd_op||'')}
+      ${b.evaluatie?' <em>'+(evalLbl[b.evaluatie]||b.evaluatie)+'</em>':''}
+      ${b.notities?'<br>'+wmsEsc(b.notities):''}
+      ${b.volgend_bezoek_op?'<br>Volgend bezoek: '+wmsEsc(b.volgend_bezoek_op):''}
+    </div>`).join('');
+  }catch(e){ el.innerHTML='<div class="empty">Kon activiteitenlog niet laden.</div>'; }
+}
+</script>
+</body>
+</html>
