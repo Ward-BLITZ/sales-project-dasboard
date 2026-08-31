@@ -2398,9 +2398,13 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <select id="filiaal-moederklant"><option value="">— geen —</option></select>
     </div>
     <div class="field"><label>Categorie</label><input id="filiaal-categorie" placeholder="Wordt overgenomen van gekoppeld bedrijf, of 'Filiaal'"></div>
-    <div class="field">
-      <label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Adres *</label>
-      <input id="filiaal-adres" placeholder="Straat, nr, gemeente...">
+    <div style="display:flex;gap:8px">
+      <div class="field" style="flex:3"><label><i class="ti ti-map-pin" style="color:var(--green);margin-right:4px"></i>Straat *</label><input id="filiaal-straat" placeholder="Zuiderlaan"></div>
+      <div class="field" style="flex:1"><label>Nr *</label><input id="filiaal-nr" placeholder="91"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="field" style="flex:1"><label>Postcode *</label><input id="filiaal-postcode" inputmode="numeric" placeholder="9000"></div>
+      <div class="field" style="flex:3"><label>Gemeente *</label><input id="filiaal-gemeente" placeholder="Gent"></div>
     </div>
     <div class="field"><label>Notities</label><textarea id="filiaal-notities" rows="2"></textarea></div>
     <div class="modal-footer" style="border-top:1px solid var(--bd);padding-top:12px;margin-top:6px">
@@ -4786,7 +4790,7 @@ async function loadFilialen(){
   }catch(e){console.warn('loadFilialen:',e.message);}
 }
 async function sbSaveFiliaal(f){
-  const body={naam:f.naam,adres:f.adres||null,postcode:f.postcode||null,lat:f.lat??null,lng:f.lng??null,geo_bron:f.geo_bron||null,moederklant_id:f.moederklant_id||null,categorie:f.categorie||null,notities:f.notities||null,aangemaakt_door:f.aangemaakt_door||null,updated_at:new Date().toISOString()};
+  const body={naam:f.naam,straat:f.straat||null,huisnummer:f.huisnummer||null,postcode:f.postcode||null,gemeente:f.gemeente||null,adres:f.adres||null,lat:f.lat??null,lng:f.lng??null,geo_bron:f.geo_bron||null,moederklant_id:f.moederklant_id||null,categorie:f.categorie||null,notities:f.notities||null,aangemaakt_door:f.aangemaakt_door||null,updated_at:new Date().toISOString()};
   if(f.id){
     await sbFetch('filialen?id=eq.'+f.id,{method:'PATCH',body:JSON.stringify(body)});
     return f.id;
@@ -4814,7 +4818,10 @@ function openFiliaalModal(id){
   document.getElementById('filiaal-naam').value=f?(f.naam||''):'';
   document.getElementById('filiaal-moederklant').value=(f&&f.moederklant_id)?f.moederklant_id:'';
   document.getElementById('filiaal-categorie').value=f?(f.categorie||''):'';
-  document.getElementById('filiaal-adres').value=f?(f.adres||''):'';
+  document.getElementById('filiaal-straat').value=f?(f.straat||''):'';
+  document.getElementById('filiaal-nr').value=f?(f.huisnummer||''):'';
+  document.getElementById('filiaal-postcode').value=f?(f.postcode||''):'';
+  document.getElementById('filiaal-gemeente').value=f?(f.gemeente||''):'';
   document.getElementById('filiaal-notities').value=f?(f.notities||''):'';
   document.getElementById('filiaal-del-btn').style.display=f?'inline-flex':'none';
   document.getElementById('filiaal-modal').classList.add('open');
@@ -4825,9 +4832,13 @@ function closeFiliaalModal(){
 async function saveFiliaal(){
   const id=document.getElementById('filiaal-id').value||null;
   const naam=document.getElementById('filiaal-naam').value.trim();
-  const adres=document.getElementById('filiaal-adres').value.trim();
+  const straat=document.getElementById('filiaal-straat').value.trim();
+  const huisnummer=document.getElementById('filiaal-nr').value.trim();
+  const postcode=document.getElementById('filiaal-postcode').value.trim();
+  const gemeente=document.getElementById('filiaal-gemeente').value.trim();
   if(!naam){showToast('Naam is verplicht.');return;}
-  if(!adres){showToast('Adres is verplicht.');return;}
+  if(!straat||!huisnummer||!postcode||!gemeente){showToast('Straat, nr, postcode en gemeente zijn verplicht.');return;}
+  const adres=[straat+' '+huisnummer, postcode, gemeente].filter(Boolean).join(', ');
   const moederklantId=document.getElementById('filiaal-moederklant').value||null;
   let categorie=document.getElementById('filiaal-categorie').value.trim();
   if(!categorie&&moederklantId){
@@ -4838,11 +4849,11 @@ async function saveFiliaal(){
   let lat=bestaand?bestaand.lat:null, lng=bestaand?bestaand.lng:null, geoBron=bestaand?bestaand.geo_bron:null;
   if(!bestaand||bestaand.adres!==adres){
     showToast('Adres opzoeken...');
-    const geo=await geocodeLocatie({adres});
+    const geo=await geocodeLocatie({adres,postcode});
     if(geo){lat=geo.lat;lng=geo.lng;geoBron=geo.bron;}
   }
   const gebruiker=currentUser?.user_metadata?.naam||currentUser?.email||'';
-  const payload={id,naam,adres,moederklant_id:moederklantId,categorie:categorie||null,notities:document.getElementById('filiaal-notities').value.trim()||null,lat,lng,geo_bron:geoBron,aangemaakt_door:bestaand?bestaand.aangemaakt_door:gebruiker};
+  const payload={id,naam,straat,huisnummer,postcode,gemeente,adres,moederklant_id:moederklantId,categorie:categorie||null,notities:document.getElementById('filiaal-notities').value.trim()||null,lat,lng,geo_bron:geoBron,aangemaakt_door:bestaand?bestaand.aangemaakt_door:gebruiker};
   await sbSaveFiliaal(payload);
   await loadFilialen();
   renderFilialenLijst();
@@ -12081,6 +12092,20 @@ async function afasSyncKlantenEnLeveranciers() {
   const gecombineerd = [...afasKlanten, ...afasLevs];
   if (!gecombineerd.length) return {klanten: 0, leveranciers: 0, updates: 0};
 
+  // Sommige bedrijven staan in AFAS zowel als debiteur (klant) als crediteur
+  // (leverancier), bv. groothandels waar we ook spullen kopen. Zo'n bedrijf
+  // moet hoofdzakelijk als klant/debiteur behandeld worden (zichtbaar op de
+  // kaart, kiesbaar bij CRM/filialen) — niet als pure leverancier weggefilterd.
+  const debiteurAfasIds = new Set(afasKlanten.map(k => String(k._afasId||'').trim()).filter(Boolean));
+  const debiteurBtws = new Set(afasKlanten.map(k => String(k.btw||'').replace(/\s/g,'').toLowerCase()).filter(Boolean));
+  const debiteurNamen = new Set(afasKlanten.map(k => String(k.naam||'').trim().toLowerCase()).filter(Boolean));
+  function isOokDebiteur(a) {
+    const afasIdA = String(a._afasId||'').trim();
+    const btwA = String(a.btw||'').replace(/\s/g,'').toLowerCase();
+    const naamA = String(a.naam||'').trim().toLowerCase();
+    return (afasIdA && debiteurAfasIds.has(afasIdA)) || (btwA && debiteurBtws.has(btwA)) || (naamA && debiteurNamen.has(naamA));
+  }
+
   let nK = 0, nL = 0, nUpdate = 0;
   for (const a of gecombineerd) {
     const afasId = String(a._afasId||'').trim();
@@ -12116,7 +12141,8 @@ async function afasSyncKlantenEnLeveranciers() {
       if (a.email && a.email !== bestaand.email) { bestaand.email = a.email; gewijzigd = true; }
       if (a.adres && a.adres !== bestaand.adres) { bestaand.adres = a.adres; gewijzigd = true; }
       if (afasId  && !bestaand._afasId)          { bestaand._afasId = afasId; gewijzigd = true; }
-      if (a.isLeverancier && !bestaand.isLeverancier) { bestaand.isLeverancier = true; gewijzigd = true; }
+      if (a.isLeverancier && !isOokDebiteur(a)) { if (!bestaand.isLeverancier) { bestaand.isLeverancier = true; gewijzigd = true; } }
+      else if (!a.isLeverancier && bestaand.isLeverancier) { bestaand.isLeverancier = false; gewijzigd = true; }
       if (a.typeVerkooprelatie && a.typeVerkooprelatie !== bestaand.typeVerkooprelatie) { bestaand.typeVerkooprelatie = a.typeVerkooprelatie; gewijzigd = true; }
 
       // Alle contacten updaten (vervang volledig door AFAS lijst)
@@ -12134,7 +12160,7 @@ async function afasSyncKlantenEnLeveranciers() {
       const nieuw = {
         naam: a.naam, btw: a.btw, tel: a.tel, email: a.email,
         adres: a.adres, isInstallatiepartner: false,
-        isLeverancier: a.isLeverancier || false,
+        isLeverancier: (a.isLeverancier && !isOokDebiteur(a)) || false,
         typeVerkooprelatie: a.typeVerkooprelatie || '',
         _afasId: afasId,
         contacten: alleContacten,
@@ -12144,7 +12170,7 @@ async function afasSyncKlantenEnLeveranciers() {
         const newId = await sbSaveKlant(nieuw);
         if (newId) nieuw.id = newId;
         klanten.push(nieuw);
-        if (a.isLeverancier) nL++; else nK++;
+        if (nieuw.isLeverancier) nL++; else nK++;
       } catch(e) { console.warn('Nieuw klant fout:', e.message); }
     }
   }
