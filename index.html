@@ -3489,7 +3489,7 @@ function prospRenderOpvolgingen(){
     const verleden=x.row.gepland_op&&x.row.gepland_op<t;
     const isVandaag=x.row.gepland_op===t;
     const kleur=verleden?'#a32d2d':isVandaag?'#854f0b':'var(--tx2)';
-    const icoon=x.row.type==='telefoongesprek'?'📞':'📍';
+    const icoon=x.row.type==='telefoongesprek'?'<i class="ti ti-phone" style="color:var(--green)"></i>':'<i class="ti ti-map-pin" style="color:var(--tx2)"></i>';
     const suffix=verleden?' — verlopen':isVandaag?' — vandaag':'';
     return '<div style="padding:8px 0;border-bottom:1px solid var(--bd);font-size:12px">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'+
