@@ -1128,10 +1128,16 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
 
 <!-- PROSPECT NIEUW/BEWERK MODAL -->
 <div class="modal-overlay" id="prosp-modal-overlay">
-  <div class="modal-box" style="max-width:680px;max-height:90vh;display:flex;flex-direction:column">
+  <div class="modal-box" style="max-width:860px;max-height:90vh;display:flex;flex-direction:column">
     <div class="modal-header">
       <span class="modal-title" id="prosp-modal-titel">Nieuw prospect</span>
       <button class="modal-close" onclick="prospCloseModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="prosp-omzetten-bar" style="display:none;display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 2px;border-bottom:1px solid var(--bd);margin-bottom:8px">
+      <span style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-right:2px">Omzetten:</span>
+      <button class="btn sm" id="prosp-naar-project-btn" style="border-color:rgba(83,74,183,.4);color:#534AB7" onclick="prospNaarProject()"><i class="ti ti-arrow-right"></i> Naar B2B project</button>
+      <button class="btn sm" id="prosp-naar-klant-btn" style="border-color:rgba(0,137,95,.4);color:#00895f" onclick="prospNaarKlant()"><i class="ti ti-user-check"></i> Naar klant (installateur)</button>
+      <span id="prosp-klant-status" style="display:none;font-size:11px;color:var(--tx2);margin-left:4px"></span>
     </div>
     <div style="flex:1;overflow-y:auto;padding:0 2px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -1200,7 +1206,6 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
     <div class="modal-footer" style="border-top:1px solid var(--bd);padding-top:12px;margin-top:10px">
       <button class="btn danger" id="prosp-delete-btn" style="display:none;margin-right:auto" onclick="prospDelete()"><i class="ti ti-trash"></i> Verwijderen</button>
       <button class="btn" id="prosp-afwijzen-btn" style="display:none;border-color:rgba(163,45,45,.4);color:#a32d2d" onclick="prospToggleAfgewezen()"><i class="ti ti-x"></i> Markeer als afgewezen</button>
-      <button class="btn" style="border-color:rgba(83,74,183,.4);color:#534AB7" onclick="prospNaarProject()" id="prosp-naar-project-btn" style="display:none"><i class="ti ti-arrow-right"></i> Omzetten naar B2B project</button>
       <button class="btn" onclick="prospCloseModal()">Annuleren</button>
       <button class="btn" onclick="prospSave(false)"><i class="ti ti-check"></i> Opslaan</button>
       <button class="btn primary" onclick="prospSave(true)"><i class="ti ti-checks"></i> Opslaan &amp; sluiten</button>
@@ -3564,7 +3569,9 @@ function prospOpenNieuw(){
   document.getElementById('prosp-notities').value='';
   document.getElementById('prosp-delete-btn').style.display='none';
   document.getElementById('prosp-afwijzen-btn').style.display='none';
+  document.getElementById('prosp-omzetten-bar').style.display='none';
   document.getElementById('prosp-naar-project-btn').style.display='none';
+  document.getElementById('prosp-naar-klant-btn').style.display='none';
   // Resp dropdown
   const rsel=document.getElementById('prosp-resp');
   rsel.innerHTML='<option value="">— Kies —</option>'+respNames('sales').map(r=>`<option>${r}</option>`).join('');
@@ -3600,7 +3607,10 @@ function prospOpenEdit(id){
   document.getElementById('prosp-delete-btn').style.display='';
   document.getElementById('prosp-afwijzen-btn').style.display='';
   prospUpdateAfwijzenKnop(p);
+  document.getElementById('prosp-omzetten-bar').style.display='flex';
   document.getElementById('prosp-naar-project-btn').style.display='';
+  document.getElementById('prosp-naar-klant-btn').style.display='';
+  prospToonKlantLink(p);
   const rsel=document.getElementById('prosp-resp');
   rsel.innerHTML='<option value="">— Kies —</option>'+respNames('sales').map(r=>`<option>${r}</option>`).join('');
   rsel.value=p.resp||'';
@@ -11879,7 +11889,7 @@ async function bezoekSaveLog(){
       datum:datum,
       uur:uur,
       type:'Bezoek',
-      resp:aangemaaktDoor||'',
+      resp:currentUserNaam||aangemaaktDoor||'',
       notitie:rij.notities||'',
       linkId:bezoekLogContext.entityType+'-'+bezoekLogContext.entityId,
       linkLabel:bezoekLogContext.naam,
@@ -12105,6 +12115,41 @@ function prospToonAfasLink(p){
   }
 }
 
+async function prospNaarKlant(){
+  const p=prospects.find(x=>x.id===prospEditId);
+  if(!p){showToast('Sla het prospect eerst op.');return;}
+  const eersteContact=(p.contacts&&p.contacts.length)?p.contacts[0]:{};
+  const bevestiging='"'+p.naam+'" omzetten naar klant (installateur)?\n\nDit voegt de klant toe aan de klantenlijst van het dashboard en koppelt dit prospect eraan.\n\nLet op: dit voegt de klant nog NIET automatisch toe in AFAS zelf — dat moet voorlopig nog manueel, tot de AFAS-koppeling hiervoor is uitgebreid.';
+  if(!confirm(bevestiging))return;
+  const klantData={
+    naam:p.naam,
+    adres:p.adres||[p.straat,p.nummer].filter(Boolean).join(' ')||'',
+    postcode:p.postcode||'',
+    tel:eersteContact.tel||p.tel||'',
+    email:eersteContact.email||p.email||'',
+    resp:p.resp||'',
+    isInstallatiepartner:true,
+    lat:p.lat,lng:p.lng,
+    _bron:'prospect-conversie'
+  };
+  const nieuwId=await sbSaveKlant(klantData);
+  klantData.id=nieuwId;
+  if(typeof klanten!=='undefined')klanten.push(klantData);
+  p.klantLink={id:nieuwId,naam:klantData.naam};
+  sbSaveProspect(p);
+  prospToonKlantLink(p);
+  showToast('"'+p.naam+'" toegevoegd als klant (installateur) ✓ — AFAS-koppeling volgt nog.');
+}
+function prospToonKlantLink(p){
+  const el=document.getElementById('prosp-klant-status');
+  if(!el)return;
+  if(p&&p.klantLink){
+    el.style.display='inline';
+    el.innerHTML='<i class="ti ti-check" style="color:var(--green)"></i> Omgezet naar klant: <b>'+wmsEsc(p.klantLink.naam)+'</b>';
+  }else{
+    el.style.display='none';el.innerHTML='';
+  }
+}
 function prospPlanKennismaking(){
   const p=prospects.find(x=>x.id===prospEditId);
   if(!p){showToast('Sla het prospect eerst op.');return;}
