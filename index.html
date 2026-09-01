@@ -1112,6 +1112,12 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
         <div class="pills" id="pills-prospects-status"></div>
       </div>
       <input id="prosp-zoek" type="text" placeholder="Zoek op naam, project, postcode, contact..." oninput="prospSetZoek(this.value)" style="max-width:260px">
+      <select id="prosp-categorie-filter" onchange="prospSetCategorie(this.value)" style="max-width:200px">
+        <option value="alle">Alle categorieën</option>
+        <option value="Potentiële installateur">Potentiële installateur</option>
+        <option value="Groot project">Groot project</option>
+        <option value="KMO">KMO</option>
+      </select>
       <button class="btn sm" onclick="geocodeBackfillProspects()" title="Berekent kaartlocaties voor prospects zonder coördinaten" id="prosp-geocode-btn"><i class="ti ti-map-pin"></i> Locaties bijwerken</button>
       <button class="btn primary" onclick="prospOpenNieuw()"><i class="ti ti-plus"></i> Nieuw prospect</button>
     </div>
@@ -1146,6 +1152,16 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
           </div>
         </div>
         <div class="field"><label>Bedrijf achter bedrijf</label><input id="prosp-moeder" placeholder="bv. Holding XYZ, Mgmt. vennootschap..."></div>
+        <div class="field"><label>Telefoon (algemeen)</label><input id="prosp-tel" type="tel" placeholder="0499 123 456"></div>
+        <div class="field"><label>E-mail (algemeen)</label><input id="prosp-email" type="email" placeholder="info@bedrijf.be"></div>
+        <div class="field"><label>Categorie</label>
+          <select id="prosp-categorie">
+            <option value="">— kies —</option>
+            <option>Potentiële installateur</option>
+            <option>Groot project</option>
+            <option>KMO</option>
+          </select>
+        </div>
       </div>
 
       <!-- Contactpersonen -->
@@ -1170,6 +1186,7 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
           <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px"><i class="ti ti-history" style="margin-right:5px;color:var(--green)"></i>Activiteitenlog <span id="prosp-status-badge"></span></div>
           <button class="btn sm" onclick="prospPlanKennismaking()"><i class="ti ti-calendar-plus"></i> Bezoek noteren</button>
+          <button class="btn sm" onclick="prospPlanTelefoongesprek()"><i class="ti ti-phone-outgoing"></i> Bel noteren</button>
         </div>
         <div id="prosp-activiteitenlog" style="font-size:12px;color:var(--tx3)">Wordt geladen...</div>
       </div>
@@ -1181,6 +1198,7 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
     </div>
     <div class="modal-footer" style="border-top:1px solid var(--bd);padding-top:12px;margin-top:10px">
       <button class="btn danger" id="prosp-delete-btn" style="display:none;margin-right:auto" onclick="prospDelete()"><i class="ti ti-trash"></i> Verwijderen</button>
+      <button class="btn" id="prosp-afwijzen-btn" style="display:none;border-color:rgba(163,45,45,.4);color:#a32d2d" onclick="prospToggleAfgewezen()"><i class="ti ti-x"></i> Markeer als afgewezen</button>
       <button class="btn" style="border-color:rgba(83,74,183,.4);color:#534AB7" onclick="prospNaarProject()" id="prosp-naar-project-btn" style="display:none"><i class="ti ti-arrow-right"></i> Omzetten naar B2B project</button>
       <button class="btn" onclick="prospCloseModal()">Annuleren</button>
       <button class="btn primary" onclick="prospSave()"><i class="ti ti-check"></i> Opslaan</button>
@@ -1642,6 +1660,12 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
       <button class="modal-close" onclick="bezoekSluitLogModal()"><i class="ti ti-x"></i></button>
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="field"><label>Type</label>
+        <select id="bezoek-log-type" onchange="bezoekLogTypeGewijzigd()">
+          <option value="bezoek">📍 Bezoek</option>
+          <option value="telefoongesprek">📞 Telefoongesprek</option>
+        </select>
+      </div>
       <div style="display:flex;gap:10px">
         <div class="field" style="flex:1"><label>Datum</label><input type="date" id="bezoek-log-datum" onchange="bezoekLogTijdstipGewijzigd()"></div>
         <div class="field" style="flex:1"><label>Uur</label><input type="time" id="bezoek-log-uur" onchange="bezoekLogTijdstipGewijzigd()"></div>
@@ -1651,7 +1675,7 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
         <div class="field"><label>Notities (optioneel)</label><textarea id="bezoek-log-notities-toekomst" rows="2" placeholder="Doel van de afspraak..."></textarea></div>
       </div>
       <div id="bezoek-log-verleden-vak" style="display:none">
-        <div class="field"><label>Is het bezoek doorgegaan?</label>
+        <div class="field"><label id="bezoek-log-doorgegaan-label">Is het bezoek doorgegaan?</label>
           <select id="bezoek-log-doorgegaan" onchange="bezoekLogDoorgegaanGewijzigd()">
             <option value="ja">Ja, doorgegaan</option>
             <option value="nee">Nee, niet doorgegaan</option>
@@ -2507,7 +2531,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
     <div class="field"><label>Naam *</label><input id="filiaal-naam" placeholder="Rexel filiaal Gent"></div>
     <div class="field">
       <label>Gekoppeld bedrijf (optioneel)</label>
-      <select id="filiaal-moederklant"><option value="">— geen —</option></select>
+      <select id="filiaal-moederklant" onchange="filiaalVulContactOpties()"><option value="">— geen —</option></select>
     </div>
     <div class="field"><label>Categorie</label><input id="filiaal-categorie" placeholder="Wordt overgenomen van gekoppeld bedrijf, of 'Filiaal'"></div>
     <div style="display:flex;gap:8px">
@@ -2519,6 +2543,18 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field" style="flex:3"><label>Gemeente *</label><input id="filiaal-gemeente" placeholder="Gent"></div>
     </div>
     <div class="field"><label>Notities</label><textarea id="filiaal-notities" rows="2"></textarea></div>
+    <div style="border-top:1px solid var(--bd);padding-top:12px;margin-top:6px">
+      <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px"><i class="ti ti-user" style="color:var(--green);margin-right:5px"></i>Contactpersoon</div>
+      <div class="field"><label>Kies uit contacten van gekoppeld bedrijf</label><select id="filiaal-contact-select" onchange="filiaalContactGekozen()"><option value="">— kies of vul hieronder handmatig in —</option></select></div>
+      <div style="display:flex;gap:8px">
+        <div class="field" style="flex:1"><label>Naam</label><input id="filiaal-contact-naam" placeholder="Jan Janssen"></div>
+        <div class="field" style="flex:1"><label>Rol</label><input id="filiaal-contact-rol" placeholder="Magazijnverantwoordelijke"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div class="field" style="flex:1"><label>Telefoon</label><input id="filiaal-contact-tel" type="tel" placeholder="0499 123 456"></div>
+        <div class="field" style="flex:1"><label>E-mail</label><input id="filiaal-contact-email" type="email" placeholder="jan@bedrijf.be"></div>
+      </div>
+    </div>
     <div class="modal-footer" style="border-top:1px solid var(--bd);padding-top:12px;margin-top:6px">
       <button class="btn danger" id="filiaal-del-btn" style="display:none;margin-right:auto" onclick="deleteFiliaal()"><i class="ti ti-trash"></i> Verwijderen</button>
       <button class="btn" onclick="closeFiliaalModal()">Annuleren</button>
@@ -3407,11 +3443,14 @@ function showTab(name){
 }
 
 // ── PROSPECTS ─────────────────────────────────────────
+let prospCategorieFilter='alle';
+function prospSetCategorie(c){prospCategorieFilter=c||'alle';prospRender();}
 function prospRender(){
   const el=document.getElementById('prosp-list');if(!el)return;
   let list=prospects.filter(p=>prospRespFilter==='alle'||p.resp===prospRespFilter);
   if(prospStatusFilter==='actief')list=list.filter(p=>p.status!=='afgewezen');
   if(prospStatusFilter==='afgewezen')list=list.filter(p=>p.status==='afgewezen');
+  if(prospCategorieFilter!=='alle')list=list.filter(p=>p.categorie===prospCategorieFilter);
   if(prospZoekTerm){
     const q=prospZoekTerm.toLowerCase();
     list=list.filter(p=>{
@@ -3447,6 +3486,7 @@ function prospRender(){
           ${p.resp?`<span style="font-size:11px;background:var(--bg2);padding:1px 7px;border-radius:10px;color:var(--tx2)">${p.resp}</span>`:''}
           ${contacts.length?`<span style="font-size:10px;color:var(--tx3)"><i class="ti ti-users" style="font-size:10px"></i> ${contacts.length} contact${contacts.length>1?'s':''}</span>`:''}
           ${p.moeder?`<span style="font-size:10px;color:var(--tx3)"><i class="ti ti-building" style="font-size:10px"></i> ${p.moeder}</span>`:''}
+          ${p.categorie?`<span style="font-size:10px;background:rgba(37,99,235,.12);color:#1d4ed8;padding:1px 7px;border-radius:10px">${p.categorie}</span>`:''}
         </div>
       </div>
       <!-- Midden: kans -->
@@ -3498,8 +3538,12 @@ function prospOpenNieuw(){
   document.getElementById('prosp-kans').value=50;
   document.getElementById('prosp-kans-lbl').textContent='50%';
   document.getElementById('prosp-moeder').value='';
+  document.getElementById('prosp-tel').value='';
+  document.getElementById('prosp-email').value='';
+  document.getElementById('prosp-categorie').value='';
   document.getElementById('prosp-notities').value='';
   document.getElementById('prosp-delete-btn').style.display='none';
+  document.getElementById('prosp-afwijzen-btn').style.display='none';
   document.getElementById('prosp-naar-project-btn').style.display='none';
   // Resp dropdown
   const rsel=document.getElementById('prosp-resp');
@@ -3529,8 +3573,13 @@ function prospOpenEdit(id){
   document.getElementById('prosp-kans').value=p.kans||50;
   document.getElementById('prosp-kans-lbl').textContent=(p.kans||50)+'%';
   document.getElementById('prosp-moeder').value=p.moeder||'';
+  document.getElementById('prosp-tel').value=p.tel||'';
+  document.getElementById('prosp-email').value=p.email||'';
+  document.getElementById('prosp-categorie').value=p.categorie||'';
   document.getElementById('prosp-notities').value=p.notities||'';
   document.getElementById('prosp-delete-btn').style.display='';
+  document.getElementById('prosp-afwijzen-btn').style.display='';
+  prospUpdateAfwijzenKnop(p);
   document.getElementById('prosp-naar-project-btn').style.display='';
   const rsel=document.getElementById('prosp-resp');
   rsel.innerHTML='<option value="">— Kies —</option>'+respNames('sales').map(r=>`<option>${r}</option>`).join('');
@@ -3595,6 +3644,9 @@ async function prospSave(){
     kans:parseInt(document.getElementById('prosp-kans').value)||0,
     resp:document.getElementById('prosp-resp').value,
     moeder:document.getElementById('prosp-moeder').value.trim(),
+    tel:document.getElementById('prosp-tel').value.trim(),
+    email:document.getElementById('prosp-email').value.trim(),
+    categorie:document.getElementById('prosp-categorie').value||'',
     notities:document.getElementById('prosp-notities').value.trim(),
     contacts:prospGetContacts().filter(c=>c.naam||c.tel||c.email),
     aangemaakt:today()
@@ -4904,7 +4956,7 @@ async function loadFilialen(){
   }catch(e){console.warn('loadFilialen:',e.message);}
 }
 async function sbSaveFiliaal(f){
-  const body={naam:f.naam,straat:f.straat||null,huisnummer:f.huisnummer||null,postcode:f.postcode||null,gemeente:f.gemeente||null,adres:f.adres||null,lat:f.lat??null,lng:f.lng??null,geo_bron:f.geo_bron||null,moederklant_id:f.moederklant_id||null,categorie:f.categorie||null,notities:f.notities||null,aangemaakt_door:f.aangemaakt_door||null,updated_at:new Date().toISOString()};
+  const body={naam:f.naam,straat:f.straat||null,huisnummer:f.huisnummer||null,postcode:f.postcode||null,gemeente:f.gemeente||null,adres:f.adres||null,lat:f.lat??null,lng:f.lng??null,geo_bron:f.geo_bron||null,moederklant_id:f.moederklant_id||null,categorie:f.categorie||null,notities:f.notities||null,aangemaakt_door:f.aangemaakt_door||null,contact_naam:f.contact_naam||null,contact_tel:f.contact_tel||null,contact_email:f.contact_email||null,contact_rol:f.contact_rol||null,updated_at:new Date().toISOString()};
   if(f.id){
     await sbFetch('filialen?id=eq.'+f.id,{method:'PATCH',body:JSON.stringify(body)});
     return f.id;
@@ -4924,6 +4976,29 @@ function filiaalVulMoederklantSelect(){
   sel.innerHTML='<option value="">— geen —</option>'+opties.map(k=>'<option value="'+k.id+'">'+wmsEsc(k.naam)+'</option>').join('');
   sel.value=huidige;
 }
+function filiaalVulContactOpties(){
+  const moederklantId=document.getElementById('filiaal-moederklant')?.value||'';
+  const sel=document.getElementById('filiaal-contact-select');
+  if(!sel)return;
+  const moeder=moederklantId?klanten.find(k=>String(k.id)===String(moederklantId)):null;
+  const contacten=(moeder&&Array.isArray(moeder.contacten))?moeder.contacten:[];
+  sel.innerHTML='<option value="">— kies of vul hieronder handmatig in —</option>'
+    +contacten.map((c,i)=>'<option value="'+i+'">'+wmsEsc(((c.voornaam||'')+' '+(c.naam||'')).trim()||'(naam onbekend)')+(c.rol?' — '+wmsEsc(c.rol):'')+'</option>').join('');
+}
+function filiaalContactGekozen(){
+  const moederklantId=document.getElementById('filiaal-moederklant')?.value||'';
+  const sel=document.getElementById('filiaal-contact-select');
+  const idx=sel?sel.value:'';
+  if(idx==='')return;
+  const moeder=moederklantId?klanten.find(k=>String(k.id)===String(moederklantId)):null;
+  const contacten=(moeder&&Array.isArray(moeder.contacten))?moeder.contacten:[];
+  const c=contacten[Number(idx)];
+  if(!c)return;
+  document.getElementById('filiaal-contact-naam').value=((c.voornaam||'')+' '+(c.naam||'')).trim();
+  document.getElementById('filiaal-contact-tel').value=c.tel||'';
+  document.getElementById('filiaal-contact-email').value=c.email||'';
+  document.getElementById('filiaal-contact-rol').value=c.rol||'';
+}
 function openFiliaalModal(id){
   filiaalVulMoederklantSelect();
   const f=id?filialen.find(x=>String(x.id)===String(id)):null;
@@ -4937,6 +5012,12 @@ function openFiliaalModal(id){
   document.getElementById('filiaal-postcode').value=f?(f.postcode||''):'';
   document.getElementById('filiaal-gemeente').value=f?(f.gemeente||''):'';
   document.getElementById('filiaal-notities').value=f?(f.notities||''):'';
+  filiaalVulContactOpties();
+  document.getElementById('filiaal-contact-naam').value=f?(f.contact_naam||''):'';
+  document.getElementById('filiaal-contact-tel').value=f?(f.contact_tel||''):'';
+  document.getElementById('filiaal-contact-email').value=f?(f.contact_email||''):'';
+  document.getElementById('filiaal-contact-rol').value=f?(f.contact_rol||''):'';
+  document.getElementById('filiaal-contact-select').value='';
   document.getElementById('filiaal-del-btn').style.display=f?'inline-flex':'none';
   document.getElementById('filiaal-modal').classList.add('open');
 }
@@ -4967,7 +5048,7 @@ async function saveFiliaal(){
     if(geo){lat=geo.lat;lng=geo.lng;geoBron=geo.bron;}
   }
   const gebruiker=currentUser?.user_metadata?.naam||currentUser?.email||'';
-  const payload={id,naam,straat,huisnummer,postcode,gemeente,adres,moederklant_id:moederklantId,categorie:categorie||null,notities:document.getElementById('filiaal-notities').value.trim()||null,lat,lng,geo_bron:geoBron,aangemaakt_door:bestaand?bestaand.aangemaakt_door:gebruiker};
+  const payload={id,naam,straat,huisnummer,postcode,gemeente,adres,moederklant_id:moederklantId,categorie:categorie||null,notities:document.getElementById('filiaal-notities').value.trim()||null,lat,lng,geo_bron:geoBron,aangemaakt_door:bestaand?bestaand.aangemaakt_door:gebruiker,contact_naam:document.getElementById('filiaal-contact-naam').value.trim()||null,contact_tel:document.getElementById('filiaal-contact-tel').value.trim()||null,contact_email:document.getElementById('filiaal-contact-email').value.trim()||null,contact_rol:document.getElementById('filiaal-contact-rol').value.trim()||null};
   await sbSaveFiliaal(payload);
   await loadFilialen();
   renderFilialenLijst();
@@ -5074,14 +5155,24 @@ function crmRenderContacten(){
     return;
   }
   el.innerHTML=crmContacten.map((c,i)=>`
-    <div style="display:grid;grid-template-columns:140px 160px 150px 1fr 140px auto;gap:8px;margin-bottom:8px;padding:10px;background:var(--bg2);border-radius:var(--r);align-items:end">
-      <div class="field" style="margin:0"><label style="font-size:11px">Voornaam</label><input class="crm-cp-vnaam" value="${(c.voornaam||'').replace(/"/g,'&quot;')}" placeholder="Jan" style="font-size:12px;width:100%" oninput="crmContacten[${i}].voornaam=this.value"></div>
-      <div class="field" style="margin:0"><label style="font-size:11px">Naam</label><input class="crm-cp-naam" value="${(c.naam||'').replace(/"/g,'&quot;')}" placeholder="Janssen" style="font-size:12px;width:100%" oninput="crmContacten[${i}].naam=this.value"></div>
-      <div class="field" style="margin:0"><label style="font-size:11px">Telefoon</label><input class="crm-cp-tel" value="${(c.tel||'').replace(/"/g,'&quot;')}" placeholder="0499 123 456" type="tel" style="font-size:12px;width:100%" oninput="crmContacten[${i}].tel=this.value"></div>
-      <div class="field" style="margin:0"><label style="font-size:11px">E-mail</label><input class="crm-cp-email" value="${(c.email||'').replace(/"/g,'&quot;')}" placeholder="jan@bedrijf.be" type="email" style="font-size:12px;width:100%" oninput="crmContacten[${i}].email=this.value"></div>
-      <div class="field" style="margin:0"><label style="font-size:11px">Rol / Functie</label><input class="crm-cp-rol" value="${(c.rol||'').replace(/"/g,'&quot;')}" placeholder="CEO..." style="font-size:12px;width:100%" oninput="crmContacten[${i}].rol=this.value"></div>
-      <button class="btn sm danger" onclick="crmContactVerwijder(${i})" title="Verwijder" style="margin-bottom:1px"><i class="ti ti-trash"></i></button>
+    <div style="margin-bottom:8px;padding:10px;background:var(--bg2);border-radius:var(--r)">
+      <div style="display:grid;grid-template-columns:140px 160px 150px 1fr 140px auto;gap:8px;align-items:end">
+        <div class="field" style="margin:0"><label style="font-size:11px">Voornaam</label><input class="crm-cp-vnaam" value="${(c.voornaam||'').replace(/"/g,'&quot;')}" placeholder="Jan" style="font-size:12px;width:100%" oninput="crmContacten[${i}].voornaam=this.value"></div>
+        <div class="field" style="margin:0"><label style="font-size:11px">Naam</label><input class="crm-cp-naam" value="${(c.naam||'').replace(/"/g,'&quot;')}" placeholder="Janssen" style="font-size:12px;width:100%" oninput="crmContacten[${i}].naam=this.value"></div>
+        <div class="field" style="margin:0"><label style="font-size:11px">Telefoon</label><input class="crm-cp-tel" value="${(c.tel||'').replace(/"/g,'&quot;')}" placeholder="0499 123 456" type="tel" style="font-size:12px;width:100%" oninput="crmContacten[${i}].tel=this.value"></div>
+        <div class="field" style="margin:0"><label style="font-size:11px">E-mail</label><input class="crm-cp-email" value="${(c.email||'').replace(/"/g,'&quot;')}" placeholder="jan@bedrijf.be" type="email" style="font-size:12px;width:100%" oninput="crmContacten[${i}].email=this.value"></div>
+        <div class="field" style="margin:0"><label style="font-size:11px">Rol / Functie</label><input class="crm-cp-rol" value="${(c.rol||'').replace(/"/g,'&quot;')}" placeholder="CEO..." style="font-size:12px;width:100%" oninput="crmContacten[${i}].rol=this.value"></div>
+        <button class="btn sm danger" onclick="crmContactVerwijder(${i})" title="Verwijder" style="margin-bottom:1px"><i class="ti ti-trash"></i></button>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tx2);margin-top:8px;cursor:pointer">
+        <input type="radio" name="crm-cp-kaartcontact" ${c.kaartContact?'checked':''} onchange="crmContactZetKaartContact(${i})">
+        <i class="ti ti-map-pin" style="color:var(--green)"></i> Toon dit contact op de kaart
+      </label>
     </div>`).join('');
+}
+function crmContactZetKaartContact(i){
+  crmContacten.forEach((c,j)=>{c.kaartContact=(j===i);});
+  crmRenderContacten();
 }
 
 function crmContactToevoegen(){
@@ -11642,9 +11733,9 @@ function kaartActieBezoek(){
   bezoekOpenLogModal(t,id,naam);
 }
 
-function bezoekOpenLogModal(entityType,entityId,naam){
+function bezoekOpenLogModal(entityType,entityId,naam,type){
   bezoekLogContext={entityType:entityType,entityId:String(entityId),naam:naam};
-  document.getElementById('bezoek-log-titel').textContent='Bezoek noteren — '+naam;
+  document.getElementById('bezoek-log-type').value=type||'bezoek';
   const nu=new Date();
   document.getElementById('bezoek-log-datum').value=nu.toISOString().slice(0,10);
   document.getElementById('bezoek-log-uur').value=String(nu.getHours()).padStart(2,'0')+':'+String(nu.getMinutes()).padStart(2,'0');
@@ -11653,8 +11744,17 @@ function bezoekOpenLogModal(entityType,entityId,naam){
   document.getElementById('bezoek-log-doorgegaan').value='ja';
   document.getElementById('bezoek-log-volgend').value='';
   document.getElementById('bezoek-log-evaluatie').value='';
+  bezoekLogTypeGewijzigd();
   bezoekLogTijdstipGewijzigd();
   document.getElementById('bezoek-log-overlay').classList.add('open');
+}
+function bezoekLogTypeGewijzigd(){
+  const type=document.getElementById('bezoek-log-type').value;
+  const naam=bezoekLogContext?bezoekLogContext.naam:'';
+  const isGesprek=type==='telefoongesprek';
+  document.getElementById('bezoek-log-titel').textContent=(isGesprek?'Telefoongesprek noteren — ':'Bezoek noteren — ')+naam;
+  const doorgegaanLbl=document.getElementById('bezoek-log-doorgegaan-label');
+  if(doorgegaanLbl)doorgegaanLbl.textContent=isGesprek?'Is het gesprek doorgegaan?':'Is het bezoek doorgegaan?';
 }
 function bezoekSluitLogModal(){
   document.getElementById('bezoek-log-overlay').classList.remove('open');
@@ -11696,12 +11796,14 @@ async function bezoekSaveLog(){
   if(!datum||!uur){showToast('Vul datum en uur in.');return;}
   const toekomst=bezoekLogIsToekomst();
   const aangemaaktDoor=(typeof currentUser!=='undefined'&&currentUser&&currentUser.email)?currentUser.email:null;
+  const gekozenType=document.getElementById('bezoek-log-type').value||'bezoek';
   let rij;
   if(toekomst){
     rij={
       entity_type:bezoekLogContext.entityType,
       entity_id:bezoekLogContext.entityId,
       entity_naam:bezoekLogContext.naam,
+      type:gekozenType,
       gepland_op:datum,
       status:'gepland',
       notities:document.getElementById('bezoek-log-notities-toekomst').value.trim(),
@@ -11715,6 +11817,7 @@ async function bezoekSaveLog(){
       entity_type:bezoekLogContext.entityType,
       entity_id:bezoekLogContext.entityId,
       entity_naam:bezoekLogContext.naam,
+      type:gekozenType,
       gepland_op:datum,
       status:doorgegaan?'doorgegaan':'niet_doorgegaan',
       uitgevoerd_op:doorgegaan?datum:null,
@@ -11958,7 +12061,12 @@ function prospToonAfasLink(p){
 function prospPlanKennismaking(){
   const p=prospects.find(x=>x.id===prospEditId);
   if(!p){showToast('Sla het prospect eerst op.');return;}
-  bezoekOpenLogModal('prospect',p.id,p.naam);
+  bezoekOpenLogModal('prospect',p.id,p.naam,'bezoek');
+}
+function prospPlanTelefoongesprek(){
+  const p=prospects.find(x=>x.id===prospEditId);
+  if(!p){showToast('Sla het prospect eerst op.');return;}
+  bezoekOpenLogModal('prospect',p.id,p.naam,'telefoongesprek');
 }
 
 async function prospRenderActiviteitenlog(p){
@@ -11970,14 +12078,40 @@ async function prospRenderActiviteitenlog(p){
   if(!data||!data.length){el.innerHTML='<span style="color:var(--tx3)">Nog geen bezoeken of evaluaties genoteerd.</span>';return;}
   const statusLabels={gepland:'Gepland',doorgegaan:'Doorgegaan',niet_doorgegaan:'Niet doorgegaan',geannuleerd:'Geannuleerd'};
   const evalLabels={offerte:'→ Klaar voor offerte',installateur:'→ Wordt installatiepartner',niets:'→ Geen vervolg'};
-  el.innerHTML=data.map(b=>{
+  const laatsteGesprek=data.find(b=>b.type==='telefoongesprek'&&b.status!=='gepland');
+  const laatsteGesprekEl='<div style="padding:4px 0 8px;font-size:12px;color:var(--tx2)"><i class="ti ti-phone" style="color:var(--green);margin-right:4px"></i>'+(laatsteGesprek?('Laatst gebeld op '+wmsEsc(laatsteGesprek.uitgevoerd_op||laatsteGesprek.gepland_op||'')):'Nog niet gebeld')+'</div>';
+  el.innerHTML=laatsteGesprekEl+data.map(b=>{
     const datum=b.uitgevoerd_op||b.gepland_op||'';
     const statusTxt=statusLabels[b.status]||b.status;
+    const typeIcoon=b.type==='telefoongesprek'?'📞':'📍';
     const evalTxt=b.evaluatie?('<br><span style="color:var(--green);font-weight:600">'+(evalLabels[b.evaluatie]||b.evaluatie)+'</span>'):'';
-    return '<div style="padding:6px 0;border-bottom:1px solid var(--bd)"><b>'+wmsEsc(datum)+'</b> — '+wmsEsc(statusTxt)+(b.notities?'<br>'+wmsEsc(b.notities):'')+evalTxt+'</div>';
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--bd)">'+typeIcoon+' <b>'+wmsEsc(datum)+'</b> — '+wmsEsc(statusTxt)+(b.notities?'<br>'+wmsEsc(b.notities):'')+evalTxt+'</div>';
   }).join('');
 }
 
+function prospUpdateAfwijzenKnop(p){
+  const btn=document.getElementById('prosp-afwijzen-btn');
+  if(!btn)return;
+  if(p&&p.status==='afgewezen'){
+    btn.innerHTML='<i class="ti ti-rotate"></i> Heropenen';
+    btn.style.borderColor='rgba(0,223,163,.4)';btn.style.color='#00895f';
+  } else {
+    btn.innerHTML='<i class="ti ti-x"></i> Markeer als afgewezen';
+    btn.style.borderColor='rgba(163,45,45,.4)';btn.style.color='#a32d2d';
+  }
+}
+async function prospToggleAfgewezen(){
+  const p=prospects.find(x=>x.id===prospEditId);
+  if(!p)return;
+  const wordtAfgewezen=p.status!=='afgewezen';
+  if(wordtAfgewezen&&!confirm('"'+p.naam+'" markeren als afgewezen?'))return;
+  p.status=wordtAfgewezen?'afgewezen':'';
+  await sbSaveProspect(p);
+  prospUpdateAfwijzenKnop(p);
+  prospRenderStatusBadge(p);
+  prospRender();
+  showToast(wordtAfgewezen?'Prospect gemarkeerd als afgewezen.':'Prospect heropend.');
+}
 function prospRenderStatusBadge(p){
   const el=document.getElementById('prosp-status-badge');
   if(!el)return;
