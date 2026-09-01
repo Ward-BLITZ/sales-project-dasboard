@@ -3480,25 +3480,54 @@ function prospRenderOpvolgingen(){
   const el=document.getElementById('prosp-opvolgingen-lijst');
   if(!el)return;
   const t=today();
+  const MK=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  const dagNamen=['Zo','Ma','Di','Wo','Do','Vr','Za'];
   const items=Object.keys(prospGeplandeMap).map(pid=>{
     const p=prospects.find(pp=>String(pp.id)===String(pid));
-    return p?{p:p,row:prospGeplandeMap[pid]}:null;
-  }).filter(Boolean).sort((a,b)=>(a.row.gepland_op||'').localeCompare(b.row.gepland_op||''));
-  if(!items.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen openstaande opvolgingen.</div>';return;}
-  el.innerHTML=items.map(x=>{
-    const verleden=x.row.gepland_op&&x.row.gepland_op<t;
-    const isVandaag=x.row.gepland_op===t;
-    const kleur=verleden?'#a32d2d':isVandaag?'#854f0b':'var(--tx2)';
-    const icoon=x.row.type==='telefoongesprek'?'<i class="ti ti-phone" style="color:var(--green)"></i>':'<i class="ti ti-map-pin" style="color:var(--tx2)"></i>';
-    const suffix=verleden?' — verlopen':isVandaag?' — vandaag':'';
-    return '<div style="padding:8px 0;border-bottom:1px solid var(--bd);font-size:12px">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'+
-        '<div style="font-weight:600;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="prospOpenEdit('+x.p.id+')">'+icoon+' '+wmsEsc(x.p.naam)+'</div>'+
-        '<button class="btn sm" style="padding:2px 6px;flex-shrink:0" onclick="prospOpvolgingAfvinken('+x.p.id+')" title="Afvinken en loggen"><i class="ti ti-check"></i></button>'+
-      '</div>'+
-      '<div style="color:'+kleur+';margin-top:2px">'+wmsEsc(x.row.gepland_op||'')+suffix+'</div>'+
-    '</div>';
+    if(!p)return null;
+    const row=prospGeplandeMap[pid];
+    const gekoppeld=(typeof agAfspraken!=='undefined')?agAfspraken.find(a=>a.id==='bezoek-'+row.id):null;
+    return{p:p,row:row,uur:(gekoppeld&&gekoppeld.uur)?gekoppeld.uur:''};
+  }).filter(Boolean);
+  if(!items.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:.75rem 0">Geen openstaande opvolgingen.</div>';
+    return;
+  }
+  items.sort((a,b)=>{
+    const dc=(a.row.gepland_op||'').localeCompare(b.row.gepland_op||'');if(dc!==0)return dc;
+    if(a.uur&&!b.uur)return -1;if(!a.uur&&b.uur)return 1;
+    return(a.uur||'').localeCompare(b.uur||'');
+  });
+  const byDay={};
+  items.forEach(item=>{(byDay[item.row.gepland_op]=byDay[item.row.gepland_op]||[]).push(item);});
+  el.innerHTML=Object.keys(byDay).sort().map(datum=>{
+    const verleden=datum<t,isVandaag=datum===t;
+    const d=new Date(datum);
+    const kleurLbl=isVandaag?'var(--green)':verleden?'#a32d2d':'var(--tx3)';
+    const dagLbl=isVandaag?'Vandaag':`${dagNamen[d.getDay()]} ${d.getDate()} ${MK[d.getMonth()]}`;
+    return`<div class="opv-daylabel" style="color:${kleurLbl}"><i class="ti ${isVandaag?'ti-calendar-event':verleden?'ti-alert-triangle':'ti-calendar'}" style="font-size:11px"></i>${dagLbl}</div>
+      ${byDay[datum].map(({p,row,uur})=>{
+        const icoon=row.type==='telefoongesprek'?'<i class="ti ti-phone" style="color:var(--green);font-size:11px"></i>':'<i class="ti ti-map-pin" style="color:var(--tx2);font-size:11px"></i>';
+        return`
+        <div class="opv-row ${isVandaag?'today':verleden?'late':''}">
+          <button class="opv-check" data-prospid="${p.id}" title="Afvinken en loggen">
+            <i class="ti ti-check" style="font-size:10px;color:#639922"></i>
+          </button>
+          ${avatarHtml(p.naam,22)}
+          <div class="opv-body" data-prospopen="${p.id}">
+            <div class="opv-naam">${icoon} ${wmsEsc(p.naam)}</div>
+            <div class="opv-tekst">${row.type==='telefoongesprek'?'Telefoongesprek':'Bezoek'}${row.notities?' — '+wmsEsc(row.notities):''}</div>
+            ${uur?`<div class="opv-uur">${uur}</div>`:''}
+          </div>
+        </div>`;}).join('')}
+    `;
   }).join('');
+  el.querySelectorAll('[data-prospid]').forEach(btn=>{
+    btn.addEventListener('click',(ev)=>{ev.stopPropagation();prospOpvolgingAfvinken(parseInt(btn.dataset.prospid));});
+  });
+  el.querySelectorAll('[data-prospopen]').forEach(div=>{
+    div.addEventListener('click',()=>{prospOpenEdit(parseInt(div.dataset.prospopen));});
+  });
 }
 function prospOpvolgingAfvinken(prospectId){
   const row=prospGeplandeMap[String(prospectId)];
@@ -4149,11 +4178,112 @@ async function loadServiceRoleKeyField(){
   statusEl.innerHTML='<span style="color:var(--tx3)">Nog geen service role key ingesteld.</span>';
 }
 
+// ── AUTOMATISCHE INPLANNING VAN OPVOLGINGEN/TELEFOONGESPREKKEN ──
+// Geeft het eerstvolgende vrije uur terug (09:00-17:00, halfuur-stappen,
+// middagpauze 12:00-13:00 overgeslagen) op "datum" voor "resp", rekening
+// houdend met alles wat al ingepland staat (echte afspraken + andere
+// opvolgingen van diezelfde dag/persoon).
+function agVolgendVrijUur(datum,resp){
+  const bezet=new Set();
+  try{
+    (typeof agGetAlleAfspraken==='function'?agGetAlleAfspraken():agAfspraken||[]).forEach(a=>{
+      if(a.datum===datum&&a.uur&&(!resp||a.resp===resp))bezet.add(a.uur);
+    });
+  }catch(e){}
+  (typeof b2cLeads!=='undefined'?b2cLeads:[]).forEach(l=>{
+    if(resp&&l.resp!==resp)return;
+    (l.opvolgingen||[]).forEach(op=>{if(!op.gedaan&&op.datum===datum&&op.uur)bezet.add(op.uur);});
+  });
+  (typeof projects!=='undefined'?projects:[]).forEach(p=>{
+    if(resp&&p.resp!==resp)return;
+    (p.opvolgingen||[]).forEach(op=>{if(!op.gedaan&&op.datum===datum&&op.uur)bezet.add(op.uur);});
+  });
+  const slots=[];
+  for(let h=9;h<17;h++){
+    if(h===12)continue;
+    for(let m=0;m<60;m+=30){slots.push((h<10?'0'+h:''+h)+':'+(m===0?'00':m));}
+  }
+  for(const s of slots){if(!bezet.has(s))return s;}
+  return '17:00';
+}
+
+let _autoplanBezig=false;
+// Zorgt dat elke openstaande opvolging/telefoongesprek/bezoek (leads,
+// projecten én prospects) een uur heeft, en dat verlopen (niet-
+// afgevinkte) items automatisch naar vandaag verschuiven zodat ze in de
+// agenda blijven staan tot ze zijn afgevinkt.
+async function autoplanOpvolgingen(){
+  if(_autoplanBezig)return;
+  if(typeof b2cLeads==='undefined'||typeof projects==='undefined')return;
+  _autoplanBezig=true;
+  try{
+    const t=today();
+    let agGewijzigd=false;
+    for(const l of b2cLeads){
+      let gewijzigd=false;
+      (l.opvolgingen||[]).forEach(op=>{
+        if(op.gedaan)return;
+        if(op.datum&&op.datum<t){op.datum=t;gewijzigd=true;}
+        if(!op.uur){op.uur=agVolgendVrijUur(op.datum,l.resp);gewijzigd=true;}
+      });
+      if(gewijzigd){try{await sbSaveB2cLead(l);}catch(e){}}
+    }
+    for(const p of projects){
+      let gewijzigd=false;
+      (p.opvolgingen||[]).forEach(op=>{
+        if(op.gedaan)return;
+        if(op.datum&&op.datum<t){op.datum=t;gewijzigd=true;}
+        if(!op.uur){op.uur=agVolgendVrijUur(op.datum,p.resp);gewijzigd=true;}
+      });
+      if(gewijzigd){try{await sbSaveProject(p);}catch(e){}}
+    }
+    if(typeof supabaseClient!=='undefined'&&supabaseClient){
+      try{
+        const{data:bzData,error:bzErr}=await supabaseClient.from('bezoeken').select('*').eq('status','gepland');
+        if(!bzErr&&bzData){
+          for(const row of bzData){
+            const agId='bezoek-'+row.id;
+            let entry=agAfspraken.find(a=>a.id===agId);
+            let nieuweDatum=row.gepland_op;
+            let rijGewijzigd=false;
+            if(nieuweDatum&&nieuweDatum<t){nieuweDatum=t;rijGewijzigd=true;}
+            if(!entry){
+              const titelPrefix=row.type==='telefoongesprek'?'Telefoongesprek: ':'Bezoek: ';
+              const uur=agVolgendVrijUur(nieuweDatum,(typeof currentUserNaam!=='undefined'?currentUserNaam:'')||row.aangemaakt_door||'');
+              entry={id:agId,titel:titelPrefix+(row.entity_naam||''),datum:nieuweDatum,uur:uur,type:'Bezoek',resp:(typeof currentUserNaam!=='undefined'?currentUserNaam:'')||row.aangemaakt_door||'',notitie:row.notities||'',linkId:row.entity_type+'-'+row.entity_id,linkLabel:row.entity_naam||'',linkType:'bezoek'};
+              agAfspraken.push(entry);
+              agGewijzigd=true;
+            }else{
+              if(entry.datum!==nieuweDatum){entry.datum=nieuweDatum;agGewijzigd=true;}
+              if(!entry.uur){entry.uur=agVolgendVrijUur(nieuweDatum,entry.resp||(typeof currentUserNaam!=='undefined'?currentUserNaam:''));agGewijzigd=true;}
+            }
+            if(rijGewijzigd){
+              try{await supabaseClient.from('bezoeken').update({gepland_op:nieuweDatum}).eq('id',row.id);}catch(e){}
+            }
+          }
+        }
+      }catch(e){console.warn('Auto-planning bezoeken mislukt:',e.message);}
+    }
+    if(agGewijzigd&&typeof agPersist==='function')agPersist();
+    if(typeof prospLoadGeplandeBezoeken==='function')prospLoadGeplandeBezoeken();
+    if(typeof agView!=='undefined'&&agView==='week'&&typeof agRenderWeek==='function')agRenderWeek();
+    if(typeof agRenderCalendar==='function')agRenderCalendar();
+    if(typeof agRenderAankomende==='function')agRenderAankomende();
+  }finally{
+    _autoplanBezig=false;
+  }
+}
+
 function startSupabase(url,key){
   sbUrl=url;sbKey=key;setDbStatus('connecting','verbinden...');
   loadAll().then(()=>{
     if(pollTimer)clearInterval(pollTimer);
     pollTimer=setInterval(()=>loadAll().catch(()=>{}),5000);
+    if(typeof autoplanOpvolgingen==='function'){
+      autoplanOpvolgingen().catch(()=>{});
+      if(window._autoplanTimer)clearInterval(window._autoplanTimer);
+      window._autoplanTimer=setInterval(()=>autoplanOpvolgingen().catch(()=>{}),60000);
+    }
   }).catch(err=>{
     setDbStatus('error','verbindingsfout');showToast('Supabase fout: '+err.message);
   });
