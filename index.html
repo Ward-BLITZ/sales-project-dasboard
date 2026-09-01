@@ -1086,6 +1086,8 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
 
 <!-- PROSPECTS -->
 <div id="pane-prospects" class="page" style="display:none">
+  <div style="display:flex;gap:20px;align-items:flex-start">
+  <div style="flex:1;min-width:0">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
     <div>
       <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:600">B2B Prospects</div>
@@ -1124,6 +1126,12 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
     </div>
   </div>
   <div id="prosp-list"></div>
+  </div>
+  <div style="width:260px;flex-shrink:0;position:sticky;top:80px;max-height:calc(100vh - 100px);overflow-y:auto">
+    <div style="font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:5px"><i class="ti ti-calendar-check" style="color:var(--green)"></i> Opvolgingen</div>
+    <div id="prosp-opvolgingen-lijst"></div>
+  </div>
+  </div>
 </div>
 
 <!-- PROSPECT NIEUW/BEWERK MODAL -->
@@ -3424,7 +3432,7 @@ function showTab(name){
   if(name==='agenda'){agUpdateRespDropdown();agRenderCalendar();agRenderAankomende();if(typeof agSetView!=='undefined'){if(agView==='maand')agSetView('week');else agRefreshView();}}
   if(name==='todo'){try{todoRender();}catch(e){console.error('todoRender error:',e);}}
   if(name!=='agenda')document.body.style.overflow='';
-  if(name==='prospects'){prospRenderRespPills();prospRenderStatusPills();prospRender();prospLoadGeplandeBezoeken();}
+  if(name==='prospects'){prospRenderRespPills();prospRenderStatusPills();prospRender();prospLoadGeplandeBezoeken();prospRenderOpvolgingen();}
   if(name==='installaties'){instRenderBoard();}
   if(name==='si-opvolging'){siOpvRender();}
   if(name==='si-afgerond'){siAfgerondRender();}
@@ -3456,16 +3464,47 @@ let prospGeplandeMap={};
 async function prospLoadGeplandeBezoeken(){
   if(typeof supabaseClient==='undefined'||!supabaseClient)return;
   try{
-    const{data,error}=await supabaseClient.from('bezoeken').select('entity_id,type,gepland_op').eq('entity_type','prospect').eq('status','gepland').order('gepland_op',{ascending:true});
+    const{data,error}=await supabaseClient.from('bezoeken').select('id,entity_id,type,gepland_op,notities,status').eq('entity_type','prospect').eq('status','gepland').order('gepland_op',{ascending:true});
     if(error||!data)return;
     const map={};
     data.forEach(b=>{
       const key=String(b.entity_id);
-      if(!map[key])map[key]={type:b.type,datum:b.gepland_op};
+      if(!map[key])map[key]={...b,datum:b.gepland_op};
     });
     prospGeplandeMap=map;
     if(typeof prospRender==='function')prospRender();
+    if(typeof prospRenderOpvolgingen==='function')prospRenderOpvolgingen();
   }catch(e){console.warn('Kon geplande bezoeken niet laden:',e.message);}
+}
+function prospRenderOpvolgingen(){
+  const el=document.getElementById('prosp-opvolgingen-lijst');
+  if(!el)return;
+  const t=today();
+  const items=Object.keys(prospGeplandeMap).map(pid=>{
+    const p=prospects.find(pp=>String(pp.id)===String(pid));
+    return p?{p:p,row:prospGeplandeMap[pid]}:null;
+  }).filter(Boolean).sort((a,b)=>(a.row.gepland_op||'').localeCompare(b.row.gepland_op||''));
+  if(!items.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3)">Geen openstaande opvolgingen.</div>';return;}
+  el.innerHTML=items.map(x=>{
+    const verleden=x.row.gepland_op&&x.row.gepland_op<t;
+    const isVandaag=x.row.gepland_op===t;
+    const kleur=verleden?'#a32d2d':isVandaag?'#854f0b':'var(--tx2)';
+    const icoon=x.row.type==='telefoongesprek'?'📞':'📍';
+    const suffix=verleden?' — verlopen':isVandaag?' — vandaag':'';
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--bd);font-size:12px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'+
+        '<div style="font-weight:600;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="prospOpenEdit('+x.p.id+')">'+icoon+' '+wmsEsc(x.p.naam)+'</div>'+
+        '<button class="btn sm" style="padding:2px 6px;flex-shrink:0" onclick="prospOpvolgingAfvinken('+x.p.id+')" title="Afvinken en loggen"><i class="ti ti-check"></i></button>'+
+      '</div>'+
+      '<div style="color:'+kleur+';margin-top:2px">'+wmsEsc(x.row.gepland_op||'')+suffix+'</div>'+
+    '</div>';
+  }).join('');
+}
+function prospOpvolgingAfvinken(prospectId){
+  const row=prospGeplandeMap[String(prospectId)];
+  const p=prospects.find(x=>x.id===prospectId);
+  if(!row||!p)return;
+  bezoekOpenEditLog(row,'prospect',p.id,p.naam,true);
 }
 function prospRender(){
   const el=document.getElementById('prosp-list');if(!el)return;
@@ -11824,14 +11863,14 @@ function bezoekSluitLogModal(){
   bezoekLogContext=null;
   bezoekLogEditId=null;
 }
-function bezoekOpenEditLog(row,entityType,entityId,naam){
+function bezoekOpenEditLog(row,entityType,entityId,naam,forceerAfvinken){
   bezoekLogContext={entityType:entityType,entityId:String(entityId),naam:naam};
   bezoekLogEditId=row.id;
   document.getElementById('bezoek-log-type').value=row.type||'bezoek';
-  document.getElementById('bezoek-log-datum').value=row.gepland_op||row.uitgevoerd_op||'';
+  document.getElementById('bezoek-log-datum').value=forceerAfvinken?today():(row.gepland_op||row.uitgevoerd_op||'');
   const gekoppeld=(typeof agAfspraken!=='undefined')?agAfspraken.find(a=>a.id==='bezoek-'+row.id):null;
   document.getElementById('bezoek-log-uur').value=(gekoppeld&&gekoppeld.uur)||'09:00';
-  const nogGepland=row.status==='gepland';
+  const nogGepland=forceerAfvinken?false:(row.status==='gepland');
   document.getElementById('bezoek-log-notities-toekomst').value=nogGepland?(row.notities||''):'';
   document.getElementById('bezoek-log-notities').value=!nogGepland?(row.notities||''):'';
   document.getElementById('bezoek-log-doorgegaan').value=row.status==='niet_doorgegaan'?'nee':'ja';
