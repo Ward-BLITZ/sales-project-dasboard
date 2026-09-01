@@ -267,6 +267,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 }
 /* LAYOUT */
 .page{padding:1.5rem;max-width:960px;margin:0 auto}
+#pane-prospects.page{max-width:none;margin:0}
 .page.wide{max-width:100%;padding:1.5rem}
 .page.wide{max-width:100%}
 /* STATS */
@@ -1201,7 +1202,8 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
       <button class="btn" id="prosp-afwijzen-btn" style="display:none;border-color:rgba(163,45,45,.4);color:#a32d2d" onclick="prospToggleAfgewezen()"><i class="ti ti-x"></i> Markeer als afgewezen</button>
       <button class="btn" style="border-color:rgba(83,74,183,.4);color:#534AB7" onclick="prospNaarProject()" id="prosp-naar-project-btn" style="display:none"><i class="ti ti-arrow-right"></i> Omzetten naar B2B project</button>
       <button class="btn" onclick="prospCloseModal()">Annuleren</button>
-      <button class="btn primary" onclick="prospSave()"><i class="ti ti-check"></i> Opslaan</button>
+      <button class="btn" onclick="prospSave(false)"><i class="ti ti-check"></i> Opslaan</button>
+      <button class="btn primary" onclick="prospSave(true)"><i class="ti ti-checks"></i> Opslaan &amp; sluiten</button>
     </div>
   </div>
 </div>
@@ -3266,8 +3268,8 @@ let agCalSelDag  = null;
 let agTypeFilter = 'alle';
 let agRespFilter = 'alle';
 let agEditId     = null;
-const AG_TYPES   = ['B2C','B2B','Installatie','Keuring','Andere'];
-const AG_KLEUREN = {B2C:'#00DFA3',B2B:'#534AB7',Installatie:'#e85d04',Keuring:'#7b2d8b',Andere:'#EF9F27'};
+const AG_TYPES   = ['B2C','B2B','Installatie','Keuring','Bezoek','Andere'];
+const AG_KLEUREN = {B2C:'#00DFA3',B2B:'#534AB7',Installatie:'#e85d04',Keuring:'#7b2d8b',Bezoek:'#0EA5E9',Andere:'#EF9F27'};
 
 // ── INSTALLATIES STATE ──
 const INST_FASES = ['Nieuw','Info verkrijgen','Screening ok','Installatie gepland','Installatie & Keuring gepland','Installatie & Keuring compleet'];
@@ -3417,7 +3419,7 @@ function showTab(name){
   if(name==='agenda'){agUpdateRespDropdown();agRenderCalendar();agRenderAankomende();if(typeof agSetView!=='undefined'){if(agView==='maand')agSetView('week');else agRefreshView();}}
   if(name==='todo'){try{todoRender();}catch(e){console.error('todoRender error:',e);}}
   if(name!=='agenda')document.body.style.overflow='';
-  if(name==='prospects'){prospRenderRespPills();prospRenderStatusPills();prospRender();}
+  if(name==='prospects'){prospRenderRespPills();prospRenderStatusPills();prospRender();prospLoadGeplandeBezoeken();}
   if(name==='installaties'){instRenderBoard();}
   if(name==='si-opvolging'){siOpvRender();}
   if(name==='si-afgerond'){siAfgerondRender();}
@@ -3445,6 +3447,21 @@ function showTab(name){
 // ── PROSPECTS ─────────────────────────────────────────
 let prospCategorieFilter='alle';
 function prospSetCategorie(c){prospCategorieFilter=c||'alle';prospRender();}
+let prospGeplandeMap={};
+async function prospLoadGeplandeBezoeken(){
+  if(typeof supabaseClient==='undefined'||!supabaseClient)return;
+  try{
+    const{data,error}=await supabaseClient.from('bezoeken').select('entity_id,type,gepland_op').eq('entity_type','prospect').eq('status','gepland').order('gepland_op',{ascending:true});
+    if(error||!data)return;
+    const map={};
+    data.forEach(b=>{
+      const key=String(b.entity_id);
+      if(!map[key])map[key]={type:b.type,datum:b.gepland_op};
+    });
+    prospGeplandeMap=map;
+    if(typeof prospRender==='function')prospRender();
+  }catch(e){console.warn('Kon geplande bezoeken niet laden:',e.message);}
+}
 function prospRender(){
   const el=document.getElementById('prosp-list');if(!el)return;
   let list=prospects.filter(p=>prospRespFilter==='alle'||p.resp===prospRespFilter);
@@ -3472,34 +3489,37 @@ function prospRender(){
       <button class="btn primary" onclick="prospOpenNieuw()"><i class="ti ti-plus"></i> Nieuw prospect</button>
     </div>`;return;
   }
-  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">`+list.map(p=>{
-    const kansKleur=p.kans>=70?'#639922':p.kans>=40?'#854f0b':'#a32d2d';
-    const kansBg=p.kans>=70?'rgba(99,153,34,.12)':p.kans>=40?'rgba(133,79,11,.10)':'rgba(163,45,45,.10)';
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">`+list.map(p=>{
+    const kansKleur=p.kans>=70?"#639922":p.kans>=40?"#854f0b":"#a32d2d";
     const contacts=(p.contacts||[]);
-    return`<div onclick="prospOpenEdit(${p.id})" style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);padding:13px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s;display:flex;align-items:center;gap:16px"
-        onmouseover="this.style.borderColor='var(--green)';this.style.boxShadow='0 2px 8px rgba(0,223,163,.12)'" onmouseout="this.style.borderColor='var(--bd)';this.style.boxShadow=''">
-      <!-- Links: naam + info -->
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.naam}${p.status==='afgewezen'?' <span style="font-size:10px;background:rgba(163,45,45,.12);color:#a32d2d;padding:1px 6px;border-radius:10px">Afgewezen</span>':p.klaarVoorOfferte?' <span style="font-size:10px;background:rgba(0,223,163,.15);color:#00895f;padding:1px 6px;border-radius:10px">Klaar voor offerte</span>':''}</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:3px;flex-wrap:wrap">
-          ${p.project?`<span style="font-size:11px;color:var(--tx2)">${p.project}</span>`:''}
-          ${p.resp?`<span style="font-size:11px;background:var(--bg2);padding:1px 7px;border-radius:10px;color:var(--tx2)">${p.resp}</span>`:''}
-          ${contacts.length?`<span style="font-size:10px;color:var(--tx3)"><i class="ti ti-users" style="font-size:10px"></i> ${contacts.length} contact${contacts.length>1?'s':''}</span>`:''}
-          ${p.moeder?`<span style="font-size:10px;color:var(--tx3)"><i class="ti ti-building" style="font-size:10px"></i> ${p.moeder}</span>`:''}
-          ${p.categorie?`<span style="font-size:10px;background:rgba(37,99,235,.12);color:#1d4ed8;padding:1px 7px;border-radius:10px">${p.categorie}</span>`:''}
-        </div>
+    const eersteContact=contacts[0]||null;
+    const badges=[];
+    if(p.status==="afgewezen")badges.push(`<span style="font-size:9px;background:rgba(163,45,45,.12);color:#a32d2d;padding:1px 6px;border-radius:10px">Afgewezen</span>`);
+    else if(p.klaarVoorOfferte)badges.push(`<span style="font-size:9px;background:rgba(0,223,163,.15);color:#00895f;padding:1px 6px;border-radius:10px">Klaar voor offerte</span>`);
+    if(p.categorie)badges.push(`<span style="font-size:9px;background:rgba(37,99,235,.12);color:#1d4ed8;padding:1px 6px;border-radius:10px">${p.categorie}</span>`);
+    const badgesHtml=badges.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">${badges.join("")}</div>`:"";
+    const omschrijvingHtml=p.project?`<div style="font-size:11px;color:var(--tx2);margin-top:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p.project}</div>`:"";
+    const adresRegel=[p.straat,[p.postcode,p.stad].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    const adresHtml=adresRegel?`<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><i class="ti ti-map-pin" style="font-size:10px"></i> ${adresRegel}</div>`:"";
+    let contactHtml="";
+    if(eersteContact&&(eersteContact.naam||eersteContact.tel||eersteContact.email)){
+      const naamTel=[eersteContact.naam,eersteContact.tel].filter(Boolean).join(" · ");
+      contactHtml=`<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px"><i class="ti ti-user" style="font-size:10px"></i> ${naamTel||eersteContact.email||""}</div>`;
+    }else if(p.tel||p.email){
+      contactHtml=`<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px"><i class="ti ti-phone" style="font-size:10px"></i> ${p.tel||p.email}</div>`;
+    }
+    const respHtml=p.resp?`<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px"><i class="ti ti-briefcase" style="font-size:10px"></i> ${p.resp}</div>`:"";
+    const gepland=(typeof prospGeplandeMap!=='undefined')?prospGeplandeMap[String(p.id)]:null;
+    const geplandHtml=gepland?`<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px;color:#0EA5E9;font-weight:600"><i class="ti ti-calendar-event" style="font-size:10px"></i> ${gepland.type==="telefoongesprek"?"Bellen":"Bezoek"} gepland: ${gepland.datum}</div>`:"";
+    return `<div onclick="prospOpenEdit(${p.id})" style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);padding:14px;cursor:pointer;transition:border-color .15s,box-shadow .15s;min-height:220px;display:flex;flex-direction:column;overflow:hidden" onmouseover="this.style.borderColor='var(--green)';this.style.boxShadow='0 2px 8px rgba(0,223,163,.12)'" onmouseout="this.style.borderColor='var(--bd)';this.style.boxShadow=''">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+        <div style="font-size:14px;font-weight:700;color:var(--tx);line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${p.naam}</div>
+        <div style="flex-shrink:0;text-align:center"><div style="font-size:16px;font-weight:800;color:${kansKleur}">${p.kans||0}%</div></div>
       </div>
-      <!-- Midden: kans -->
-      <div style="flex-shrink:0;text-align:center;min-width:70px">
-        <div style="font-size:20px;font-weight:800;color:${kansKleur}">${p.kans||0}%</div>
-        <div style="height:4px;border-radius:2px;background:var(--bd2);margin-top:4px;width:60px">
-          <div style="height:100%;border-radius:2px;background:${kansKleur};width:${p.kans||0}%"></div>
-        </div>
-      </div>
-      <!-- Rechts: postcode -->
-      <div style="flex-shrink:0;text-align:right;min-width:56px">
-        <div style="font-size:15px;font-weight:700;color:var(--tx2)">${p.postcode||'—'}</div>
-        <div style="font-size:10px;color:var(--tx3)">postcode</div>
+      ${badgesHtml}
+      ${omschrijvingHtml}
+      <div style="margin-top:auto;padding-top:8px;border-top:1px solid var(--bd);font-size:11px;color:var(--tx3)">
+        ${adresHtml}${contactHtml}${respHtml}${geplandHtml}
       </div>
     </div>`;
   }).join('')+'</div>';
@@ -3622,7 +3642,7 @@ function prospGetContacts(){
   }));
 }
 
-async function prospSave(){
+async function prospSave(sluiten=true){
   const naam=document.getElementById('prosp-naam').value.trim();
   if(!naam){showToast('Naam is verplicht.');document.getElementById('prosp-naam').focus();return;}
   const respVeld=document.getElementById('prosp-resp').value;
@@ -3673,16 +3693,26 @@ async function prospSave(){
     }
   }
   window._prospDupBevestigd=false;
+  const wasEdit=!!prospEditId;
+  let savedId;
   if(prospEditId){
     const idx=prospects.findIndex(x=>x.id===prospEditId);
     if(idx>=0){prospects[idx]={...prospects[idx],...data};sbSaveProspect(prospects[idx]);}
+    savedId=prospEditId;
   } else {
     data.id=prospNextId++;
     prospects.push(data);
     sbSaveProspect(data);
+    savedId=data.id;
   }
-  prospCloseModal();prospRender();
-  showToast(prospEditId?'Prospect opgeslagen ✓':'Prospect aangemaakt ✓');
+  prospRender();
+  if(sluiten){
+    prospCloseModal();
+  }else{
+    prospEditId=savedId;
+    prospOpenEdit(savedId);
+  }
+  showToast(wasEdit?'Prospect opgeslagen ✓':'Prospect aangemaakt ✓');
 }
 
 function prospDupOpenBestaand(){
@@ -6448,6 +6478,16 @@ function agOpenNieuw(datum=null){
 
 function agOpenEditItem(a){
   if(!a)return;
+  if(a.linkType==='bezoek'&&a.linkId){
+    const idx=String(a.linkId).indexOf('-');
+    const entType=idx>-1?String(a.linkId).slice(0,idx):'';
+    const entId=idx>-1?String(a.linkId).slice(idx+1):'';
+    if(entType==='prospect'&&entId){
+      showTab('prospects');
+      setTimeout(()=>prospOpenEdit(parseInt(entId)),150);
+      return;
+    }
+  }
   if(a._bron==='b2c'&&a._leadId){
     // Navigeer naar B2C tab en open lead dossier
     showTab('b2c');
@@ -11830,18 +11870,24 @@ async function bezoekSaveLog(){
   const{data,error}=await supabaseClient.from('bezoeken').insert(rij).select().single();
   if(error){showToast('Fout bij opslaan bezoek: '+error.message);return;}
   try{
-    await supabaseClient.from('ag_afspraken').upsert({
-      id:'bezoek-'+data.id,
-      titel:(toekomst?'Bezoek: ':'Evaluatie bezoek: ')+bezoekLogContext.naam,
+    const agTitelPrefix=(gekozenType==='telefoongesprek')?(toekomst?'Telefoongesprek: ':'Evaluatie telefoongesprek: '):(toekomst?'Bezoek: ':'Evaluatie bezoek: ');
+    const agId='bezoek-'+data.id;
+    agAfspraken=agAfspraken.filter(x=>x.id!==agId);
+    agAfspraken.push({
+      id:agId,
+      titel:agTitelPrefix+bezoekLogContext.naam,
       datum:datum,
       uur:uur,
-      type:'Andere',
+      type:'Bezoek',
       resp:aangemaaktDoor||'',
       notitie:rij.notities||'',
-      linkid:'bezoek-'+data.id,
-      linklabel:bezoekLogContext.naam,
-      linktype:'bezoek'
-    },{onConflict:'id'});
+      linkId:bezoekLogContext.entityType+'-'+bezoekLogContext.entityId,
+      linkLabel:bezoekLogContext.naam,
+      linkType:'bezoek'
+    });
+    agPersist();
+    if(typeof agRenderCalendar==='function')agRenderCalendar();
+    if(typeof agRenderAankomende==='function')agRenderAankomende();
   }catch(e){console.warn('Agenda-koppeling mislukt:',e.message);}
   if(!toekomst&&bezoekLogContext.entityType==='prospect'){
     const evaluatie=rij.evaluatie;
@@ -11853,6 +11899,7 @@ async function bezoekSaveLog(){
     if(typeof prospRenderStatusBadge==='function'&&p)prospRenderStatusBadge(p);
     if(typeof prospRender==='function')prospRender();
   }
+  if(bezoekLogContext.entityType==='prospect'&&typeof prospLoadGeplandeBezoeken==='function')prospLoadGeplandeBezoeken();
   showToast(toekomst?'Afspraak ingepland ✓':'Bezoek genoteerd ✓');
   bezoekSluitLogModal();
   if(typeof kaartRenderLijst==='function')kaartRenderLijst();
@@ -15857,6 +15904,7 @@ function mobCheckNav(){
   const isSmall=window.innerWidth<=900;
   const hb=document.getElementById('tab-hamburger');
   if(hb)hb.style.display=isSmall?'inline-flex':'none';
+  if(!isSmall)mobNavClose();
 }
 window.addEventListener('resize',mobCheckNav);
 document.addEventListener('DOMContentLoaded',mobCheckNav);
