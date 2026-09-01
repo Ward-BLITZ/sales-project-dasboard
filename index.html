@@ -6526,6 +6526,16 @@ function agOpenEdit(id){
   // i.p.v. x.id===id, anders faalt de match altijd stil (=== doet geen type-omzetting) en
   // gebeurt er niets bij het klikken op zo'n afspraak.
   const a=agAfspraken.find(x=>String(x.id)===sid);if(!a)return;
+  if(a.linkType==='bezoek'&&a.linkId){
+    const idx2=String(a.linkId).indexOf('-');
+    const entType=idx2>-1?String(a.linkId).slice(0,idx2):'';
+    const entId=idx2>-1?String(a.linkId).slice(idx2+1):'';
+    if(entType==='prospect'&&entId){
+      showTab('prospects');
+      setTimeout(()=>prospOpenEdit(parseInt(entId)),150);
+      return;
+    }
+  }
   agEditId=a.id; // bewaar het originele id (string of nummer) zodat opslaan nadien blijft werken
   agWizHoofd=(['Installatie','Keuring','Andere'].includes(a.type)&&a.type!=='Andere')?'service':'sales';
   agWizSub=a.linkType||'andere';
@@ -11760,6 +11770,7 @@ function kaartBezoekLogKnop(entityType,entityId,naam){
 }
 
 let bezoekLogContext=null;
+let bezoekLogEditId=null;
 
 function kaartToonActieKeuze(entityType,entityId,naam){
   const overlay=document.getElementById('kaart-actie-overlay');
@@ -11785,6 +11796,7 @@ function kaartActieBezoek(){
 
 function bezoekOpenLogModal(entityType,entityId,naam,type){
   bezoekLogContext={entityType:entityType,entityId:String(entityId),naam:naam};
+  bezoekLogEditId=null;
   document.getElementById('bezoek-log-type').value=type||'bezoek';
   const nu=new Date();
   document.getElementById('bezoek-log-datum').value=nu.toISOString().slice(0,10);
@@ -11802,13 +11814,44 @@ function bezoekLogTypeGewijzigd(){
   const type=document.getElementById('bezoek-log-type').value;
   const naam=bezoekLogContext?bezoekLogContext.naam:'';
   const isGesprek=type==='telefoongesprek';
-  document.getElementById('bezoek-log-titel').textContent=(isGesprek?'Telefoongesprek noteren — ':'Bezoek noteren — ')+naam;
+  const werkwoord=bezoekLogEditId?'bewerken':'noteren';
+  document.getElementById('bezoek-log-titel').textContent=(isGesprek?('Telefoongesprek '+werkwoord+' — '):('Bezoek '+werkwoord+' — '))+naam;
   const doorgegaanLbl=document.getElementById('bezoek-log-doorgegaan-label');
   if(doorgegaanLbl)doorgegaanLbl.textContent=isGesprek?'Is het gesprek doorgegaan?':'Is het bezoek doorgegaan?';
 }
 function bezoekSluitLogModal(){
   document.getElementById('bezoek-log-overlay').classList.remove('open');
   bezoekLogContext=null;
+  bezoekLogEditId=null;
+}
+function bezoekOpenEditLog(row,entityType,entityId,naam){
+  bezoekLogContext={entityType:entityType,entityId:String(entityId),naam:naam};
+  bezoekLogEditId=row.id;
+  document.getElementById('bezoek-log-type').value=row.type||'bezoek';
+  document.getElementById('bezoek-log-datum').value=row.gepland_op||row.uitgevoerd_op||'';
+  const gekoppeld=(typeof agAfspraken!=='undefined')?agAfspraken.find(a=>a.id==='bezoek-'+row.id):null;
+  document.getElementById('bezoek-log-uur').value=(gekoppeld&&gekoppeld.uur)||'09:00';
+  const nogGepland=row.status==='gepland';
+  document.getElementById('bezoek-log-notities-toekomst').value=nogGepland?(row.notities||''):'';
+  document.getElementById('bezoek-log-notities').value=!nogGepland?(row.notities||''):'';
+  document.getElementById('bezoek-log-doorgegaan').value=row.status==='niet_doorgegaan'?'nee':'ja';
+  document.getElementById('bezoek-log-volgend').value=row.volgend_bezoek_op||'';
+  document.getElementById('bezoek-log-evaluatie').value=row.evaluatie||'';
+  bezoekLogTypeGewijzigd();
+  document.getElementById('bezoek-log-toekomst-vak').style.display=nogGepland?'':'none';
+  document.getElementById('bezoek-log-verleden-vak').style.display=nogGepland?'none':'';
+  const label=document.getElementById('bezoek-log-modus-label');
+  if(label){
+    if(nogGepland){
+      label.textContent='📅 Blijft in de agenda staan tot je dit afvinkt.';
+      label.style.background='rgba(0,223,163,.12)';label.style.color='#00895f';
+    }else{
+      label.textContent='📝 Bewerk de evaluatie van deze afspraak.';
+      label.style.background='rgba(133,79,11,.12)';label.style.color='#854f0b';
+    }
+  }
+  if(!nogGepland)bezoekLogDoorgegaanGewijzigd();
+  document.getElementById('bezoek-log-overlay').classList.add('open');
 }
 function bezoekLogIsToekomst(){
   const d=document.getElementById('bezoek-log-datum').value;
@@ -11844,7 +11887,7 @@ async function bezoekSaveLog(){
   const datum=document.getElementById('bezoek-log-datum').value;
   const uur=document.getElementById('bezoek-log-uur').value;
   if(!datum||!uur){showToast('Vul datum en uur in.');return;}
-  const toekomst=bezoekLogIsToekomst();
+  const toekomst=document.getElementById('bezoek-log-toekomst-vak').style.display!=='none';
   const aangemaaktDoor=(typeof currentUser!=='undefined'&&currentUser&&currentUser.email)?currentUser.email:null;
   const gekozenType=document.getElementById('bezoek-log-type').value||'bezoek';
   let rij;
@@ -11877,24 +11920,33 @@ async function bezoekSaveLog(){
       aangemaakt_door:aangemaaktDoor
     };
   }
-  const{data,error}=await supabaseClient.from('bezoeken').insert(rij).select().single();
+  let data,error;
+  if(bezoekLogEditId){
+    const r=await supabaseClient.from('bezoeken').update(rij).eq('id',bezoekLogEditId).select().single();
+    data=r.data;error=r.error;
+  }else{
+    const r=await supabaseClient.from('bezoeken').insert(rij).select().single();
+    data=r.data;error=r.error;
+  }
   if(error){showToast('Fout bij opslaan bezoek: '+error.message);return;}
   try{
-    const agTitelPrefix=(gekozenType==='telefoongesprek')?(toekomst?'Telefoongesprek: ':'Evaluatie telefoongesprek: '):(toekomst?'Bezoek: ':'Evaluatie bezoek: ');
     const agId='bezoek-'+data.id;
     agAfspraken=agAfspraken.filter(x=>x.id!==agId);
-    agAfspraken.push({
-      id:agId,
-      titel:agTitelPrefix+bezoekLogContext.naam,
-      datum:datum,
-      uur:uur,
-      type:'Bezoek',
-      resp:currentUserNaam||aangemaaktDoor||'',
-      notitie:rij.notities||'',
-      linkId:bezoekLogContext.entityType+'-'+bezoekLogContext.entityId,
-      linkLabel:bezoekLogContext.naam,
-      linkType:'bezoek'
-    });
+    if(toekomst){
+      const agTitelPrefix=(gekozenType==='telefoongesprek')?'Telefoongesprek: ':'Bezoek: ';
+      agAfspraken.push({
+        id:agId,
+        titel:agTitelPrefix+bezoekLogContext.naam,
+        datum:datum,
+        uur:uur,
+        type:'Bezoek',
+        resp:currentUserNaam||aangemaaktDoor||'',
+        notitie:rij.notities||'',
+        linkId:bezoekLogContext.entityType+'-'+bezoekLogContext.entityId,
+        linkLabel:bezoekLogContext.naam,
+        linkType:'bezoek'
+      });
+    }
     agPersist();
     if(typeof agRenderCalendar==='function')agRenderCalendar();
     if(typeof agRenderAankomende==='function')agRenderAankomende();
@@ -12167,18 +12219,44 @@ async function prospRenderActiviteitenlog(p){
   el.innerHTML='Wordt geladen...';
   const{data,error}=await supabaseClient.from('bezoeken').select('*').eq('entity_type','prospect').eq('entity_id',String(p.id)).order('created_at',{ascending:false});
   if(error){el.innerHTML='<span style="color:var(--red)">Fout bij laden: '+error.message+'</span>';return;}
+  window._prospActiviteitenlogData=data||[];
   if(!data||!data.length){el.innerHTML='<span style="color:var(--tx3)">Nog geen bezoeken of evaluaties genoteerd.</span>';return;}
   const statusLabels={gepland:'Gepland',doorgegaan:'Doorgegaan',niet_doorgegaan:'Niet doorgegaan',geannuleerd:'Geannuleerd'};
   const evalLabels={offerte:'→ Klaar voor offerte',installateur:'→ Wordt installatiepartner',niets:'→ Geen vervolg'};
   const laatsteGesprek=data.find(b=>b.type==='telefoongesprek'&&b.status!=='gepland');
   const laatsteGesprekEl='<div style="padding:4px 0 8px;font-size:12px;color:var(--tx2)"><i class="ti ti-phone" style="color:var(--green);margin-right:4px"></i>'+(laatsteGesprek?('Laatst gebeld op '+wmsEsc(laatsteGesprek.uitgevoerd_op||laatsteGesprek.gepland_op||'')):'Nog niet gebeld')+'</div>';
-  el.innerHTML=laatsteGesprekEl+data.map(b=>{
+  el.innerHTML=laatsteGesprekEl+data.map((b,i)=>{
     const datum=b.uitgevoerd_op||b.gepland_op||'';
     const statusTxt=statusLabels[b.status]||b.status;
     const typeIcoon=b.type==='telefoongesprek'?'📞':'📍';
     const evalTxt=b.evaluatie?('<br><span style="color:var(--green);font-weight:600">'+(evalLabels[b.evaluatie]||b.evaluatie)+'</span>'):'';
-    return '<div style="padding:6px 0;border-bottom:1px solid var(--bd)">'+typeIcoon+' <b>'+wmsEsc(datum)+'</b> — '+wmsEsc(statusTxt)+(b.notities?'<br>'+wmsEsc(b.notities):'')+evalTxt+'</div>';
+    const acties='<span style="float:right;display:flex;gap:4px">'+
+      '<button class="btn sm" style="padding:2px 6px" onclick="prospBezoekBewerken('+i+')" title="Bewerken"><i class="ti ti-pencil"></i></button>'+
+      '<button class="btn sm" style="padding:2px 6px;color:#a32d2d" onclick="prospBezoekVerwijderen(\''+b.id+'\')" title="Verwijderen"><i class="ti ti-trash"></i></button>'+
+    '</span>';
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--bd)">'+acties+typeIcoon+' <b>'+wmsEsc(datum)+'</b> — '+wmsEsc(statusTxt)+(b.notities?'<br>'+wmsEsc(b.notities):'')+evalTxt+'</div>';
   }).join('');
+}
+function prospBezoekBewerken(idx){
+  const row=(window._prospActiviteitenlogData||[])[idx];
+  if(!row)return;
+  const p=prospects.find(x=>x.id===prospEditId);
+  if(!p)return;
+  bezoekOpenEditLog(row,'prospect',p.id,p.naam);
+}
+async function prospBezoekVerwijderen(id){
+  if(!confirm('Deze activiteit definitief verwijderen?'))return;
+  const{error}=await supabaseClient.from('bezoeken').delete().eq('id',id);
+  if(error){showToast('Fout bij verwijderen: '+error.message);return;}
+  const agId='bezoek-'+id;
+  agAfspraken=agAfspraken.filter(x=>x.id!==agId);
+  agPersist();
+  if(typeof agRenderCalendar==='function')agRenderCalendar();
+  if(typeof agRenderAankomende==='function')agRenderAankomende();
+  const p=prospects.find(x=>x.id===prospEditId);
+  if(p&&typeof prospRenderActiviteitenlog==='function')prospRenderActiviteitenlog(p);
+  if(typeof prospLoadGeplandeBezoeken==='function')prospLoadGeplandeBezoeken();
+  showToast('Activiteit verwijderd ✓');
 }
 
 function prospUpdateAfwijzenKnop(p){
