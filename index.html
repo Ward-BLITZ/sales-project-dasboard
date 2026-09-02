@@ -4209,9 +4209,10 @@ function agVolgendVrijUur(datum,resp){
 
 let _autoplanBezig=false;
 // Zorgt dat elke openstaande opvolging/telefoongesprek/bezoek (leads,
-// projecten én prospects) een uur heeft, en dat verlopen (niet-
-// afgevinkte) items automatisch naar vandaag verschuiven zodat ze in de
-// agenda blijven staan tot ze zijn afgevinkt.
+// projecten én prospects) een uur heeft zodra dat ontbreekt. Raakt nooit
+// de datum zelf aan — verlopen items blijven op hun oorspronkelijke datum
+// staan (zie apply-patch-agenda-vandaag-verlopen-tonen.js voor hoe die
+// toch "vandaag" zichtbaar blijven in de agenda).
 async function autoplanOpvolgingen(){
   if(_autoplanBezig)return;
   if(typeof b2cLeads==='undefined'||typeof projects==='undefined')return;
@@ -4223,8 +4224,7 @@ async function autoplanOpvolgingen(){
       let gewijzigd=false;
       (l.opvolgingen||[]).forEach(op=>{
         if(op.gedaan)return;
-        if(op.datum&&op.datum<t){op.datum=t;gewijzigd=true;}
-        if(!op.uur){op.uur=agVolgendVrijUur(op.datum,l.resp);gewijzigd=true;}
+        if(!op.uur&&op.datum){op.uur=agVolgendVrijUur(op.datum,l.resp);gewijzigd=true;}
       });
       if(gewijzigd){try{await sbSaveB2cLead(l);}catch(e){}}
     }
@@ -4232,8 +4232,7 @@ async function autoplanOpvolgingen(){
       let gewijzigd=false;
       (p.opvolgingen||[]).forEach(op=>{
         if(op.gedaan)return;
-        if(op.datum&&op.datum<t){op.datum=t;gewijzigd=true;}
-        if(!op.uur){op.uur=agVolgendVrijUur(op.datum,p.resp);gewijzigd=true;}
+        if(!op.uur&&op.datum){op.uur=agVolgendVrijUur(op.datum,p.resp);gewijzigd=true;}
       });
       if(gewijzigd){try{await sbSaveProject(p);}catch(e){}}
     }
@@ -4242,23 +4241,18 @@ async function autoplanOpvolgingen(){
         const{data:bzData,error:bzErr}=await supabaseClient.from('bezoeken').select('*').eq('status','gepland');
         if(!bzErr&&bzData){
           for(const row of bzData){
+            if(!row.gepland_op)continue;
             const agId='bezoek-'+row.id;
             let entry=agAfspraken.find(a=>a.id===agId);
-            let nieuweDatum=row.gepland_op;
-            let rijGewijzigd=false;
-            if(nieuweDatum&&nieuweDatum<t){nieuweDatum=t;rijGewijzigd=true;}
             if(!entry){
               const titelPrefix=row.type==='telefoongesprek'?'Telefoongesprek: ':'Bezoek: ';
-              const uur=agVolgendVrijUur(nieuweDatum,(typeof currentUserNaam!=='undefined'?currentUserNaam:'')||row.aangemaakt_door||'');
-              entry={id:agId,titel:titelPrefix+(row.entity_naam||''),datum:nieuweDatum,uur:uur,type:'Bezoek',resp:(typeof currentUserNaam!=='undefined'?currentUserNaam:'')||row.aangemaakt_door||'',notitie:row.notities||'',linkId:row.entity_type+'-'+row.entity_id,linkLabel:row.entity_naam||'',linkType:'bezoek'};
+              const uur=agVolgendVrijUur(row.gepland_op,(typeof currentUserNaam!=='undefined'?currentUserNaam:'')||row.aangemaakt_door||'');
+              entry={id:agId,titel:titelPrefix+(row.entity_naam||''),datum:row.gepland_op,uur:uur,type:'Bezoek',resp:(typeof currentUserNaam!=='undefined'?currentUserNaam:'')||row.aangemaakt_door||'',notitie:row.notities||'',linkId:row.entity_type+'-'+row.entity_id,linkLabel:row.entity_naam||'',linkType:'bezoek'};
               agAfspraken.push(entry);
               agGewijzigd=true;
-            }else{
-              if(entry.datum!==nieuweDatum){entry.datum=nieuweDatum;agGewijzigd=true;}
-              if(!entry.uur){entry.uur=agVolgendVrijUur(nieuweDatum,entry.resp||(typeof currentUserNaam!=='undefined'?currentUserNaam:''));agGewijzigd=true;}
-            }
-            if(rijGewijzigd){
-              try{await supabaseClient.from('bezoeken').update({gepland_op:nieuweDatum}).eq('id',row.id);}catch(e){}
+            }else if(!entry.uur){
+              entry.uur=agVolgendVrijUur(entry.datum,entry.resp||(typeof currentUserNaam!=='undefined'?currentUserNaam:''));
+              agGewijzigd=true;
             }
           }
         }
@@ -16838,25 +16832,37 @@ function agRenderWeekTodo(dagenStr){
   const t=today();
   const respF=agRespFilter;
   let html='<div style="font-family:\'Poppins\',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--green);margin-bottom:6px">Agenda vandaag</div>';
-  const afsprakenVandaag=agGetFiltered().filter(a=>a.datum===t&&a.uur&&(respF==='alle'||a.resp===respF)).sort((a,b)=>a.uur.localeCompare(b.uur));
+  const afsprakenVandaag=agGetFiltered().filter(a=>((a.datum===t)||(a.linkType==='bezoek'&&a.datum<t))&&a.uur&&(respF==='alle'||a.resp===respF)).sort((a,b)=>a.uur.localeCompare(b.uur));
   if(afsprakenVandaag.length){
     html+='<div style="font-size:9px;color:var(--tx3);margin-bottom:3px;font-weight:700">AFSPRAKEN</div>';
-    html+=afsprakenVandaag.map(a=>`<div data-sid-agid="${a.id}" style="display:flex;gap:5px;padding:3px 5px;margin-bottom:2px;background:${AG_KLEUREN[a.type]||'var(--green)'}18;border-left:2px solid ${AG_KLEUREN[a.type]||'var(--green)'};border-radius:3px;align-items:center;cursor:pointer"><span style="font-size:10px;color:var(--tx3);flex-shrink:0;min-width:28px;font-weight:600">${a.uur}</span><span style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.titel}</span></div>`).join('');
+    html+=afsprakenVandaag.map(a=>{
+      const teLaatA=a.datum<t;
+      const kleurA=teLaatA?'#a32d2d':(AG_KLEUREN[a.type]||'var(--green)');
+      return `<div data-sid-agid="${a.id}" style="display:flex;gap:5px;padding:3px 5px;margin-bottom:2px;background:${kleurA}18;border-left:2px solid ${kleurA};border-radius:3px;align-items:center;cursor:pointer"><span style="font-size:10px;color:var(--tx3);flex-shrink:0;min-width:28px;font-weight:600">${a.uur}</span><span style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.titel}${teLaatA?' <span style="color:#a32d2d;font-weight:700">(verlopen sinds '+a.datum+')</span>':''}</span></div>`;
+    }).join('');
   }
   const opvMU=[];
-  b2cLeads.filter(l=>respF==='alle'||l.resp===respF).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===t&&op.uur).forEach(op=>opvMU.push({tekst:b2cNaam(l)+': '+op.tekst,uur:op.uur,kleur:'#00b882',leadId:l.id})));
-  projects.filter(p=>respF==='alle'||p.resp===respF).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===t&&op.uur).forEach(op=>opvMU.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,uur:op.uur,kleur:'#534AB7',projId:p.id||p._rowid})));
+  b2cLeads.filter(l=>respF==='alle'||l.resp===respF).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&(op.datum===t||op.datum<t)&&op.uur).forEach(op=>opvMU.push({tekst:b2cNaam(l)+': '+op.tekst,uur:op.uur,kleur:'#00b882',leadId:l.id,datum:op.datum})));
+  projects.filter(p=>respF==='alle'||p.resp===respF).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&(op.datum===t||op.datum<t)&&op.uur).forEach(op=>opvMU.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,uur:op.uur,kleur:'#534AB7',projId:p.id||p._rowid,datum:op.datum})));
   opvMU.sort((a,b)=>a.uur.localeCompare(b.uur));
   if(opvMU.length){
     html+='<div style="font-size:9px;color:var(--tx3);margin:5px 0 3px;font-weight:700">OPVOLGINGEN OP UUR</div>';
-    html+=opvMU.map(o=>`<div ${o.leadId?`data-sid-leadid="${o.leadId}"`:`data-sid-projid="${o.projId}"`} style="display:flex;gap:5px;padding:3px 5px;margin-bottom:2px;background:${o.kleur}18;border-left:2px solid ${o.kleur};border-radius:3px;align-items:center;cursor:pointer"><span style="font-size:10px;color:var(--tx3);flex-shrink:0;min-width:28px;font-weight:600">${o.uur}</span><span style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.tekst}</span></div>`).join('');
+    html+=opvMU.map(o=>{
+      const teLaatO=o.datum&&o.datum<t;
+      const kleurO=teLaatO?'#a32d2d':o.kleur;
+      return `<div ${o.leadId?`data-sid-leadid="${o.leadId}"`:`data-sid-projid="${o.projId}"`} style="display:flex;gap:5px;padding:3px 5px;margin-bottom:2px;background:${kleurO}18;border-left:2px solid ${kleurO};border-radius:3px;align-items:center;cursor:pointer"><span style="font-size:10px;color:var(--tx3);flex-shrink:0;min-width:28px;font-weight:600">${o.uur}</span><span style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.tekst}${teLaatO?' <span style="color:#a32d2d;font-weight:700">(verlopen sinds '+o.datum+')</span>':''}</span></div>`;
+    }).join('');
   }
   const opvZU=[];
-  b2cLeads.filter(l=>respF==='alle'||l.resp===respF).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===t&&!op.uur).forEach(op=>opvZU.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',leadId:l.id})));
-  projects.filter(p=>respF==='alle'||p.resp===respF).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&op.datum===t&&!op.uur).forEach(op=>opvZU.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',projId:p.id||p._rowid})));
+  b2cLeads.filter(l=>respF==='alle'||l.resp===respF).forEach(l=>(l.opvolgingen||[]).filter(op=>!op.gedaan&&(op.datum===t||op.datum<t)&&!op.uur).forEach(op=>opvZU.push({tekst:b2cNaam(l)+': '+op.tekst,kleur:'#00b882',leadId:l.id,datum:op.datum})));
+  projects.filter(p=>respF==='alle'||p.resp===respF).forEach(p=>(p.opvolgingen||[]).filter(op=>!op.gedaan&&(op.datum===t||op.datum<t)&&!op.uur).forEach(op=>opvZU.push({tekst:(p.naam||p.klant||'')+': '+op.tekst,kleur:'#534AB7',projId:p.id||p._rowid,datum:op.datum})));
   if(opvZU.length){
     html+='<div style="font-size:9px;color:var(--tx3);margin:5px 0 3px;font-weight:700">OPVOLGINGEN</div>';
-    html+=opvZU.map(o=>`<div ${o.leadId?`data-sid-leadid="${o.leadId}"`:`data-sid-projid="${o.projId}"`} style="padding:3px 5px;margin-bottom:2px;background:${o.kleur}18;border-left:2px solid ${o.kleur};border-radius:3px;cursor:pointer"><span style="font-size:11px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.tekst}</span></div>`).join('');
+    html+=opvZU.map(o=>{
+      const teLaatO=o.datum&&o.datum<t;
+      const kleurO=teLaatO?'#a32d2d':o.kleur;
+      return `<div ${o.leadId?`data-sid-leadid="${o.leadId}"`:`data-sid-projid="${o.projId}"`} style="padding:3px 5px;margin-bottom:2px;background:${kleurO}18;border-left:2px solid ${kleurO};border-radius:3px;cursor:pointer"><span style="font-size:11px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.tekst}${teLaatO?' <span style="color:#a32d2d;font-weight:700">(verlopen sinds '+o.datum+')</span>':''}</span></div>`;
+    }).join('');
   }
   const todosV=(todos||[]).filter(td=>!td.gedaan&&(td.datum===t||!td.datum)&&(respF==='alle'||!td.resp||td.resp===respF)).sort((a,b)=>(a.uur||'z').localeCompare(b.uur||'z'));
   if(todosV.length){
