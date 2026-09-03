@@ -2437,6 +2437,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp"><option value="">— kies —</option></select>
       </div>
+      <div class="field"><label>Genodigden</label><div id="ag-genodigden" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
       <div class="field"><label>Notities bij deze afspraak</label><textarea id="ag-notitie" rows="3" placeholder="Extra info specifiek voor deze afspraak..."></textarea></div>
       <input type="hidden" id="ag-link-id" value="">
       <input type="hidden" id="ag-link-label" value="">
@@ -2461,6 +2462,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp2"><option value="">— kies —</option></select>
       </div>
+      <div class="field"><label>Genodigden</label><div id="ag-genodigden2" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
       <div class="field"><label>Notities bij deze afspraak</label><textarea id="ag-notitie2" rows="3" placeholder="Extra info specifiek voor deze afspraak..."></textarea></div>
     </div>
 
@@ -2482,6 +2484,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp3"><option value="">— kies —</option></select>
       </div>
+      <div class="field"><label>Genodigden</label><div id="ag-genodigden3" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
       <div class="field"><label>Notities bij deze afspraak</label><textarea id="ag-notitie3" rows="3" placeholder="Extra info specifiek voor deze afspraak..."></textarea></div>
     </div>
 
@@ -2496,6 +2499,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <div class="field"><label>Verantwoordelijke</label>
         <select id="ag-resp4"><option value="">— kies —</option></select>
       </div>
+      <div class="field"><label>Genodigden</label><div id="ag-genodigden4" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
       <div class="field"><label>Notities bij deze afspraak</label><textarea id="ag-notitie4" rows="3" placeholder="Extra info specifiek voor deze afspraak..."></textarea></div>
     </div>
 
@@ -6435,6 +6439,25 @@ function agWizToonStap(stap){
   if(saveBtn)saveBtn.style.display=toonSave?'inline-flex':'none';
 }
 
+let agWizGenodigden=[];
+// Tekent de klikbare naamchips (herbruikt de bestaande .pill-stijl) voor het
+// genodigden-veld van de gegeven stap-container (elId), op basis van agWizGenodigden.
+function agRenderGenodigden(elId){
+  const el=document.getElementById(elId);if(!el)return;
+  const namen=(typeof respNames==='function'?respNames():[]).filter(Boolean);
+  el.innerHTML=namen.map(function(n){
+    return '<button type="button" class="pill'+(agWizGenodigden.includes(n)?' active':'')+'" data-genodigde="'+wmsEsc(n)+'">'+wmsEsc(n)+'</button>';
+  }).join('');
+  el.querySelectorAll('[data-genodigde]').forEach(function(btn){
+    btn.addEventListener('click',function(){agToggleGenodigde(btn.dataset.genodigde,elId);});
+  });
+}
+function agToggleGenodigde(naam,elId){
+  const i=agWizGenodigden.indexOf(naam);
+  if(i>-1)agWizGenodigden.splice(i,1);else agWizGenodigden.push(naam);
+  agRenderGenodigden(elId);
+}
+
 function agKiesHoofd(keuze){
   agWizHoofd=keuze;
   agWizToonStap(keuze==='service'?'ag-stap-1-service':'ag-stap-1-sales');
@@ -6451,6 +6474,7 @@ function agKiesService(sub){
     document.getElementById('ag-ticket-dropdown').style.display='none';
     const rsel=document.getElementById('ag-resp');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('service').map(r=>`<option>${r}</option>`).join('');
+    agWizGenodigden=[];agRenderGenodigden('ag-genodigden');
     agWizToonStap('ag-stap-2-ticket');
   } else {
     // Andere service
@@ -6461,6 +6485,7 @@ function agKiesService(sub){
     document.getElementById('ag-notitie4').value='';
     const rsel=document.getElementById('ag-resp4');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('service').map(r=>`<option>${r}</option>`).join('');
+    agWizGenodigden=[];agRenderGenodigden('ag-genodigden4');
     agWizToonStap('ag-stap-2-andere');
   }
 }
@@ -6479,6 +6504,7 @@ function agKiesSales(sub){
     document.getElementById('ag-notitie2').value='';
     const rsel=document.getElementById('ag-resp2');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('sales').map(r=>`<option>${r}</option>`).join('');
+    agWizGenodigden=[];agRenderGenodigden('ag-genodigden2');
     agWizToonStap('ag-stap-2-b2c');
   } else if(sub==='b2b'){
     document.getElementById('ag-b2b-search').value='';
@@ -6492,6 +6518,7 @@ function agKiesSales(sub){
     document.getElementById('ag-notitie3').value='';
     const rsel=document.getElementById('ag-resp3');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('sales').map(r=>`<option>${r}</option>`).join('');
+    agWizGenodigden=[];agRenderGenodigden('ag-genodigden3');
     agWizToonStap('ag-stap-2-b2b');
   } else {
     document.getElementById('ag-titel4').value='';
@@ -6501,6 +6528,7 @@ function agKiesSales(sub){
     document.getElementById('ag-notitie4').value='';
     const rsel=document.getElementById('ag-resp4');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('sales').map(r=>`<option>${r}</option>`).join('');
+    agWizGenodigden=[];agRenderGenodigden('ag-genodigden4');
     agWizToonStap('ag-stap-2-andere');
   }
 }
@@ -6639,7 +6667,7 @@ function agB2bClear(){
 
 function agOpenNieuw(datum=null){
   agEditId=null;
-  agWizHoofd='';agWizSub='';agWizTicketId=null;agWizB2cId=null;agWizB2bId=null;
+  agWizHoofd='';agWizSub='';agWizTicketId=null;agWizB2cId=null;agWizB2bId=null;agWizGenodigden=[];
   document.getElementById('ag-nieuw-titel').textContent='Afspraak toevoegen';
   document.getElementById('ag-del-btn').style.display='none';
   // Reset datum in alle stappen
@@ -6722,6 +6750,7 @@ function agOpenEdit(id){
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('service').map(r=>`<option value="${r}"${r===a.resp?' selected':''}>${r}</option>`).join('');
     document.getElementById('ag-link-id').value=a.linkId||'';
     document.getElementById('ag-link-label').value=a.linkLabel||'';
+    agWizGenodigden=a.genodigden||[];agRenderGenodigden('ag-genodigden');
     agWizToonStap('ag-stap-2-ticket');
   } else if(a.type==='B2C'){
     agWizSub='b2c';
@@ -6734,6 +6763,7 @@ function agOpenEdit(id){
     document.getElementById('ag-notitie2').value=a.notitie||'';
     const rsel=document.getElementById('ag-resp2');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('sales').map(r=>`<option value="${r}"${r===a.resp?' selected':''}>${r}</option>`).join('');
+    agWizGenodigden=a.genodigden||[];agRenderGenodigden('ag-genodigden2');
     agWizToonStap('ag-stap-2-b2c');
   } else if(a.type==='B2B'){
     agWizSub='b2b';
@@ -6746,6 +6776,7 @@ function agOpenEdit(id){
     document.getElementById('ag-notitie3').value=a.notitie||'';
     const rsel=document.getElementById('ag-resp3');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames('sales').map(r=>`<option value="${r}"${r===a.resp?' selected':''}>${r}</option>`).join('');
+    agWizGenodigden=a.genodigden||[];agRenderGenodigden('ag-genodigden3');
     agWizToonStap('ag-stap-2-b2b');
   } else {
     agWizSub='andere';
@@ -6755,6 +6786,7 @@ function agOpenEdit(id){
     document.getElementById('ag-notitie4').value=a.notitie||'';
     const rsel=document.getElementById('ag-resp4');
     rsel.innerHTML='<option value="">— kies —</option>'+respNames().map(r=>`<option value="${r}"${r===a.resp?' selected':''}>${r}</option>`).join('');
+    agWizGenodigden=a.genodigden||[];agRenderGenodigden('ag-genodigden4');
     agWizToonStap('ag-stap-2-andere');
   }
   document.getElementById('ag-nieuw-overlay').classList.add('open');
@@ -6787,6 +6819,7 @@ function agSave(){
       einduur:document.getElementById('ag-einduur')?.value||'',
       type:agWizSub==='installatie'?'Installatie':'Keuring',
       resp:document.getElementById('ag-resp').value,
+      genodigden:[...agWizGenodigden],
       linkId:ticketId, linkLabel:inst?inst.naam:'',linkType:'installatie',
       notitie:document.getElementById('ag-notitie').value.trim()
     };
@@ -6799,11 +6832,10 @@ function agSave(){
 
   } else if(agWizSub==='b2c'){
     const b2cId=document.getElementById('ag-b2c-id').value;
-    if(!b2cId){showToast('Koppel eerst een B2C lead.');return;}
     const titel=document.getElementById('ag-titel').value.trim();
     const datum=document.getElementById('ag-datum2').value;
     if(!titel||!datum){showToast('Titel en datum zijn verplicht.');return;}
-    const lead=b2cLeads.find(x=>String(x.id)===String(agWizB2cId));
+    const lead=b2cId?b2cLeads.find(x=>String(x.id)===String(agWizB2cId)):null;
     a={
       id:agEditId||agNextId++,
       titel, datum,
@@ -6811,6 +6843,7 @@ function agSave(){
       einduur:document.getElementById('ag-einduur2')?.value||'',
       type:'B2C',
       resp:document.getElementById('ag-resp2').value,
+      genodigden:[...agWizGenodigden],
       linkId:b2cId, linkLabel:lead?b2cNaam(lead):'',linkType:'b2c',
       notitie:document.getElementById('ag-notitie2').value.trim()
     };
@@ -6823,7 +6856,6 @@ function agSave(){
 
   } else if(agWizSub==='b2b'){
     const b2bId=document.getElementById('ag-b2b-id').value;
-    if(!b2bId){showToast('Koppel eerst een project of prospect.');return;}
     const titel=document.getElementById('ag-titel3').value.trim();
     const datum=document.getElementById('ag-datum3').value;
     if(!titel||!datum){showToast('Titel en datum zijn verplicht.');return;}
@@ -6842,6 +6874,7 @@ function agSave(){
       einduur:document.getElementById('ag-einduur3')?.value||'',
       type:'B2B',
       resp:document.getElementById('ag-resp3').value,
+      genodigden:[...agWizGenodigden],
       linkId:b2bId, linkLabel:logObj?logObj.naam:'',linkType:agWizB2bType==='Prospect'?'prospect':'b2b',
       notitie:document.getElementById('ag-notitie3').value.trim()
     };
@@ -6865,6 +6898,7 @@ function agSave(){
       einduur:document.getElementById('ag-einduur4')?.value||'',
       type:agWizHoofd==='service'?'Andere':'Andere',
       resp:document.getElementById('ag-resp4').value,
+      genodigden:[...agWizGenodigden],
       linkId:'',linkLabel:'',linkType:'andere',
       notitie:document.getElementById('ag-notitie4').value.trim()
     };
@@ -13461,6 +13495,7 @@ async function agLoadFromSupabase(){
         id: /^-?\d+$/.test(String(r.id))?parseInt(r.id,10):r.id,
         titel:r.titel||'', datum:r.datum||'', uur:r.uur||'', type:r.type||'',
         resp:r.resp||'', notitie:r.notitie||'',
+        genodigden:Array.isArray(r.genodigden)?r.genodigden:[],
         linkId:r.linkid||'', linkLabel:r.linklabel||'', linkType:r.linktype||''
       }));
       agNextId=Math.max(1,...agAfspraken.filter(a=>typeof a.id==='number').map(a=>a.id||0),0)+1;
@@ -13482,7 +13517,8 @@ async function agPersist(){
     if(agAfspraken.length){
       await sbFetch('ag_afspraken',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(agAfspraken.map(a=>({
         id:String(a.id), titel:a.titel||'', datum:a.datum||null, uur:a.uur||'', type:a.type||'',
-        resp:a.resp||'', notitie:a.notitie||'', linkid:a.linkId||'', linklabel:a.linkLabel||'', linktype:a.linkType||''
+        resp:a.resp||'', notitie:a.notitie||'', genodigden:Array.isArray(a.genodigden)?a.genodigden:[],
+        linkid:a.linkId||'', linklabel:a.linkLabel||'', linktype:a.linkType||''
       })))});
     }
     const serverRows=await sbFetch('ag_afspraken?select=id');
