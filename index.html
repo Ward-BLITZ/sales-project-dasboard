@@ -715,7 +715,7 @@ label{font-size:12px;color:var(--tx2);margin-bottom:4px;display:block}
 .wms-niet-geplaatst{display:inline-block;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600;cursor:pointer;margin-left:3px;}
 .wms-niet-geplaatst:hover{background:#FDE68A;}
 .wms-gp-grid-line{position:absolute;pointer-events:none;}
-html.veld-modus #tab-agenda,html.veld-modus #tab-todo,html.veld-modus #dd-si,html.veld-modus #dd-beheer,
+html.veld-modus #dd-agenda,html.veld-modus #tab-agenda,html.veld-modus #tab-todo,html.veld-modus #dd-si,html.veld-modus #dd-beheer,
 html.veld-modus #tab-b2c,html.veld-modus #tab-b2c-gewonnen,html.veld-modus #tab-b2c-verloren,
 html.veld-modus #tab-dashboard,html.veld-modus #tab-lopend,html.veld-modus #tab-prospects,
 html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !important}
@@ -788,7 +788,15 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
 
   <div class="sidebar-scroll">
     <!-- Agenda knop -->
-    <button class="tab-btn" id="tab-agenda" onclick="showTab('agenda')"><i class="ti ti-calendar"></i> Agenda</button>
+    <div class="nav-dropdown" id="dd-agenda">
+      <button class="tab-btn nav-dd-trigger" onclick="toggleNavDd('agenda')">
+        <i class="ti ti-calendar"></i> Agenda <i class="ti ti-chevron-down" style="font-size:10px;margin-left:2px"></i>
+      </button>
+      <div class="nav-dd-menu" id="dd-agenda-menu">
+        <button class="nav-dd-item" id="tab-agenda" onclick="showTab('agenda');closeAllNavDd()"><i class="ti ti-calendar"></i> Agenda</button>
+        <button class="nav-dd-item" id="tab-planning" onclick="showTab('planning');closeAllNavDd()"><i class="ti ti-route"></i> Planningssimulatie</button>
+      </div>
+    </div>
     <button class="tab-btn" id="tab-todo" onclick="showTab('todo')"><i class="ti ti-check"></i> To Do</button>
 
     <!-- Sales dropdown (B2C + B2B + Kaart samengevoegd) -->
@@ -894,6 +902,7 @@ html.veld-modus #tab-verkocht,html.veld-modus #tab-verloren{display:none !import
   <div class="mob-nav-section">
     <div class="mob-nav-label">Agenda</div>
     <button class="mob-nav-btn" onclick="mobNav('agenda')"><i class="ti ti-calendar"></i> Agenda</button>
+    <button class="mob-nav-btn" onclick="mobNav('planning')"><i class="ti ti-route"></i> Planningssimulatie</button>
     <button class="mob-nav-btn" onclick="mobNav('todo')"><i class="ti ti-check"></i> To Do</button>
   </div>
   <div class="mob-nav-section">
@@ -1992,6 +2001,38 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
 </div>
 
 <!-- B2C LEADS -->
+<div id="pane-planning" class="page wide" style="display:none">
+  <div style="margin-bottom:1.25rem">
+    <div style="font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px">Planningssimulatie</div>
+    <div style="font-size:12px;color:var(--tx2)">Simuleer de meest efficiënte dagroute vanuit en terug naar Kruibeke (Heirbaan 395, 9150), op basis van de open B2C-leads (Nieuw, 1e en 2e contactpoging). Rijtijden komen van Google, zonder files.</div>
+  </div>
+  <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:16px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+      <div class="field"><label>Gebruiker</label><select id="plan-user" onchange="planLaadKandidaten()"></select></div>
+      <div class="field"><label>Datum</label><input type="date" id="plan-datum"></div>
+      <div class="field"><label>Vertrek</label><input type="time" id="plan-start" value="08:00"></div>
+      <div class="field"><label>Laatst terug</label><input type="time" id="plan-eind" value="17:30"></div>
+      <div class="field"><label>Min. per bezoek</label><input type="number" id="plan-bezoek" value="45" min="5" step="5"></div>
+      <div class="field"><label>Max afstand van eerste stop (km)</label><input type="number" id="plan-maxkm" value="40" min="5" step="5"></div>
+      <div class="field"><label>Eerste stop</label><select id="plan-eerste"></select></div>
+    </div>
+    <div style="margin-top:12px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">Extra stops (adres of postcode)</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="plan-extra-input" placeholder="bv. 2000 of Meir 1, Antwerpen" style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter'){planVoegExtraToe();}">
+        <button class="btn" onclick="planVoegExtraToe()"><i class="ti ti-plus"></i> Stop toevoegen</button>
+      </div>
+      <div id="plan-extra-lijst" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px">
+      <button class="btn primary" onclick="planSimuleer(false)"><i class="ti ti-route"></i> Simuleren</button>
+      <button class="btn" onclick="planSimuleer(true)"><i class="ti ti-refresh"></i> Andere variant</button>
+      <span id="plan-info" style="font-size:12px;color:var(--tx2)"></span>
+    </div>
+  </div>
+  <div id="plan-resultaat"></div>
+</div>
+
 <div id="pane-b2c" class="page wide" style="display:none">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:1.25rem">
     <div>
@@ -2017,7 +2058,6 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="btn primary" onclick="b2cOpenNieuw(true)"><i class="ti ti-map-pin"></i> Lead via visit</button>
       <button class="btn sm" onclick="afasSyncWebOffertes()" title="AFAS weboffertes nu syncen" style="opacity:.7"><i class="ti ti-refresh"></i> AFAS sync</button>
       <button class="btn sm" onclick="afasZoekOfferte()" title="Offerte opzoeken op nummer in AFAS" style="opacity:.7"><i class="ti ti-search"></i> Offerte zoeken</button>
-      <button class="btn sm" onclick="b2cPlanningsExportOpen()" title="Planningsexport (JSON) van B2C-leads"><i class="ti ti-download"></i> Planningsexport</button>
     </div>
   </div>
   <div style="display:flex;gap:16px;align-items:flex-start">
@@ -3419,7 +3459,7 @@ function respNames(afdeling){
 
 
 function showTab(name){
-  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda','service-stock','procurement','rapportage','wms','sales','todo','verlof','kaart','sales-cijfers','laadpunten-cijfers'].forEach(id=>{
+  ['dashboard','lopend','verkocht','verloren','instellingen','crm','gebruikers','b2c','b2c-gewonnen','b2c-verloren','agenda','prospects','installaties','si-opvolging','si-afgerond','si-agenda','service-stock','procurement','rapportage','wms','sales','todo','verlof','kaart','sales-cijfers','laadpunten-cijfers','planning'].forEach(id=>{
     const pane=document.getElementById('pane-'+id);
     if(pane)pane.style.display=(id===name)?'block':'none';
     const tb=document.getElementById('tab-'+id);
@@ -3449,6 +3489,7 @@ function showTab(name){
   if(name==='kaart'){kaartInit();}
   if(name==='sales-cijfers'){salesCijfersInit();}
   if(name==='laadpunten-cijfers'){laadpuntenCijfersInit();}
+  if(name==='planning'){planInit();}
   if(name==='sales'){
     salesBeheerRender();
     // Artikelcatalogus (Supabase + AFAS) wordt elders lazy geladen (bv. bij het openen van een
@@ -7938,71 +7979,431 @@ function agExporteerJSON(){
 }
 
 
-// ── PLANNINGSEXPORT (B2C) ─────────────────────────────
-// Exporteert B2C-leads met status Nieuw / 1e / 2e contactpoging gedaan van de gekozen gebruiker.
-function b2cPlanningsExportOpen(){
-  var oud=document.getElementById("pe-overlay");if(oud)oud.remove();
-  var ov=document.createElement("div");
-  ov.id="pe-overlay";
-  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center";
-  ov.addEventListener("click",function(e){if(e.target===ov)ov.remove();});
-  var box=document.createElement("div");
-  box.style.cssText="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:20px;width:340px;max-width:90vw";
-  var titel=document.createElement("div");
-  titel.style.cssText="font-family:Poppins,sans-serif;font-size:14px;font-weight:700;margin-bottom:6px";
-  titel.textContent="Planningsexport";
-  var uitleg=document.createElement("div");
-  uitleg.style.cssText="font-size:12px;color:var(--tx2);margin-bottom:12px";
-  uitleg.textContent="B2C-leads met status Nieuw, 1e of 2e contactpoging gedaan, als JSON-bestand.";
-  var sel=document.createElement("select");
-  sel.id="pe-user";
-  sel.style.cssText="width:100%;margin-bottom:14px";
-  var o0=document.createElement("option");o0.value="__alle__";o0.textContent="Alle gebruikers";sel.appendChild(o0);
-  respNames().forEach(function(n){var o=document.createElement("option");o.value=n;o.textContent=n;sel.appendChild(o);});
-  var rij=document.createElement("div");
-  rij.style.cssText="display:flex;gap:8px;justify-content:flex-end";
-  var annul=document.createElement("button");
-  annul.className="btn";annul.textContent="Annuleren";
-  annul.addEventListener("click",function(){ov.remove();});
-  var ok=document.createElement("button");
-  ok.className="btn primary";ok.textContent="Exporteren";
-  ok.addEventListener("click",function(){b2cPlanningsExportRun();});
-  rij.appendChild(annul);rij.appendChild(ok);
-  box.appendChild(titel);box.appendChild(uitleg);box.appendChild(sel);box.appendChild(rij);
-  ov.appendChild(box);
-  document.body.appendChild(ov);
+// ── PLANNINGSSIMULATIE ─────────────────────────────────
+// Vertrek en einde: Kruibeke. Eerst een schatting (rechte lijn x wegfactor) om de eerste stop en
+// de kandidaten te bepalen, daarna echte rijtijden/afstanden (Google, zonder files) via route-matrix.
+var PLAN_THUIS={adres:"Heirbaan 395, 9150 Kruibeke",lat:51.1717,lng:4.3060};
+var PLAN_WEGFACTOR=1.3;
+var PLAN_SNELHEID=55;
+var PLAN_MIN_RIT=5;
+var PLAN_MATRIX_URL="https://rhztaqutznafsgprnkvn.supabase.co/functions/v1/route-matrix";
+var PLAN_MAX_KANDIDATEN=14; // max aantal leads per simulatie dat naar Google gaat (kostenbeheersing)
+var planState={leads:[],zonder:[],extra:[],thuis:null,res:null,variant:0,seq:0};
+
+function planEsc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function planNorm(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toLowerCase();}
+function planKm(a,b){
+  var R=6371,toRad=Math.PI/180;
+  var dLat=(b.lat-a.lat)*toRad,dLng=(b.lng-a.lng)*toRad;
+  var x=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(a.lat*toRad)*Math.cos(b.lat*toRad)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function planRijKm(a,b){return planKm(a,b)*PLAN_WEGFACTOR;}
+function planRijMin(a,b){
+  var km=planRijKm(a,b);
+  if(km<0.5)return 3;
+  return Math.round(km/PLAN_SNELHEID*60)+PLAN_MIN_RIT;
+}
+function planNaarMin(t){var p=String(t||"").split(":");return (parseInt(p[0],10)||0)*60+(parseInt(p[1],10)||0);}
+function planNaarTijd(m){m=Math.round(m);var h=Math.floor(m/60),mm=m%60;return String(h).padStart(2,"0")+":"+String(mm).padStart(2,"0");}
+function planDuur(m){m=Math.round(m);return Math.floor(m/60)+"u"+String(m%60).padStart(2,"0");}
+function planVolgendeWerkdag(){var d=new Date();d.setDate(d.getDate()+1);while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);return ymdLocal(d);}
+
+function planKey(p){return p.lat.toFixed(4)+"_"+p.lng.toFixed(4);}
+// Schatting zonder Google
+function planSchatFn(){return {min:planRijMin,km:planRijKm};}
+// Echte rijtijden uit Google; ontbrekende ritten vallen terug op de schatting
+function planMatrixFn(paren){
+  var map={};
+  paren.forEach(function(p){map[p.van+">"+p.naar]=p;});
+  return {
+    min:function(a,b){
+      var ka=planKey(a),kb=planKey(b);
+      if(ka===kb)return 3;
+      var p=map[ka+">"+kb];
+      return p?Math.max(1,Math.round(p.s/60)):planRijMin(a,b);
+    },
+    km:function(a,b){
+      var ka=planKey(a),kb=planKey(b);
+      if(ka===kb)return 0;
+      var p=map[ka+">"+kb];
+      return p?p.m/1000:planRijKm(a,b);
+    }
+  };
+}
+async function planHaalMatrix(punten){
+  try{
+    var resp=await fetch(PLAN_MATRIX_URL,{method:"POST",headers:sbHeaders(),body:JSON.stringify({actie:"matrix",punten:punten.map(function(p){return {lat:p.lat,lng:p.lng};})})});
+    var json=await resp.json();
+    if(!resp.ok||json.error){console.warn("route-matrix:",json.error||resp.status);return null;}
+    return json;
+  }catch(e){console.warn("route-matrix:",e.message);return null;}
 }
 
-function b2cPlanningsExportRun(){
-  var gekozen=document.getElementById("pe-user").value;
-  var norm=function(s){return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();};
+async function planHaalThuis(){
+  if(planState.thuis)return planState.thuis;
+  var g=null;
+  try{g=await geocodeAdresVolledig(PLAN_THUIS.adres);}catch(e){}
+  if(!g){try{g=await geocodePostcode("9150");}catch(e){}}
+  planState.thuis=g?{lat:g.lat,lng:g.lng}:{lat:PLAN_THUIS.lat,lng:PLAN_THUIS.lng};
+  return planState.thuis;
+}
+
+function planInit(){
+  var sel=document.getElementById("plan-user");
+  if(sel){
+    var huidig=sel.value;
+    sel.innerHTML="";
+    var o0=document.createElement("option");o0.value="__alle__";o0.textContent="Alle gebruikers";sel.appendChild(o0);
+    var namen=respNames();
+    namen.forEach(function(n){var o=document.createElement("option");o.value=n;o.textContent=n;sel.appendChild(o);});
+    var gewenst=huidig||currentUserNaam;
+    var gevonden=namen.filter(function(n){return planNorm(n)===planNorm(gewenst);})[0];
+    sel.value=gevonden||"__alle__";
+  }
+  var d=document.getElementById("plan-datum");
+  if(d&&!d.value)d.value=planVolgendeWerkdag();
+  planRenderExtra();
+  planLaadKandidaten();
+}
+
+async function planLaadKandidaten(){
+  var seq=++planState.seq;
+  var st=document.getElementById("plan-info");
+  if(st)st.textContent="Locaties laden...";
+  var gekozen=document.getElementById("plan-user").value;
   var statussen=["Nieuw","1e contactpoging gedaan","2e contactpoging gedaan"];
-  var leads=b2cLeads.filter(function(l){
+  var lijst=b2cLeads.filter(function(l){
     if(statussen.indexOf(l.status)===-1)return false;
     if(gekozen==="__alle__")return true;
-    return norm(l.resp)===norm(gekozen);
-  }).map(function(l){
-    return {naam:l.achternaam||"",voornaam:l.voornaam||"",gsm:l.tel||"",email:l.email||"",adres:l.adres||""};
+    return planNorm(l.resp)===planNorm(gekozen);
   });
-  if(!leads.length){showToast("Geen B2C-leads gevonden voor deze selectie.");return;}
-  var vandaag=ymdLocal(new Date());
-  var exportData={
-    geexporteerdOp:new Date().toISOString(),
-    verantwoordelijke:gekozen==="__alle__"?"Alle gebruikers":gekozen,
-    statussen:statussen,
-    aantal:leads.length,
-    leads:leads
+  var pcs={};
+  lijst.forEach(function(l){var pc=extraheerPostcodeUitAdres(l.adres);if(pc)pcs[pc]=true;});
+  await planHaalThuis();
+  var geos={};
+  await Promise.all(Object.keys(pcs).map(async function(pc){geos[pc]=await geocodePostcode(pc);}));
+  if(seq!==planState.seq)return;
+  var leads=[],zonder=[];
+  lijst.forEach(function(l){
+    var pc=extraheerPostcodeUitAdres(l.adres);
+    var g=pc?geos[pc]:null;
+    var item={lead:l,naam:b2cNaam(l),adres:l.adres||"",pc:pc,tel:l.tel||"",status:l.status};
+    if(g){item.lat=g.lat;item.lng=g.lng;leads.push(item);}else zonder.push(item);
+  });
+  planState.leads=leads;planState.zonder=zonder;planState.res=null;planState.variant=0;
+  planRenderEerste();
+  planRenderResultaat();
+  if(st)st.textContent=leads.length+" leads met locatie"+(zonder.length?(", "+zonder.length+" zonder bruikbare postcode"):"")+".";
+}
+
+function planRenderEerste(){
+  var sel=document.getElementById("plan-eerste");
+  if(!sel)return;
+  var gesorteerd=planState.leads.map(function(c,i){return {c:c,i:i};}).sort(function(a,b){return String(a.c.pc).localeCompare(String(b.c.pc));});
+  sel.innerHTML="";
+  var o0=document.createElement("option");o0.value="auto";o0.textContent="Automatisch (beste voorstel)";sel.appendChild(o0);
+  gesorteerd.forEach(function(x){var o=document.createElement("option");o.value=String(x.i);o.textContent=x.c.pc+" - "+x.c.naam;sel.appendChild(o);});
+}
+
+async function planVoegExtraToe(){
+  var inp=document.getElementById("plan-extra-input");
+  var v=inp.value.trim();
+  if(!v)return;
+  var pc=extraheerPostcodeUitAdres(v);
+  var g=null;
+  if(/^[0-9]{4}$/.test(v))g=await geocodePostcode(v);
+  else g=await geocodeLocatie({adres:v,postcode:pc});
+  if(!g){showToast("Locatie niet gevonden. Probeer met postcode of volledig adres.");return;}
+  planState.extra.push({extra:true,naam:v,adres:v,pc:pc,lat:g.lat,lng:g.lng});
+  inp.value="";
+  planRenderExtra();
+}
+function planVerwijderExtra(i){planState.extra.splice(i,1);planRenderExtra();}
+function planRenderExtra(){
+  var el=document.getElementById("plan-extra-lijst");
+  if(!el)return;
+  el.innerHTML=planState.extra.map(function(e,i){
+    return '<span style="display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--bd);border-radius:20px;padding:3px 10px;font-size:12px">'+planEsc(e.naam)+' <a href="#" onclick="planVerwijderExtra('+i+');return false" style="color:var(--tx3)">x</a></span>';
+  }).join("");
+}
+
+// Tweefasen-simulatie: 1) schatting bepaalt eerste stop + kandidaten, 2) echte rijtijden bepalen de definitieve route
+async function planSimuleer(variant){
+  var thuis=await planHaalThuis();
+  var info=document.getElementById("plan-info");
+  var o={
+    start:planNaarMin(document.getElementById("plan-start").value||"08:00"),
+    eind:planNaarMin(document.getElementById("plan-eind").value||"17:30"),
+    bezoek:parseInt(document.getElementById("plan-bezoek").value,10)||45,
+    maxKm:parseFloat(document.getElementById("plan-maxkm").value)||40,
+    eerste:document.getElementById("plan-eerste").value
   };
-  var blob=new Blob([JSON.stringify(exportData,null,2)],{type:"application/json"});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement("a");
-  a.href=url;
-  var scope=gekozen==="__alle__"?"alle":gekozen.replace(/\s+/g,"_");
-  a.download="planningsexport_"+scope+"_"+vandaag+".json";
-  document.body.appendChild(a);a.click();
-  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
-  var ov=document.getElementById("pe-overlay");if(ov)ov.remove();
-  showToast(leads.length+" leads geexporteerd.");
+  if(variant===true)planState.variant++;else planState.variant=0;
+  var r0=planBouwRoute(o,thuis,planSchatFn(),planState.leads,null);
+  r0.bron="schatting";
+  var res=r0;
+  if(r0.route.length){
+    var F=r0.route[0].c;
+    var binnen=planState.leads.filter(function(c){return c!==F&&planKm(F,c)<=o.maxKm;}).sort(function(a,b){return planKm(F,a)-planKm(F,b);}).slice(0,PLAN_MAX_KANDIDATEN-1);
+    var set=[F].concat(binnen);
+    var punten=[{lat:thuis.lat,lng:thuis.lng}].concat(set).concat(planState.extra);
+    if(info)info.textContent="Echte rijtijden ophalen...";
+    var mx=await planHaalMatrix(punten);
+    if(mx&&mx.paren&&mx.paren.length){
+      var r1=planBouwRoute(o,thuis,planMatrixFn(mx.paren),set,F);
+      if(r1.route.length){
+        res=r1;
+        res.bron=mx.limietBereikt?"gemengd":"google";
+        res.nieuweElementen=mx.nieuweElementen||0;
+      }else{
+        res.bronNota="Met echte rijtijden past deze eerste stop niet in de werkdag; schatting getoond.";
+      }
+    }else{
+      res.bronNota="Google-rijtijden niet beschikbaar; schatting getoond.";
+    }
+  }
+  planState.res=res;
+  planRenderResultaat();
+  if(info)info.textContent=planState.leads.length+" leads met locatie"+(planState.zonder.length?(", "+planState.zonder.length+" zonder bruikbare postcode"):"")+".";
+}
+
+// Bouwt de dagroute. fn = {min,km} (schatting of echte rijtijden), leads = kandidaten, vasteF = vaste eerste stop (fase 2).
+function planBouwRoute(o,thuis,fn,leads,vasteF){
+  var H={lat:thuis.lat,lng:thuis.lng};
+  var extras=planState.extra;
+  var manueel=o.eerste!=="auto";
+  var lambda=manueel?[0.5,1.0,0.2][planState.variant%3]:0.5;
+  var past=function(F){return o.start+fn.min(H,F)+o.bezoek+fn.min(F,H)<=o.eind;};
+  var res={route:[],geenTijd:[],teVer:[],o:o,fout:null,lambda:lambda,volledig:null};
+  var F=vasteF||null;
+  if(!F){
+    if(manueel&&leads[parseInt(o.eerste,10)]){
+      F=leads[parseInt(o.eerste,10)];
+    }else{
+      var rang=leads.filter(past).map(function(c){
+        var dens=leads.filter(function(x){return x!==c&&planKm(x,c)<=12;}).length;
+        return {c:c,score:dens*100+planKm(c,H)};
+      }).sort(function(a,b){return b.score-a.score;});
+      if(rang.length)F=rang[planState.variant%rang.length].c;
+      else if(extras.length)F=extras[0];
+    }
+  }
+  if(!F){
+    res.fout=leads.length?"Geen enkele lead past binnen de werkdag (rijtijd heen en terug naar Kruibeke inbegrepen).":"Geen leads met locatie voor deze selectie.";
+    return res;
+  }
+  if(!F.extra&&!past(F)){
+    res.fout="De eerste stop past niet binnen de werkdag (rit heen en terug inbegrepen).";
+    res.teVer=leads.filter(function(c){return c!==F;});
+    return res;
+  }
+  var pool=leads.filter(function(c){return c!==F&&planKm(F,c)<=o.maxKm;});
+  res.teVer=leads.filter(function(c){return c!==F&&planKm(F,c)>o.maxKm;});
+  var route=[F];
+  var cur=F;
+  var tijd=o.start+fn.min(H,F)+o.bezoek;
+  while(pool.length){
+    var best=null,bestCost=1e9;
+    for(var k=0;k<pool.length;k++){
+      var c=pool[k];
+      var aan=tijd+fn.min(cur,c);
+      if(aan+o.bezoek+fn.min(c,H)>o.eind)continue;
+      var cost=fn.km(cur,c)+lambda*fn.km(c,H);
+      if(cost<bestCost){bestCost=cost;best=c;}
+    }
+    if(!best)break;
+    tijd=tijd+fn.min(cur,best)+o.bezoek;
+    route.push(best);
+    pool.splice(pool.indexOf(best),1);
+    cur=best;
+  }
+  res.geenTijd=pool;
+  // Extra stops zijn verplicht: goedkoopste invoeging
+  extras.forEach(function(e){
+    if(route.indexOf(e)!==-1)return;
+    var bestPos=route.length,bestInc=1e9;
+    for(var p=1;p<=route.length;p++){
+      var prev=route[p-1],next=route[p]||H;
+      var inc=fn.km(prev,e)+fn.km(e,next)-fn.km(prev,next);
+      if(inc<bestInc){bestInc=inc;bestPos=p;}
+    }
+    route.splice(bestPos,0,e);
+  });
+  // 2-opt (eerste stop blijft vast)
+  route=planTweeOpt(route,H,fn,1);
+  planTijdlijn(res,route,o,H,fn);
+  if(res.einde>o.eind)res.fout="Let op: door de extra stops komt de dag niet binnen "+planNaarTijd(o.eind)+" uit (terug om "+planNaarTijd(res.einde)+").";
+  // Overloop: hoe lang duurt het om ook de leads in de buurt te doen die niet meer passen?
+  if(res.geenTijd.length)res.volledig=planVolledigeRoute(res,o,H,fn);
+  return res;
+}
+
+function planPad(r,H,fn){var s=0,prev=H;r.forEach(function(c){s+=fn.km(prev,c);prev=c;});return s+fn.km(prev,H);}
+// 2-opt vanaf positie "vast" (alles ervoor blijft ongewijzigd)
+function planTweeOpt(route,H,fn,vast){
+  var verbeterd=true,teller=0;
+  while(verbeterd&&teller<50){
+    verbeterd=false;teller++;
+    for(var i=vast;i<route.length-1;i++){
+      for(var j=i+1;j<route.length;j++){
+        var nieuw=route.slice(0,i).concat(route.slice(i,j+1).reverse(),route.slice(j+1));
+        if(planPad(nieuw,H,fn)<planPad(route,H,fn)-0.01){route=nieuw;verbeterd=true;}
+      }
+    }
+  }
+  return route;
+}
+function planTijdlijn(res,route,o,H,fn){
+  var t=o.start,vorige=H,totKm=0,totRij=0;
+  var items=route.map(function(c){
+    var rij=fn.min(vorige,c),km=fn.km(vorige,c);
+    t+=rij;totRij+=rij;totKm+=km;
+    var it={c:c,rijMin:rij,rijKm:km,aan:t,vertrek:t+o.bezoek,ingepland:false};
+    t+=o.bezoek;vorige=c;
+    return it;
+  });
+  var terugMin=fn.min(vorige,H),terugKm=fn.km(vorige,H);
+  res.route=items;
+  res.terugMin=terugMin;res.terugKm=terugKm;
+  res.einde=t+terugMin;
+  res.totKm=totKm+terugKm;res.totRij=totRij+terugMin;
+}
+// Dagroute blijft ongewijzigd als eerste deel; de resterende leads in de buurt worden er zonder tijdslimiet achter gezet.
+function planVolledigeRoute(res,o,H,fn){
+  var route=res.route.map(function(it){return it.c;});
+  var vast=route.length;
+  var rest=res.geenTijd.slice();
+  var cur=route[route.length-1];
+  while(rest.length){
+    var best=null,bc=1e9;
+    for(var k=0;k<rest.length;k++){
+      var cost=fn.km(cur,rest[k])+res.lambda*fn.km(rest[k],H);
+      if(cost<bc){bc=cost;best=rest[k];}
+    }
+    route.push(best);rest.splice(rest.indexOf(best),1);cur=best;
+  }
+  route=planTweeOpt(route,H,fn,vast);
+  var tmp={};
+  planTijdlijn(tmp,route,o,H,fn);
+  tmp.vast=vast;
+  tmp.extraNaGrens=Math.max(0,tmp.einde-o.eind);
+  return tmp;
+}
+
+function planRijHtml(it,i,kind,nr){
+  var c=it.c;
+  var naamHtml=c.lead
+    ?'<a href="#" onclick="planOpenLead('+i+',\''+kind+'\');return false" style="font-weight:600;color:var(--tx)">'+planEsc(c.naam)+'</a> <span style="font-size:11px;color:var(--tx3)">'+planEsc(c.status)+'</span>'
+    :'<span style="font-weight:600">'+planEsc(c.naam)+'</span> <span style="font-size:11px;color:var(--tx3)">extra stop</span>';
+  var telHtml=c.tel?'<div><a href="tel:'+planEsc(c.tel)+'" style="font-size:12px">'+planEsc(c.tel)+'</a></div>':'';
+  var knop=it.ingepland?'<span style="font-size:12px;color:var(--green)">ingepland</span>':'<button class="btn sm" onclick="planPlanIn('+i+',\''+kind+'\')">Plan in</button>';
+  return '<div style="display:grid;grid-template-columns:30px 1fr 160px 90px;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--rl);margin-bottom:6px;background:var(--bg)">'
+    +'<div style="font-weight:700;color:var(--tx3)">'+nr+'</div>'
+    +'<div>'+naamHtml+'<div style="font-size:12px;color:var(--tx2)">'+planEsc(c.adres)+'</div>'+telHtml+'</div>'
+    +'<div style="font-size:12px;color:var(--tx2)">'+planNaarTijd(it.aan)+' - '+planNaarTijd(it.vertrek)+'<br>'+Math.round(it.rijKm)+' km / '+it.rijMin+' min rit</div>'
+    +'<div style="text-align:right">'+knop+'</div></div>';
+}
+
+function planRenderResultaat(){
+  var el=document.getElementById("plan-resultaat");
+  if(!el)return;
+  var r=planState.res;
+  if(!r){
+    el.innerHTML='<div style="padding:24px;text-align:center;color:var(--tx3);font-size:13px">Stel je parameters in en klik op Simuleren.</div>';
+    return;
+  }
+  var h="";
+  if(r.fout)h+='<div style="background:rgba(255,170,0,.12);border:1px solid rgba(255,170,0,.4);border-radius:var(--rl);padding:10px 14px;font-size:12px;margin-bottom:10px">'+planEsc(r.fout)+'</div>';
+  if(r.bronNota)h+='<div style="background:rgba(255,170,0,.12);border:1px solid rgba(255,170,0,.4);border-radius:var(--rl);padding:10px 14px;font-size:12px;margin-bottom:10px">'+planEsc(r.bronNota)+'</div>';
+  if(r.route.length){
+    var bronTxt=r.bron==="google"?"Echte rijtijden (Google, zonder files)":(r.bron==="gemengd"?"Deels echte rijtijden, deels schatting (maandlimiet Google bereikt)":"Geschatte rijtijden");
+    h+='<div style="font-size:11px;color:var(--tx3);margin-bottom:6px">'+bronTxt+'</div>';
+    h+='<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:10px"><div><strong>'+r.route.length+'</strong> stops</div><div><strong>'+Math.round(r.totKm)+'</strong> km</div><div><strong>'+planDuur(r.totRij)+'</strong> rijtijd</div><div>Terug in Kruibeke om <strong>'+planNaarTijd(r.einde)+'</strong></div></div>';
+    h+='<div style="font-size:12px;color:var(--tx2);margin-bottom:6px">Vertrek Kruibeke '+planNaarTijd(r.o.start)+'</div>';
+    r.route.forEach(function(it,i){h+=planRijHtml(it,i,"r",i+1);});
+    h+='<div style="font-size:12px;color:var(--tx2);margin:6px 0 12px">Terug in Kruibeke om '+planNaarTijd(r.einde)+' ('+Math.round(r.terugKm)+' km / '+r.terugMin+' min)</div>';
+    h+='<button class="btn primary" onclick="planPlanAlles(\'r\')"><i class="ti ti-calendar-plus"></i> Plan deze route in</button>';
+  }
+  if(r.volledig){
+    var v=r.volledig;
+    var extraStops=v.route.length-v.vast;
+    h+='<div style="margin-top:20px;padding:14px;border:1px dashed var(--bd2);border-radius:var(--rl)">'
+      +'<div style="font-family:Poppins,sans-serif;font-size:13px;font-weight:700;margin-bottom:4px">Overloop: nog '+extraStops+' lead'+(extraStops===1?"":"s")+' in de buurt die niet meer passen</div>'
+      +'<div style="font-size:12px;color:var(--tx2);margin-bottom:10px">Als je ze toch allemaal doet (dagroute blijft ongewijzigd, de rest volgt erachter): terug in Kruibeke om <strong>'+planNaarTijd(v.einde)+'</strong>, dat is <strong>'+planDuur(v.extraNaGrens)+'</strong> na '+planNaarTijd(r.o.eind)+'. Totaal '+v.route.length+' stops, '+Math.round(v.totKm)+' km, '+planDuur(v.totRij)+' rijtijd.</div>';
+    v.route.forEach(function(it,i){if(i>=v.vast)h+=planRijHtml(it,i,"v",i+1);});
+    h+='<div style="font-size:12px;color:var(--tx2);margin:6px 0 10px">Terug in Kruibeke om '+planNaarTijd(v.einde)+' ('+Math.round(v.terugKm)+' km / '+v.terugMin+' min)</div>';
+    h+='<button class="btn" onclick="planPlanAlles(\'v\')"><i class="ti ti-calendar-plus"></i> Plan ook deze overloop in</button></div>';
+  }
+  if(r.teVer.length||planState.zonder.length||(r.geenTijd.length&&!r.volledig)){
+    h+='<details style="margin-top:16px;font-size:12px;color:var(--tx2)"><summary style="cursor:pointer">Niet in deze route</summary><div style="margin-top:6px">';
+    if(r.teVer.length)h+='<div style="font-weight:600;margin-top:4px">Te ver van de eerste stop ('+r.teVer.length+')</div>'+r.teVer.map(function(c){return '<div>'+planEsc(c.naam)+' - '+planEsc(c.adres)+'</div>';}).join("");
+    if(planState.zonder.length)h+='<div style="font-weight:600;margin-top:4px">Zonder bruikbare postcode, adres aanvullen ('+planState.zonder.length+')</div>'+planState.zonder.map(function(c){return '<div>'+planEsc(c.naam)+' - '+planEsc(c.adres||"geen adres")+'</div>';}).join("");
+    h+='</div></details>';
+  }
+  el.innerHTML=h;
+}
+
+function planLijst(kind){
+  var r=planState.res;
+  if(!r)return [];
+  return kind==="v"?(r.volledig?r.volledig.route:[]):r.route;
+}
+function planOpenLead(i,kind){
+  var it=planLijst(kind)[i];
+  if(it&&it.c.lead)b2cOpenDetail(it.c.lead.id);
+}
+
+// Maakt één agenda-afspraak voor een stop. Geeft "ok", "dup" of false terug.
+function planMaakAfspraak(it){
+  var datum=document.getElementById("plan-datum").value;
+  if(!datum){showToast("Kies eerst een datum.");return false;}
+  var user=document.getElementById("plan-user").value;
+  var c=it.c;
+  var uur=planNaarTijd(it.aan),einduur=planNaarTijd(it.vertrek);
+  if(c.lead){
+    var dup=agAfspraken.some(function(a){return a.linkType==="b2c"&&String(a.linkId)===String(c.lead.id)&&a.datum===datum;});
+    if(dup)return "dup";
+    var resp=user!=="__alle__"?user:(c.lead.resp||currentUserNaam);
+    agAfspraken.push({id:agNextId++,titel:"Visit "+c.naam,datum:datum,uur:uur,einduur:einduur,type:"B2C",resp:resp,genodigden:[],linkId:String(c.lead.id),linkLabel:c.naam,linkType:"b2c",notitie:(c.adres||"")+(c.tel?" - "+c.tel:"")+" (planningssimulatie)"});
+    var lead=c.lead;
+    lead.acties=lead.acties||[];
+    lead.acties.push({datum:today(),tijdstip:new Date().toLocaleTimeString("nl-BE",{hour:"2-digit",minute:"2-digit"}),gebruiker:currentUserNaam,tekst:"Visit ingepland via planningssimulatie op "+datum+" om "+uur});
+    sbSaveB2cLead(lead);
+  }else{
+    var resp2=user!=="__alle__"?user:currentUserNaam;
+    agAfspraken.push({id:agNextId++,titel:"Stop: "+c.naam,datum:datum,uur:uur,einduur:einduur,type:"Andere",resp:resp2,genodigden:[],linkId:"",linkLabel:"",linkType:"andere",notitie:"Extra stop planningssimulatie"});
+  }
+  it.ingepland=true;
+  return "ok";
+}
+function planNaInplannen(){
+  if(typeof agRenderCalendar==="function")agRenderCalendar();
+  if(typeof agRenderAankomende==="function")agRenderAankomende();
+  agPersist();
+  planRenderResultaat();
+}
+function planPlanIn(i,kind){
+  var it=planLijst(kind)[i];
+  if(!it)return;
+  var r=planMaakAfspraak(it);
+  if(r==="dup"){showToast("Er staat al een afspraak voor deze lead op die dag.");return;}
+  if(r==="ok"){showToast("Afspraak ingepland.");planNaInplannen();}
+}
+function planPlanAlles(kind){
+  var res=planState.res;
+  if(!res)return;
+  var lijst=planLijst(kind);
+  var start=kind==="v"?res.volledig.vast:0;
+  var ok=0,dup=0;
+  lijst.forEach(function(it,i){
+    if(i<start||it.ingepland)return;
+    var x=planMaakAfspraak(it);
+    if(x==="ok")ok++;else if(x==="dup")dup++;
+  });
+  if(!ok&&!dup)return;
+  showToast(ok+" afspraken ingepland"+(dup?(", "+dup+" bestonden al"):"")+".");
+  planNaInplannen();
 }
 
 // ── INIT ──────────────────────────────────────────────
