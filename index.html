@@ -2017,6 +2017,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="btn primary" onclick="b2cOpenNieuw(true)"><i class="ti ti-map-pin"></i> Lead via visit</button>
       <button class="btn sm" onclick="afasSyncWebOffertes()" title="AFAS weboffertes nu syncen" style="opacity:.7"><i class="ti ti-refresh"></i> AFAS sync</button>
       <button class="btn sm" onclick="afasZoekOfferte()" title="Offerte opzoeken op nummer in AFAS" style="opacity:.7"><i class="ti ti-search"></i> Offerte zoeken</button>
+      <button class="btn sm" onclick="b2cPlanningsExportOpen()" title="Planningsexport (JSON) van B2C-leads"><i class="ti ti-download"></i> Planningsexport</button>
     </div>
   </div>
   <div style="display:flex;gap:16px;align-items:flex-start">
@@ -7936,6 +7937,73 @@ function agExporteerJSON(){
   showToast(`${items.length} afspraken geëxporteerd als JSON.`);
 }
 
+
+// ── PLANNINGSEXPORT (B2C) ─────────────────────────────
+// Exporteert B2C-leads met status Nieuw / 1e / 2e contactpoging gedaan van de gekozen gebruiker.
+function b2cPlanningsExportOpen(){
+  var oud=document.getElementById("pe-overlay");if(oud)oud.remove();
+  var ov=document.createElement("div");
+  ov.id="pe-overlay";
+  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center";
+  ov.addEventListener("click",function(e){if(e.target===ov)ov.remove();});
+  var box=document.createElement("div");
+  box.style.cssText="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:20px;width:340px;max-width:90vw";
+  var titel=document.createElement("div");
+  titel.style.cssText="font-family:Poppins,sans-serif;font-size:14px;font-weight:700;margin-bottom:6px";
+  titel.textContent="Planningsexport";
+  var uitleg=document.createElement("div");
+  uitleg.style.cssText="font-size:12px;color:var(--tx2);margin-bottom:12px";
+  uitleg.textContent="B2C-leads met status Nieuw, 1e of 2e contactpoging gedaan, als JSON-bestand.";
+  var sel=document.createElement("select");
+  sel.id="pe-user";
+  sel.style.cssText="width:100%;margin-bottom:14px";
+  var o0=document.createElement("option");o0.value="__alle__";o0.textContent="Alle gebruikers";sel.appendChild(o0);
+  respNames().forEach(function(n){var o=document.createElement("option");o.value=n;o.textContent=n;sel.appendChild(o);});
+  var rij=document.createElement("div");
+  rij.style.cssText="display:flex;gap:8px;justify-content:flex-end";
+  var annul=document.createElement("button");
+  annul.className="btn";annul.textContent="Annuleren";
+  annul.addEventListener("click",function(){ov.remove();});
+  var ok=document.createElement("button");
+  ok.className="btn primary";ok.textContent="Exporteren";
+  ok.addEventListener("click",function(){b2cPlanningsExportRun();});
+  rij.appendChild(annul);rij.appendChild(ok);
+  box.appendChild(titel);box.appendChild(uitleg);box.appendChild(sel);box.appendChild(rij);
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+}
+
+function b2cPlanningsExportRun(){
+  var gekozen=document.getElementById("pe-user").value;
+  var norm=function(s){return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();};
+  var statussen=["Nieuw","1e contactpoging gedaan","2e contactpoging gedaan"];
+  var leads=b2cLeads.filter(function(l){
+    if(statussen.indexOf(l.status)===-1)return false;
+    if(gekozen==="__alle__")return true;
+    return norm(l.resp)===norm(gekozen);
+  }).map(function(l){
+    return {naam:l.achternaam||"",voornaam:l.voornaam||"",gsm:l.tel||"",email:l.email||"",adres:l.adres||""};
+  });
+  if(!leads.length){showToast("Geen B2C-leads gevonden voor deze selectie.");return;}
+  var vandaag=ymdLocal(new Date());
+  var exportData={
+    geexporteerdOp:new Date().toISOString(),
+    verantwoordelijke:gekozen==="__alle__"?"Alle gebruikers":gekozen,
+    statussen:statussen,
+    aantal:leads.length,
+    leads:leads
+  };
+  var blob=new Blob([JSON.stringify(exportData,null,2)],{type:"application/json"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;
+  var scope=gekozen==="__alle__"?"alle":gekozen.replace(/\s+/g,"_");
+  a.download="planningsexport_"+scope+"_"+vandaag+".json";
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  var ov=document.getElementById("pe-overlay");if(ov)ov.remove();
+  showToast(leads.length+" leads geexporteerd.");
+}
 
 // ── INIT ──────────────────────────────────────────────
 (function init(){
