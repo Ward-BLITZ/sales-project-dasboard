@@ -2058,6 +2058,7 @@ CREATE POLICY "open" ON settings FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="btn primary" onclick="b2cOpenNieuw(true)"><i class="ti ti-map-pin"></i> Lead via visit</button>
       <button class="btn sm" onclick="afasSyncWebOffertes()" title="AFAS weboffertes nu syncen" style="opacity:.7"><i class="ti ti-refresh"></i> AFAS sync</button>
       <button class="btn sm" onclick="afasZoekOfferte()" title="Offerte opzoeken op nummer in AFAS" style="opacity:.7"><i class="ti ti-search"></i> Offerte zoeken</button>
+      <button class="btn sm" onclick="b2cPlanningsExportOpen()" title="Open B2C-leads exporteren als JSON voor planning"><i class="ti ti-download"></i> Planningsexport</button>
     </div>
   </div>
   <div style="display:flex;gap:16px;align-items:flex-start">
@@ -8404,6 +8405,47 @@ function planPlanAlles(kind){
   if(!ok&&!dup)return;
   showToast(ok+" afspraken ingepland"+(dup?(", "+dup+" bestonden al"):"")+".");
   planNaInplannen();
+}
+
+// ── PLANNINGSEXPORT ────────────────────────────────────
+function b2cPlanningsExportOpen(){
+  var oud=document.getElementById("pe-overlay");
+  if(oud)oud.remove();
+  var namen=respNames();
+  var opties='<option value="__alle__">Alle gebruikers</option>'+namen.map(function(n){return '<option value="'+String(n).replace(/"/g,"&quot;")+'">'+String(n).replace(/</g,"&lt;")+'</option>';}).join("");
+  var ov=document.createElement("div");
+  ov.id="pe-overlay";
+  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center";
+  ov.innerHTML='<div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rl);padding:20px;width:340px;max-width:90vw">'
+    +'<div style="font-weight:700;font-size:15px;margin-bottom:6px">Planningsexport</div>'
+    +'<div style="font-size:12px;color:var(--tx2);margin-bottom:12px">Exporteert de B2C-leads met status Nieuw, 1e contactpoging gedaan en 2e contactpoging gedaan als JSON.</div>'
+    +'<div class="field"><label>Gebruiker</label><select id="pe-user">'+opties+'</select></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">'
+    +'<button class="btn" onclick="document.getElementById(\'pe-overlay\').remove()">Annuleren</button>'
+    +'<button class="btn primary" onclick="b2cPlanningsExportRun()"><i class="ti ti-download"></i> Exporteren</button></div></div>';
+  document.body.appendChild(ov);
+}
+function b2cPlanningsExportRun(){
+  var norm=function(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").trim().toLowerCase();};
+  var gekozen=document.getElementById("pe-user").value;
+  var statussen=["Nieuw","1e contactpoging gedaan","2e contactpoging gedaan"];
+  var lijst=b2cLeads.filter(function(l){
+    if(statussen.indexOf(l.status)===-1)return false;
+    if(gekozen==="__alle__")return true;
+    return norm(l.resp)===norm(gekozen);
+  }).map(function(l){
+    return {naam:l.achternaam||"",voornaam:l.voornaam||"",gsm:l.tel||"",email:l.email||"",adres:l.adres||""};
+  });
+  var uit={geexporteerdOp:new Date().toISOString(),verantwoordelijke:gekozen==="__alle__"?"Alle gebruikers":gekozen,statussen:statussen,aantal:lijst.length,leads:lijst};
+  var blob=new Blob([JSON.stringify(uit,null,2)],{type:"application/json"});
+  var a=document.createElement("a");
+  var naam=(gekozen==="__alle__"?"alle":norm(gekozen).replace(/[^a-z0-9]+/g,"_"));
+  a.href=URL.createObjectURL(blob);
+  a.download="planningsexport_"+naam+"_"+today()+".json";
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+  document.getElementById("pe-overlay").remove();
+  showToast(lijst.length+" leads geëxporteerd.");
 }
 
 // ── INIT ──────────────────────────────────────────────
