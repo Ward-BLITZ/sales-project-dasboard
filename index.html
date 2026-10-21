@@ -16760,7 +16760,7 @@ async function afasSyncWebOffertes() {
     const SYNC_VANAF = '2026-07-01';
     let allRows = [];
 
-    const batches = [10000, 8000, 12000, 14000];
+    const batches = [10000, 8000, 12000, 14000, 17000, 20000, 23000, 26000, 29000, 32000, 35000, 38000];
     for(const skip of batches) {
       try {
         const batchResp = await fetch(
