@@ -10208,7 +10208,7 @@ function b2cRenderContract(l){
         </div>
         <div style="font-size:11px;color:var(--tx3);margin-top:4px">Verplicht om te generen — bepaalt de installatiezin onderaan Artikel 1.</div>
 
-        <div class="ct-label" style="margin-top:14px">Geldigheidsduur contract</div>
+        ${b2cContractInst7HTML(l,dis)}<div class="ct-label" style="margin-top:14px">Geldigheidsduur contract</div>
         <div class="toggle-group" id="ct-geldigheid-grp">
           ${[1,3,6].map(m=>`<button type="button" class="toggle-opt${(l.contract.geldigheidsduur||3)===m?' active-sel':''}" onclick="b2cContractSetGeldigheid('${l.id}',${m},this)" ${dis}>${m} maand</button>`).join('')}
         </div>
@@ -10381,6 +10381,51 @@ function b2cContractProductRowsHTML(groeperingen){
   `).join('');
 }
 
+// ── Contract: installatiekeuzes (Artikel 4, bovenaan) ─────────────
+var B2C_INST7_VELDEN=[
+  {k:'standaard',lbl:'Standaardinstallatie (zoals hieronder beschreven)',opts:[['ja','JA'],['nee','NEE']]},
+  {k:'lb',lbl:'Load Balancing of EMS aangekocht via BLITZ',opts:[['EMS','EMS'],['LOAD BALANCING','LOAD BALANCING']]},
+  {k:'ems',lbl:'Indien EMS',opts:[['NIKO','NIKO'],['QBUS','QBUS']],sub:true},
+  {k:'extra',lbl:'Extra materiaal voorzien in contractprijs (vul aan bij opmerkingen)',opts:[['ja','JA'],['nee','NEE']]},
+  {k:'cpo',lbl:'CPO Integratie voorzien in contractprijs',opts:[['ja','JA'],['nee','NEE']]}
+];
+function b2cContractInst7HTML(l,dis){
+  var s=(l.contract&&l.contract.inst7)||{};
+  var h='<div class="ct-label" style="margin-top:14px">Installatie (Artikel 4)</div>';
+  B2C_INST7_VELDEN.forEach(function(v){
+    h+='<div style="margin-bottom:6px'+(v.sub?';margin-left:14px':'')+'"><div style="font-size:11px;color:var(--tx2);margin-bottom:3px">'+v.lbl+'</div><div class="toggle-group" id="ct-i7-'+v.k+'">';
+    v.opts.forEach(function(o){
+      h+='<button type="button" class="toggle-opt'+(s[v.k]===o[0]?' active-sel':'')+'" onclick="b2cContractSetInst7(\''+l.id+'\',\''+v.k+'\',\''+o[0]+'\',this)" '+(dis||'')+'>'+o[1]+'</button>';
+    });
+    h+='</div></div>';
+  });
+  h+='<div style="font-size:11px;color:var(--tx3);margin-top:2px">Niets aanduiden = blanco op het contract (klant vult op papier in). Opnieuw klikken verwijdert de keuze.</div>';
+  return h;
+}
+function b2cContractSetInst7(id,key,val,btn){
+  var l=b2cContractGetLead(id);if(!l)return;
+  if(b2cContractIsVergrendeld(l))return;
+  l.contract=l.contract||{};
+  l.contract.inst7=l.contract.inst7||{};
+  var nieuw=(l.contract.inst7[key]===val)?'':val;
+  l.contract.inst7[key]=nieuw;
+  var grp=document.getElementById('ct-i7-'+key);
+  if(grp){grp.querySelectorAll('.toggle-opt').forEach(function(b){b.classList.remove('active-sel');});if(nieuw)btn.classList.add('active-sel');}
+  sbSaveB2cLead(l);
+}
+function b2cContractInst7Rows(c){
+  var s=(c&&c.inst7)||{};
+  var cb=function(aan,txt){return '<span style="white-space:nowrap"><span class="cb">'+(aan?'X':'')+'</span>'+txt+'</span>';};
+  var h='<div style="margin-top:4px">';
+  B2C_INST7_VELDEN.forEach(function(v){
+    var opt=v.opts.map(function(o){return cb(s[v.k]===o[0],o[1]);}).join('');
+    var lbl=v.lbl.replace(' (vul aan bij opmerkingen)','');
+    h+='<div class="i7'+(v.sub?' sub':'')+'"><div class="l">'+lbl+(v.sub?':':'')+'</div><div class="o">'+opt+'</div></div>';
+    if(v.k==='extra')h+='<div class="i7note">Indien ja: vul aan bij opmerkingen wat extra voorzien wordt (switch, extra zekeringskastje, &hellip;)</div>';
+  });
+  return h+'</div>';
+}
+
 function b2cContractInstallatieZin(type){
   if(type==='tower')return 'Installatie Tower model (installatie max 10m van elektrische kast &amp; modem), indienststelling &amp; keuring. Inclusief graafwerken en materiaal.';
   return 'Installatie op muur (installatie max 10m van elektrische kast &amp; modem), indienststelling &amp; keuring';
@@ -10388,31 +10433,34 @@ function b2cContractInstallatieZin(type){
 
 // Volledig HTML-document (2 pagina's) voor zowel de preview (iframe) als het printvenster —
 // zo blijven preview en download altijd exact hetzelfde contract tonen.
+// BLITZ-CONTRACT-PARTICULIER-V1
 function b2cContractDocHTML(c,autoPrint){
   autoPrint=!!autoPrint;
   const productRows=b2cContractProductRowsHTML(c.groeperingen);
   const installatieZin=b2cContractInstallatieZin(c.installatieType);
   const totaalStr=(c.totaalIncl||0).toLocaleString('nl-BE',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const opm=String(c.opmerking||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
   return `<!DOCTYPE html><html lang="nl"><head><meta charset="utf-8"><title>Aankoopcontract - ${c.naam}</title>
 <style>
 :root{--green:#00DFA3;--dark:#1D252D;--tx2:#4a5760;--mint:#e9fbf5}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,Helvetica,sans-serif;color:var(--dark);font-size:12.5px;background:#ccc;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.page{position:relative;width:794px;min-height:1123px;background:#fff;margin:0 auto 12px auto;padding:70px 60px 90px 60px;overflow:hidden;page-break-after:always}
+.page{position:relative;width:794px;height:1123px;background:#fff;margin:0 auto 12px auto;padding:64px 60px 90px 60px;overflow:hidden;page-break-after:always}
 .corner-tl{position:absolute;top:-22px;left:-60px;width:560px;z-index:0;pointer-events:none}
 .corner-br{position:absolute;bottom:-14px;right:-14px;width:360px;z-index:0;pointer-events:none}
 .content{position:relative;z-index:1}
 .logo-bottom{position:absolute;bottom:53px;left:50%;transform:translateX(-50%);width:128px;z-index:2;pointer-events:none}
-.badge{display:inline-block;background:var(--green);color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.3px;border-radius:999px;padding:9px 20px;font-family:Arial,Helvetica,sans-serif}
-.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:16px;flex-wrap:wrap}
+.pg{position:absolute;left:60px;bottom:58px;font-size:10px;color:#666;z-index:2}
+.badge{display:inline-block;background:var(--green);color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.3px;border-radius:999px;padding:8px 18px;font-family:Arial,Helvetica,sans-serif}
+.badge-section{font-size:15px;margin:6px 0 14px 0}
+.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:16px;flex-wrap:wrap}
 .badge-title{font-size:17px;margin:0}
-.badge-section{font-size:15px;margin:10px 0 14px 0}
 .datum-val{font-weight:700;font-size:12px;white-space:nowrap;color:var(--dark)}
-h1.artikel{font-weight:800;font-size:20px;margin:6px 0 12px 0}
-.partijen{display:flex;gap:24px;margin-bottom:22px}
+h1.artikel{font-weight:800;font-size:19px;margin:6px 0 12px 0;padding-bottom:3px;border-bottom:1.5px solid var(--dark)}
+.partijen{display:flex;gap:28px;margin-bottom:22px}
 .partijen>div{flex:1;min-width:0}
-.partijen h2{font-weight:800;font-size:16px;margin-bottom:6px}
-.veld{font-size:12.5px;line-height:1.6;margin-bottom:2px}
+.partijen h2{font-weight:800;font-size:16px;margin-bottom:8px;padding-bottom:3px;border-bottom:1.5px solid var(--dark)}
+.veld{font-size:12.5px;line-height:1.7;margin-bottom:2px}
 .veld b{font-weight:600;margin-right:4px}
 table.product{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
 table.product thead th{background:var(--dark);color:#fff;text-align:left;font-weight:600;font-size:11.5px;padding:7px 10px}
@@ -10421,35 +10469,41 @@ table.product tbody td{padding:6px 10px;font-size:12px}
 table.product tbody td:last-child{text-align:right}
 table.product tr.groep td{background:var(--mint);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--dark);padding:5px 10px;text-align:left}
 table.product tr.item{border-bottom:1px solid #eee}
-.note{font-size:11px;color:var(--tx2);line-height:1.6;margin-top:2px}
-.betaling-lbl{font-weight:700;margin-bottom:4px}
-.iban{color:var(--green);font-weight:700}
+.note{font-size:11.5px;color:var(--tx2);line-height:1.6;margin-top:2px}
 ul.simple{margin:6px 0 10px 20px;font-size:12.5px;line-height:1.65}
-.voorwaarden{font-size:12.5px;line-height:1.7;margin:8px 0 14px 0}
-.voorwaarden .sub{margin-left:20px}
-.b2b-line{font-size:12.5px;margin-bottom:16px}
-ol.artikel3{margin-left:18px;font-size:12.3px;line-height:1.7}
-ol.artikel3>li{margin-bottom:8px}
-ol.artikel3 ol{list-style:lower-alpha;margin-left:20px;margin-top:3px}
+.iban{color:var(--green);font-weight:700}
+.betaal-wrap{display:flex;gap:18px;align-items:flex-start}
+.betaal-wrap .tekst{flex:1}
+.sigbox{flex:0 0 290px;height:92px;border:1.5px solid var(--green);border-radius:6px;padding:8px 12px;font-weight:700;font-size:12px}
+.a3{font-size:12px;line-height:1.55;margin:3px 0}
+.a3.s{padding-left:26px}
+.a3note{font-size:11.5px;line-height:1.5;margin:4px 0 6px 0}
 .dotted-line{border-bottom:1px dotted var(--dark);display:block;height:14px;margin-top:6px}
-.total-box{border:2px solid var(--green);border-radius:10px;padding:12px 18px;font-weight:800;font-size:14px;margin:16px 0 22px 0;display:flex;justify-content:space-between;align-items:center}
-.total-box span.amount{color:var(--dark)}
+.cb{display:inline-block;width:11px;height:11px;border:1.2px solid var(--dark);margin:0 4px 0 0;vertical-align:-2px;text-align:center;line-height:10px;font-size:10px;font-weight:700}
+.i7{display:flex;justify-content:space-between;align-items:center;margin:5px 0 0 0;font-size:12px;line-height:1.4}
+.i7 .l{flex:1;font-weight:700}.i7.sub .l{padding-left:22px}.i7 .o{flex:0 0 250px;display:flex;gap:20px}
+.i7note{font-weight:700;font-size:11.5px;padding-left:22px;margin-top:4px}
+.opm{font-weight:700;font-size:12px;margin:10px 0 6px 0}
+.iv{font-size:11px;line-height:1.45}.iv .intro{margin:10px 0 6px 0}.iv .h{font-weight:800;font-size:12.5px;margin:9px 0 3px 0}
+.iv .r{display:flex;gap:6px;margin:2px 0}.iv .r .n{flex:0 0 40px}.iv .r .x{flex:1}
+.r.a3 .n{flex:0 0 26px}.r.a3.s .n{flex:0 0 22px}
+.iv .l2{padding-left:0}.iv .l3{padding-left:30px}.iv .l3 .n{flex:0 0 46px}.iv .l3.b .n{flex:0 0 12px}.iv .l1 .n{flex:0 0 40px}
+.total-box{border:2px solid var(--green);border-radius:10px;padding:12px 18px;font-weight:800;font-size:14px;margin:12px 0 18px 0;display:flex;justify-content:space-between;align-items:center}
 .sig-grid{display:flex;gap:24px;margin-top:6px}
 .sig-grid>div{flex:1}
-.sig-grid h3{font-weight:800;font-size:15px;margin-bottom:8px}
+.sig-grid h3{font-weight:800;font-size:15px;margin-bottom:8px;padding-bottom:3px;border-bottom:1px solid var(--dark)}
 .sig-grid div.line{font-size:12.5px;line-height:2}
 #bzc-scalewrap{width:794px;margin:0 auto}
 @media print{body{background:#fff}.page{margin:0}}
 </style></head><body>
 <div id="bzc-scalewrap">
+
 <div class="page">
   <img class="corner-tl" src="${B2C_CONTRACT_IMG_TL}">
   <img class="corner-br" src="${B2C_CONTRACT_IMG_BR}">
   <div class="content">
-    <div class="header-row">
-      <div class="badge badge-title">AANKOOPCONTRACT &ndash; BLITZ POWER</div>
-      <div class="datum-val">DATUM OVEREENKOMST:&nbsp;${c.datumStr}</div>
-    </div>
+    <div class="datum-val" style="text-align:right;margin:0 0 12px 0">DATUM OVEREENKOMST:&nbsp;${c.datumStr}</div>
+    <div class="badge badge-title" style="margin-bottom:16px">AANKOOPCONTRACT &ndash; BLITZ POWER</div>
     <div class="badge badge-section">ALGEMENE INFORMATIE</div>
     <div class="partijen">
       <div>
@@ -10464,7 +10518,7 @@ ol.artikel3 ol{list-style:lower-alpha;margin-left:20px;margin-top:3px}
         <h2>KOPER</h2>
         <div class="veld"><b>Naam:</b><span>${c.naam}</span></div>
         <div class="veld"><b>Adres Installatie:</b><span>${c.adres}</span></div>
-        <div class="veld"><b>BTW:</b><span>${c.btw}</span></div>
+        <div class="veld"><b>(BTW):</b><span>${c.btw}</span></div>
         <div class="veld"><b>Email:</b><span>${c.email}</span></div>
         <div class="veld"><b>Tel:</b><span>${c.tel}</span></div>
       </div>
@@ -10474,14 +10528,13 @@ ol.artikel3 ol{list-style:lower-alpha;margin-left:20px;margin-top:3px}
       <thead><tr><th>Code</th><th>Omschrijving</th><th>Aantal</th></tr></thead>
       <tbody>${productRows}</tbody>
     </table>
-    <div class="note">
-      Indien P1-poort bezet zullen extra kosten in rekening gebracht worden voor de P1-splitter.<br>
-      ${installatieZin}
-    </div>
+    <ul class="simple"><li>Installatie conform met onderstaande installatievoorwaarden</li></ul>
+    <div class="note">${installatieZin}</div>
     <div class="note" style="margin-top:10px;font-weight:700">
       Dit contract is geldig tot ${c.geldigTot} (${c.geldigheidsduur} maand na datum van aanmaak).
     </div>
   </div>
+  <div class="pg">1/5</div>
   <img class="logo-bottom" src="${B2C_CONTRACT_IMG_LOGO}">
 </div>
 
@@ -10489,41 +10542,63 @@ ol.artikel3 ol{list-style:lower-alpha;margin-left:20px;margin-top:3px}
   <img class="corner-tl" src="${B2C_CONTRACT_IMG_TL}">
   <img class="corner-br" src="${B2C_CONTRACT_IMG_BR}">
   <div class="content">
-    <div class="badge badge-title" style="margin-bottom:16px">AANKOOPCONTRACT &ndash; BLITZ POWER</div>
-    <h1 class="artikel">ARTIKEL 2: BETALING</h1>
-    <div class="betaling-lbl">Betaling op: <span class="iban">BE54 0689 4148 9097</span></div>
-    <ul class="simple">
-      <li>Bij ondertekening contract: 50% voorschot</li>
-      <li>Dag van installatie: restbedrag</li>
-    </ul>
-    <div class="voorwaarden">
-      Voorwaarden 6% BTW -&gt; anders 21%
-      <div class="sub">
-        Installatie door Blitz Power of partner<br>
-        Priv&eacute;-woning + 10 jaar oud<br>
-        Montage aan muur in woning of aan gevel of garage
+    <h1 class="artikel">ARTIKEL 2: BETALING &amp; BTW</h1>
+    <div class="betaal-wrap">
+      <div class="tekst">
+        <div style="font-weight:700;font-size:12px">Betaling op: <span class="iban">BE54 0689 4148 9097</span></div>
+        <div style="font-size:12.5px;line-height:1.5;margin-top:2px">Koper dient de (voorschot)factuur te betalen binnen 7 werkdagen na verzenddatum van de factuur.</div>
+        <ul class="simple">
+          <li>Bij ondertekening contract: 50% voorschot</li>
+          <li>Dag van installatie: restbedrag</li>
+        </ul>
       </div>
+      <div class="sigbox">Handtekening klant:</div>
     </div>
-    <div class="b2b-line">B2B &nbsp;&rarr;&nbsp; BTW Verlegd (0%)</div>
-    <h1 class="artikel">ARTIKEL 3: VOORWAARDEN</h1>
-    <ol class="artikel3">
-      <li>Koper bezorgt het screeningformulier aan BLITZ Power inclusief foto&rsquo;s</li>
-      <li>Indien uit screening blijkt dat installatie niet kan doorgaan zoals gepland wordt dit gemeld aan de koper en krijgt de koper de optie:
-        <ol><li>Annuleren aankoop</li><li>Voorstel tot extra kosten</li></ol>
-      </li>
-      <li>Indien op dag van installatie blijkt dat installatie niet kan doorgaan zoals gepland wordt dit gemeld aan de koper en krijgt de koper de optie:
-        <ol><li>Annuleren aankoop, eventueel worden al gemaakte kosten worden in rekening gebracht.</li><li>Voorstel tot extra kosten</li></ol>
-      </li>
-      <li>Koper dient factuur te betalen binnen 7 werkdagen na verzenden factuur op rek. nr <b>BE54 0689 4148 9097</b></li>
-      <li>BLITZ&nbsp; regelt de installatie inclusief keuring door 1 van zijn partners. Keuringsattest wordt pas bezorgt na 100% voldane factuur.</li>
-      <li>Aankoop enkel geldig voor installatieadres vermeld in contract</li>
-      <li>Door ondertekening gaat de koper akkoord met de algemene voorwaarden van BLITZ POWER BV</li>
-      <li>Opmerkingen: ${c.opmerking||''}
-        <span class="dotted-line"></span>
-        <span class="dotted-line"></span>
-      </li>
-    </ol>
-    <h1 class="artikel">ARTIKEL 4: ONDERTEKENINGEN</h1>
+    <div style="font-size:12.5px;line-height:1.6;margin-top:4px">Voorwaarden 6% BTW -&gt; anders 21%</div>
+    <div style="font-size:12.5px;line-height:1.6;margin:2px 0 0 28px">
+      1)&nbsp; Installatie door Blitz Power of partner<br>
+      2)&nbsp; Priv&eacute;-woning + 10 jaar oud<br>
+      3)&nbsp; Montage aan muur in woning of aan gevel of garage
+    </div>
+    <div style="font-size:12.5px;margin:8px 0 14px 0">B2B &nbsp;&rarr;&nbsp; BTW Verlegd (0%)</div>
+    <h1 class="artikel">ARTIKEL 3: ALGEMENE BEPALINGEN</h1>
+    <div class="iv" style="font-size:12px"><div class="r a3"><div class="n">1)</div><div class="x">Koper bezorgt het screeningformulier aan BLITZ Power inclusief foto&rsquo;s</div></div><div class="r a3"><div class="n">2)</div><div class="x">Als uit screening en na ondertekening contract toch blijkt dat de installatie niet kan doorgaan aan de installatievoorwaarden wordt dit gemeld aan de koper en krijgt de koper de optie:</div></div><div class="r a3 s"><div class="n">a.</div><div class="x">Annuleren aankoop*</div></div><div class="r a3 s"><div class="n">b.</div><div class="x">Voorstel en aanvaarden extra kosten</div></div><div class="r a3"><div class="n">3)</div><div class="x">Als op dag van installatie (en na ontvangen screeningsformulier) blijkt dat installatie niet kan doorgaan zoals gepland krijgt de koper de optie:</div></div><div class="r a3 s"><div class="n">a.</div><div class="x">Annuleren aankoop*,</div></div><div class="r a3 s"><div class="n">b.</div><div class="x">Voorstel tot extra kosten</div></div><div class="a3note">* Indien de klant de installatie annuleert, behoudt BLITZ zich het recht voor om alle reeds gemaakte kosten aan te rekenen.</div><div class="r a3"><div class="n">4)</div><div class="x">BLITZ regelt de installatie, inclusief de keuring. Het keuringsattest wordt aan de koper bezorgd na volledige betaling van de factuur.</div></div><div class="r a3"><div class="n">5)</div><div class="x">De installatie zal pas plaatsvinden nadat het voorschot werd ontvangen.</div></div><div class="r a3"><div class="n">6)</div><div class="x">Aankoop enkel geldig voor installatieadres vermeld in contract</div></div><div class="r a3"><div class="n">7)</div><div class="x">Algemene voorwaarden te raadplegen op de website https://blitzpower.com/algemene-voorwaarden</div></div><div class="r a3"><div class="n">8)</div><div class="x">Installatie (duid aan en vul aan bij opmerkingen)</div></div></div>
+  </div>
+  <div class="pg">2/5</div>
+  <img class="logo-bottom" src="${B2C_CONTRACT_IMG_LOGO}">
+</div>
+
+<div class="page">
+  <img class="corner-tl" src="${B2C_CONTRACT_IMG_TL}">
+  <img class="corner-br" src="${B2C_CONTRACT_IMG_BR}">
+  <div class="content">
+    <h1 class="artikel">ARTIKEL 4: INSTALLATIEVOORWAARDEN</h1>
+    ${b2cContractInst7Rows(c)}
+    <div class="opm">Opmerkingen: <span style="font-weight:400">${opm}</span></div>
+    <span class="dotted-line"></span>
+    <span class="dotted-line"></span>
+    <div class="iv"><div class="intro">Bij de installatie moeten volgende zaken voldaan zijn, indien dit niet het geval is zullen extra installatie- of servicekosten in rekening gebracht worden.</div><div class="h">1. &nbsp;Standaardinstallatie 1 laadpunt</div><div class="r l2"><div class="n">1.1.</div><div class="x">Afstand tussen zekeringskast &amp; plaats van installatie = max 10 meter</div></div><div class="r l2"><div class="n">1.2.</div><div class="x">Afstand tussen internetmodem &amp; plaats van installatie = max 10 meter</div></div><div class="r l2"><div class="n">1.3.</div><div class="x">2 vrije UTP-poorten in de modem/switch</div></div><div class="r l2"><div class="n">1.4.</div><div class="x">Vrije plaats in de zekeringskast voor een Differentieel, automaat &amp; verbruiksmeter/EMS systeem</div></div><div class="r l2"><div class="n">1.5.</div><div class="x">Maximum 1 muurboring van 60cm</div></div><div class="r l2"><div class="n">1.6.</div><div class="x">Installatie op steen of hout, niet op crepi of leien</div></div><div class="r l2"><div class="n">1.7.</div><div class="x">Vrije kabeldoorvoer (geen graafwerken, verhardingen, kasten in de weg, &hellip;)</div></div><div class="r l2"><div class="n">1.8.</div><div class="x">Indien wachtbuizen voorzien</div></div><div class="r l3"><div class="n">1.8.1.</div><div class="x">Wachtbuis met minimumdiameter van 45mm</div></div><div class="r l3"><div class="n">1.8.2.</div><div class="x">Optimale route voor kabeldoorvoer (geen hoeken van 90&deg;, &hellip;)</div></div><div class="r l3"><div class="n">1.8.3.</div><div class="x">Wachtbuis is niet volgelopen met water, of andere zaken en is bruikbaar</div></div><div class="r l2"><div class="n">1.9.</div><div class="x">Voorzien in de standaardinstallatie door BLITZ</div></div><div class="r l3 b"><div class="n">-</div><div class="x">10m voedingskabel 5G6</div></div><div class="r l3 b"><div class="n">-</div><div class="x">2x 10m UTP kabel Cat6</div></div><div class="r l3 b"><div class="n">-</div><div class="x">1x diff-A</div></div><div class="r l3 b"><div class="n">-</div><div class="x">1x Automaat (32 of 40A)</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Configuratie laadpunt en loadbalancing</div></div><div class="r l2"><div class="n">1.10.</div><div class="x">Niet voorzien in de standaardinstallatie: voor onderstaande wordt een meerprijs aangerekend indien niet vermeld werd dat dit opgenomen is in de installatieprijs door de vertegenwoordiger. Onderstaande is een opsomming en niet beperkend.</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Extra kabels indien meer dan 10m (voeding &amp; UTP)</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Switch indien geen vrije UTP poorten</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Extra boorwerken</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Graafwerken, verhardingswerken, &hellip;</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Load Balancing</div></div></div>
+  </div>
+  <div class="pg">3/5</div>
+  <img class="logo-bottom" src="${B2C_CONTRACT_IMG_LOGO}">
+</div>
+
+<div class="page">
+  <img class="corner-tl" src="${B2C_CONTRACT_IMG_TL}">
+  <img class="corner-br" src="${B2C_CONTRACT_IMG_BR}">
+  <div class="content">
+    <div class="iv"><div class="r l1"><div class="n">2.</div><div class="x">BLITZ voorziet bij installatie van een Load Balancing systeem een energiemeter via de P1 poort. Als blijkt op moment van installatie dat de nodige P1 poort niet vrij is, dan zal een extra kost worden aangerekend voor een splitter te voorzien als deze niet kan worden vrijgemaakt. De optie load balancing via Modbus Direct of Indirect moet op voorhand afgesproken worden en dus ook meegenomen worden in dit installatiecontract. Indien dit niet het geval is zal bij latere keuze/verandering een extra interventiekost in rekening worden gebracht conform met de servicevoorwaarden van BLITZ.</div></div><div class="r l2"><div class="n">2.1.</div><div class="x">De klant moet zelf de P1-poort openzetten</div></div><div class="h">3. &nbsp;EMS (Energie Management Systemen)</div><div class="r l2"><div class="n">3.1.</div><div class="x">Blitz Power is niet verantwoordelijk voor het functioneren, de instellingen of de logica van het EMS.</div></div><div class="r l2"><div class="n">3.2.</div><div class="x">Blitz Power kan geen service, ondersteuning of garanties bieden voor eender welk extern EMS, noch voor beslissingen of aansturing die vanuit het EMS komen.</div></div><div class="r l2"><div class="n">3.3.</div><div class="x">Eventuele storingen of afwijkend laadgedrag dat voortkomt uit EMS-commando&rsquo;s of EMS-parameters valt buiten de verantwoordelijkheid en serviceverlening van Blitz Power.</div></div><div class="r l2"><div class="n">3.4.</div><div class="x">Onderstaande geldt bij de installatie van een EMS</div></div><div class="r l3"><div class="n">3.4.1.</div><div class="x">Bij installatie wordt de laadpaal geconfigureerd, hierbij wordt ook de link gemaakt met het EMS-systeem.</div></div><div class="r l3"><div class="n">3.4.2.</div><div class="x">Deze installatie omvat niet de configuratie van de EMS, tenzij anders en schriftelijk overeengekomen.</div></div><div class="r l3"><div class="n">3.4.3.</div><div class="x">De koper dient al een account te hebben gemaakt bij het voorziene systeem om een vlotte integratie te hanteren (NIKO, Qbus, &hellip;)</div></div><div class="r l3"><div class="n">3.4.4.</div><div class="x">De koper wordt geacht de nodige software / app van het voorziene systeem reeds te hebben gedownload.</div></div><div class="r l3"><div class="n">3.4.5.</div><div class="x">Indien er al een EMS aanwezig is kan er een extra kost zijn voor de integratie.</div></div><div class="r l1"><div class="n">4.</div><div class="x"><b>Annulatie:</b> Elke bestelling of overeenkomst die door de klant wordt bevestigd, geldt als definitief. Bij annulatie door de klant heeft Blitz Power het recht een forfaitaire schadevergoeding van 30% van de contractwaarde aan te rekenen ter dekking van de gemaakte kosten, de administratieve verwerking, de reservatie van materialen en de gederfde winst. Indien de werkelijk gemaakte kosten het forfaitaire bedrag overschrijden, behoudt Blitz Power zich het recht voor deze re&euml;le kosten aan te rekenen.</div></div></div>
+  </div>
+  <div class="pg">4/5</div>
+  <img class="logo-bottom" src="${B2C_CONTRACT_IMG_LOGO}">
+</div>
+
+<div class="page">
+  <img class="corner-tl" src="${B2C_CONTRACT_IMG_TL}">
+  <img class="corner-br" src="${B2C_CONTRACT_IMG_BR}">
+  <div class="content">
+    <div class="iv"><div class="h">5. &nbsp;CPO / MSP / OCPP &ndash; publiek laden / split billing</div><div class="r l2"><div class="n">5.1.</div><div class="x">De koper voorziet zelf de keuze van CPO en maakt zelf een account aan.</div></div><div class="r l2"><div class="n">5.2.</div><div class="x">Indien de koper aangeeft dat de laadpaal op een CPO provider moet komen te staan zal dit bij installatie ingesteld worden. In de OCPP settings.</div></div><div class="r l3"><div class="n">5.2.1.</div><div class="x">Wanneer hier geen schriftelijke bevestiging van is wordt geacht dat de laadpaal op local whitelist / always release zal worden geconfigureerd.</div></div><div class="r l2"><div class="n">5.3.</div><div class="x">De Koper dient op de dag van installatie te beschikken over onderstaand genoemde informatie</div></div><div class="r l3"><div class="n">5.3.1.</div><div class="x">Keuze van CPO (welke provider)</div></div><div class="r l3"><div class="n">5.3.2.</div><div class="x">Backend link van de CPO om de laadpaal op in te stellen</div></div><div class="r l2"><div class="n">5.4.</div><div class="x">BLITZ configureert enkel de laadpaal en de software, zowel BLITZ als installatiepartners worden niet verantwoordelijk geacht voor de integratie van deze laadpaal met de CPO.</div></div><div class="r l2"><div class="n">5.5.</div><div class="x">Indien de CPO dient te worden ingesteld door BLITZ of partners wordt dit vooraf schriftelijk bevestigd en opgenomen in het contract en dan ook expliciet genoemd.</div></div><div class="r l2"><div class="n">5.6.</div><div class="x">Indien BLITZ (op latere termijn) wordt ingeschakeld voor de integratie en opstart van de CPO (via het platform van de CPO) zal hiervoor een registratiekost van &euro;95,00 ex btw in rekening worden gebracht, gepaard met een tarief van &euro;75,00 ex btw/uur per gewerkt voor onze diensten.</div></div><div class="h">6. &nbsp;Aansprakelijkheid Blitz Power</div><div class="r l2"><div class="n">6.1.</div><div class="x">Blitz Power is enkel verantwoordelijk voor zijn eigen producten en niet het gebruik ervan noch de installatie.</div></div><div class="r l2"><div class="n">6.2.</div><div class="x">Blitz Power is nooit aansprakelijk voor indirecte schade, zoals gevolgschade, gederfde winst, gemiste besparingen of schade aan derden.</div></div><div class="r l2"><div class="n">6.3.</div><div class="x">Adviezen die Blitz Power verstrekt met betrekking tot randapparatuur of -diensten verbonden aan de laadpaal, waaronder doch niet uitsluitend CPO-, EMS- en MSP-diensten, alsook adviezen omtrent het gebruik of de keuze van installatiepartners, worden louter vrijblijvend verstrekt. Blitz Power aanvaardt geen enkele aansprakelijkheid voor enige negatieve ervaring, schade of tekortkoming voortvloeiend uit het gebruik van deze randartikelen of uit de prestaties van de betreffende partners. Dergelijke ervaringen of gevolgen kunnen niet aan Blitz Power worden toegerekend of op Blitz Power worden afgewenteld.</div></div></div>
+    <h1 class="artikel" style="margin-top:16px">ARTIKEL 5: ONDERTEKENINGEN</h1>
     <div class="total-box">
       <span>TOTAALPRIJS INCL BTW (${c.btwPct}%)</span>
       <span class="amount">&euro; ${totaalStr}</span>
@@ -10533,6 +10608,7 @@ ol.artikel3 ol{list-style:lower-alpha;margin-left:20px;margin-top:3px}
       <div><h3>Voor Koper</h3><div class="line">Naam:</div><div class="line">Handtekening:</div></div>
     </div>
   </div>
+  <div class="pg">5/5</div>
   <img class="logo-bottom" src="${B2C_CONTRACT_IMG_LOGO}">
 </div>
 </div>
@@ -10571,7 +10647,7 @@ async function b2cGenereerContract(id){
   const geldigTot=b2cDatumPlusMaanden(d,geldigheidsduur);
 
   b2cContractTekst={naam,adres,btw,email,tel,groeperingen,installatieType:l.contract.installatieType,
-    opmerking:l.contract.opmerkingen,btwPct,totaalIncl,datumStr,geldigheidsduur,geldigTot,leadId:id};
+    opmerking:l.contract.opmerkingen,btwPct,totaalIncl,datumStr,geldigheidsduur,geldigTot,leadId:id,inst7:Object.assign({},l.contract.inst7||{})};
 
   // Blijvend opslaan op de lead, zodat het contract bij het heropenen van dit tabblad
   // meteen weer zichtbaar is (en niet opnieuw gegenereerd moet worden).
@@ -10869,7 +10945,7 @@ function b2cCopyContract(){
   if(!b2cContractTekst)return;
   const c=b2cContractTekst;
   const rows=(c.groeperingen||[]).map(g=>g.naam+':\n'+(g.items||[]).map(it=>`  ${it.sku||'—'} — ${it.omschrijving} x${it.aantal}`).join('\n')).join('\n');
-  const txt=`AANKOOPCONTRACT — BLITZ POWER\nDatum: ${c.datumStr}\n\nKOPER: ${c.naam}\nAdres: ${c.adres}\nBTW: ${c.btw}\nEmail: ${c.email}\nTel: ${c.tel}\n\nARTIKEL 1 — PRODUCTDETAILS\n${rows}\n\nInstallatietype: ${c.installatieType==='tower'?'Tower':'Muur'}\n\nARTIKEL 4 — TOTAALPRIJS INCL. BTW (${c.btwPct}%): € ${(c.totaalIncl||0).toLocaleString('nl-BE',{minimumFractionDigits:2,maximumFractionDigits:2})}\n`;
+  const txt=`AANKOOPCONTRACT — BLITZ POWER\nDatum: ${c.datumStr}\n\nKOPER: ${c.naam}\nAdres: ${c.adres}\nBTW: ${c.btw}\nEmail: ${c.email}\nTel: ${c.tel}\n\nARTIKEL 1 — PRODUCTDETAILS\n${rows}\n\nInstallatietype: ${c.installatieType==='tower'?'Tower':'Muur'}\n\nARTIKEL 5 — TOTAALPRIJS INCL. BTW (${c.btwPct}%): € ${(c.totaalIncl||0).toLocaleString('nl-BE',{minimumFractionDigits:2,maximumFractionDigits:2})}\n`;
   navigator.clipboard.writeText(txt).then(()=>showToast('Gekopieerd naar klembord!'));
 }
 
