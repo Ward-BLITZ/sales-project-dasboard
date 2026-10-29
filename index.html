@@ -10206,7 +10206,7 @@ function b2cRenderContract(l){
           <button type="button" class="toggle-opt${l.contract.installatieType==='muur'?' active-sel':''}" onclick="b2cContractSetInstType('${l.id}','muur',this)" ${dis}><i class="ti ti-home" style="margin-right:4px"></i>Muur</button>
           <button type="button" class="toggle-opt${l.contract.installatieType==='tower'?' active-sel':''}" onclick="b2cContractSetInstType('${l.id}','tower',this)" ${dis}><i class="ti ti-building" style="margin-right:4px"></i>Tower</button>
         </div>
-        <div style="font-size:11px;color:var(--tx3);margin-top:4px">Verplicht om te generen — bepaalt de installatiezin onderaan Artikel 1.</div>
+        <div style="font-size:11px;color:var(--tx3);margin-top:4px">Verplicht om te generen — bepaalt de installatiezin onderaan Artikel 1.</div><div class="field" style="margin-top:10px"><label>Opmerkingen product (Artikel 1)</label><textarea id="ct-opm-product" rows="2" oninput="b2cContractSaveVeld('${l.id}')" ${dis}>${(l.contract.opmerkingenProduct||'')}</textarea></div>
 
         ${b2cContractInst7HTML(l,dis)}<div class="ct-label" style="margin-top:14px">Geldigheidsduur contract</div>
         <div class="toggle-group" id="ct-geldigheid-grp">
@@ -10231,7 +10231,7 @@ function b2cRenderContract(l){
         <div class="ct-label" style="margin-top:16px">Prijs (uit offerte)</div>
         <div style="font-size:13px;background:var(--bg2);border-radius:6px;padding:8px 10px">Totaalprijs incl. BTW (${btwPct}%): <strong>€ ${totaalIncl.toLocaleString('nl-BE',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
 
-        <div class="field" style="margin-top:14px"><label>Opmerkingen (Artikel 3)</label><textarea id="ct-opmerkingen" rows="2" oninput="b2cContractSaveVeld('${l.id}')" ${dis}>${(l.contract.opmerkingen||'')}</textarea></div>
+        <div class="field" style="margin-top:14px"><label>Opmerkingen installatie (Artikel 4)</label><textarea id="ct-opmerkingen" rows="2" oninput="b2cContractSaveVeld('${l.id}')" ${dis}>${(l.contract.opmerkingen||'')}</textarea></div>
 
         <button class="btn primary" style="width:100%;justify-content:center;margin-top:1rem" onclick="b2cGenereerContract('${l.id}')" ${dis}><i class="ti ti-file-invoice"></i> Contract genereren</button>
       </div>
@@ -10325,6 +10325,7 @@ function b2cContractSaveVeld(id){
   if(b2cContractIsVergrendeld(l))return;
   l.contract=l.contract||{};
   l.contract.opmerkingen=document.getElementById('ct-opmerkingen')?.value||'';
+  l.contract.opmerkingenProduct=document.getElementById('ct-opm-product')?.value||'';
   sbSaveB2cLead(l);
 }
 
@@ -10440,6 +10441,7 @@ function b2cContractDocHTML(c,autoPrint){
   const installatieZin=b2cContractInstallatieZin(c.installatieType);
   const totaalStr=(c.totaalIncl||0).toLocaleString('nl-BE',{minimumFractionDigits:2,maximumFractionDigits:2});
   const opm=String(c.opmerking||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const opmProd=String(c.opmerkingProduct||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
   return `<!DOCTYPE html><html lang="nl"><head><meta charset="utf-8"><title>Aankoopcontract - ${c.naam}</title>
 <style>
 :root{--green:#00DFA3;--dark:#1D252D;--tx2:#4a5760;--mint:#e9fbf5}
@@ -10452,9 +10454,9 @@ body{font-family:Arial,Helvetica,sans-serif;color:var(--dark);font-size:12.5px;b
 .logo-bottom{position:absolute;bottom:53px;left:50%;transform:translateX(-50%);width:128px;z-index:2;pointer-events:none}
 .pg{position:absolute;left:60px;bottom:58px;font-size:10px;color:#666;z-index:2}
 .badge{display:inline-block;background:var(--green);color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.3px;border-radius:999px;padding:8px 18px;font-family:Arial,Helvetica,sans-serif}
-.badge-section{font-size:15px;margin:6px 0 14px 0}
+.badge-section{font-size:15px;margin:6px 0 14px 0;display:table}
 .header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:16px;flex-wrap:wrap}
-.badge-title{font-size:17px;margin:0}
+.badge-title{font-size:17px;margin:0;display:table}
 .datum-val{font-weight:700;font-size:12px;white-space:nowrap;color:var(--dark)}
 h1.artikel{font-weight:800;font-size:19px;margin:6px 0 12px 0;padding-bottom:3px;border-bottom:1.5px solid var(--dark)}
 .partijen{display:flex;gap:28px;margin-bottom:22px}
@@ -10530,6 +10532,9 @@ ul.simple{margin:6px 0 10px 20px;font-size:12.5px;line-height:1.65}
     </table>
     <ul class="simple"><li>Installatie conform met onderstaande installatievoorwaarden</li></ul>
     <div class="note">${installatieZin}</div>
+    <div class="opm" style="margin-top:12px">Opmerkingen product: <span style="font-weight:400">${opmProd}</span></div>
+    <span class="dotted-line"></span>
+    <span class="dotted-line"></span>
     <div class="note" style="margin-top:10px;font-weight:700">
       Dit contract is geldig tot ${c.geldigTot} (${c.geldigheidsduur} maand na datum van aanmaak).
     </div>
@@ -10574,7 +10579,7 @@ ul.simple{margin:6px 0 10px 20px;font-size:12.5px;line-height:1.65}
   <div class="content">
     <h1 class="artikel">ARTIKEL 4: INSTALLATIEVOORWAARDEN</h1>
     ${b2cContractInst7Rows(c)}
-    <div class="opm">Opmerkingen: <span style="font-weight:400">${opm}</span></div>
+    <div class="opm">Opmerkingen installatie: <span style="font-weight:400">${opm}</span></div>
     <span class="dotted-line"></span>
     <span class="dotted-line"></span>
     <div class="iv"><div class="intro">Bij de installatie moeten volgende zaken voldaan zijn, indien dit niet het geval is zullen extra installatie- of servicekosten in rekening gebracht worden.</div><div class="h">1. &nbsp;Standaardinstallatie 1 laadpunt</div><div class="r l2"><div class="n">1.1.</div><div class="x">Afstand tussen zekeringskast &amp; plaats van installatie = max 10 meter</div></div><div class="r l2"><div class="n">1.2.</div><div class="x">Afstand tussen internetmodem &amp; plaats van installatie = max 10 meter</div></div><div class="r l2"><div class="n">1.3.</div><div class="x">2 vrije UTP-poorten in de modem/switch</div></div><div class="r l2"><div class="n">1.4.</div><div class="x">Vrije plaats in de zekeringskast voor een Differentieel, automaat &amp; verbruiksmeter/EMS systeem</div></div><div class="r l2"><div class="n">1.5.</div><div class="x">Maximum 1 muurboring van 60cm</div></div><div class="r l2"><div class="n">1.6.</div><div class="x">Installatie op steen of hout, niet op crepi of leien</div></div><div class="r l2"><div class="n">1.7.</div><div class="x">Vrije kabeldoorvoer (geen graafwerken, verhardingen, kasten in de weg, &hellip;)</div></div><div class="r l2"><div class="n">1.8.</div><div class="x">Indien wachtbuizen voorzien</div></div><div class="r l3"><div class="n">1.8.1.</div><div class="x">Wachtbuis met minimumdiameter van 45mm</div></div><div class="r l3"><div class="n">1.8.2.</div><div class="x">Optimale route voor kabeldoorvoer (geen hoeken van 90&deg;, &hellip;)</div></div><div class="r l3"><div class="n">1.8.3.</div><div class="x">Wachtbuis is niet volgelopen met water, of andere zaken en is bruikbaar</div></div><div class="r l2"><div class="n">1.9.</div><div class="x">Voorzien in de standaardinstallatie door BLITZ</div></div><div class="r l3 b"><div class="n">-</div><div class="x">10m voedingskabel 5G6</div></div><div class="r l3 b"><div class="n">-</div><div class="x">2x 10m UTP kabel Cat6</div></div><div class="r l3 b"><div class="n">-</div><div class="x">1x diff-A</div></div><div class="r l3 b"><div class="n">-</div><div class="x">1x Automaat (32 of 40A)</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Configuratie laadpunt en loadbalancing</div></div><div class="r l2"><div class="n">1.10.</div><div class="x">Niet voorzien in de standaardinstallatie: voor onderstaande wordt een meerprijs aangerekend indien niet vermeld werd dat dit opgenomen is in de installatieprijs door de vertegenwoordiger. Onderstaande is een opsomming en niet beperkend.</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Extra kabels indien meer dan 10m (voeding &amp; UTP)</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Switch indien geen vrije UTP poorten</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Extra boorwerken</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Graafwerken, verhardingswerken, &hellip;</div></div><div class="r l3 b"><div class="n">-</div><div class="x">Load Balancing</div></div></div>
@@ -10640,6 +10645,7 @@ async function b2cGenereerContract(id){
   const email=document.getElementById('ct-email').value||l.email||'—';
   const tel=document.getElementById('ct-tel').value||l.tel||'—';
   l.contract.opmerkingen=document.getElementById('ct-opmerkingen')?.value||l.contract.opmerkingen||'';
+  l.contract.opmerkingenProduct=document.getElementById('ct-opm-product')?.value||l.contract.opmerkingenProduct||'';
   const {btwPct,totaalIncl}=b2cContractBtwTotaal(l);
   const d=new Date();
   const datumStr=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
@@ -10647,7 +10653,7 @@ async function b2cGenereerContract(id){
   const geldigTot=b2cDatumPlusMaanden(d,geldigheidsduur);
 
   b2cContractTekst={naam,adres,btw,email,tel,groeperingen,installatieType:l.contract.installatieType,
-    opmerking:l.contract.opmerkingen,btwPct,totaalIncl,datumStr,geldigheidsduur,geldigTot,leadId:id,inst7:Object.assign({},l.contract.inst7||{})};
+    opmerking:l.contract.opmerkingen,btwPct,totaalIncl,datumStr,geldigheidsduur,geldigTot,leadId:id,opmerkingProduct:(l.contract.opmerkingenProduct||''),inst7:Object.assign({},l.contract.inst7||{})};
 
   // Blijvend opslaan op de lead, zodat het contract bij het heropenen van dit tabblad
   // meteen weer zichtbaar is (en niet opnieuw gegenereerd moet worden).
