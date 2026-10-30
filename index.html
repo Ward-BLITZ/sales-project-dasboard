@@ -4318,11 +4318,32 @@ async function autoplanOpvolgingen(){
   }
 }
 
+
+// ── ZUINIG POLLEN ─────────────────────────────────────
+// Eén kleine RPC-call (enkele bytes) i.p.v. de hele database elke 5 s.
+// Enkel als de teller veranderd is (of de RPC faalt) doen we een volledige loadAll().
+let _syncFp=null,_syncBezig=false;
+async function zuinigPollTick(){
+  if(document.hidden||_syncBezig)return;
+  _syncBezig=true;
+  try{
+    let fp=null;
+    try{
+      const r=await sbFetch('rpc/sync_fingerprint',{method:'POST',body:'{}'});
+      fp=(r===null||r===undefined)?null:String(r);
+    }catch(e){fp=null;}
+    if(fp!==null&&fp===_syncFp)return;
+    await loadAll();
+    _syncFp=fp;
+  }finally{_syncBezig=false;}
+}
+
 function startSupabase(url,key){
   sbUrl=url;sbKey=key;setDbStatus('connecting','verbinden...');
   loadAll().then(()=>{
     if(pollTimer)clearInterval(pollTimer);
-    pollTimer=setInterval(()=>loadAll().catch(()=>{}),5000);
+    pollTimer=setInterval(()=>zuinigPollTick().catch(()=>{}),15000); // ZUINIG-POLLEN-V1
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)zuinigPollTick().catch(()=>{});});
     if(typeof autoplanOpvolgingen==='function'){
       autoplanOpvolgingen().catch(()=>{});
       if(window._autoplanTimer)clearInterval(window._autoplanTimer);
